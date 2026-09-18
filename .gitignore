@@ -8,6 +8,7 @@
 !/README.md
 !/go.mod
 !/go.sum
+!/DEV-PREFERENCES.md
 
 # Binaries
 genealogy-mcp
