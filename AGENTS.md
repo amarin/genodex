@@ -8,6 +8,9 @@ Project instructions for AI agents (Codex, Claude, LGTM). The authoritative docs
 - Backend in Go; frontend (Vite + React 18 + antd) is built into `web/dist` and embedded via `//go:embed all:dist`.
 - `internal/entity` holds the type definitions for all service entities (no per-type detail here); JSON tags on these models define the API/MCP JSON shapes.
 
+## Developer preferences
+- `DEVELOPER-PREFERENCES.md` — project-specific code style, architecture, and development preferences. Always follow.
+
 ## Key documents and sources of truth
 - `/docs` — project documentation (architecture, usage, development).
 - `internal/entity` — domain model, defines JSON shapes exposed via `/api` and MCP tools.
