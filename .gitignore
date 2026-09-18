@@ -1,0 +1,29 @@
+# Everything in root — except these:
+/*
+!/cmd/
+!/docs/
+!/internal/
+!/web/
+!/AGENTS.md
+!/README.md
+!/go.mod
+!/go.sum
+
+# Binaries
+genealogy-mcp
+genodex
+
+# Node
+web/node_modules/
+
+# Built frontend (embedded by go:embed)
+web/dist/
+
+# IDE
+.idea/
+
+# Go build cache
+/tmp/go-build/
+
+# OS
+.DS_Store
