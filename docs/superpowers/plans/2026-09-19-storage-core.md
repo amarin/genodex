@@ -1668,54 +1668,96 @@ git commit -m "feat(storage): verify журнала, БД и манифеста 
 
 ---
 
-### Task 8: CLI — подкоманды, флаг `--data`, read-through в store
+### Task 8: Архитектура слоёв (usecase) + CLI
+
+> Переписан по решению пользователя (2026-09-19): read-through в in-memory store
+> отклонён. Действует архитектура из `DEVELOPER-PREFERENCES.md`:
+> интерфейсы (MCP/API) смотрят ТОЛЬКО в usecases; usecase вызывает storage;
+> данные в памяти живут только в цепочке обработки запроса
+> `MCP/API → usecase → storage → usecase → MCP/API`. In-memory `store` удаляется;
+> `internal/store` становится интерфейсом хранилища (`store.Store`).
 
 **Files:**
-- Modify: `cmd/genodex/main.go`
-- Create: `cmd/genodex/data.go` (resolveDataDir с sentinel-предупреждением) при необходимости
-- Test: `internal/storage/sentinel_test.go` (запуск с `--data` помеченным) — по желанию, можно в T9 интеграционным тестом.
+- Modify: `internal/store/store.go` (в интерфейс), `internal/mcp/server.go`, `internal/mcp/settlement.go`, `internal/httpapi/httpapi.go`, `internal/httpapi/settlement.go`, `cmd/genodex/main.go`
+- Create: `internal/store/deps.go` (порт `Store`), `internal/store/sqlstore/deps.go` + `internal/store/sqlstore/sqlstore.go` (адаптер поверх `internal/storage`), `internal/models/` (внутренние типы сценариев), `internal/usecases/list_settlements/` (сценарий + deps.go), `internal/app/` (сборка приложения), `internal/mcp/deps.go`, `internal/httpapi/deps.go`, `cmd/genodex/data.go`
+- Delete: in-memory реализация `internal/store/store.go` (maps + mutex)
 
-**Правила и решения (подтвердить у пользователя перед выполнением):**
-1. Флаг `--data <dir>` (env `GENODEX_DATA`): каталог данных. Ранее данных не было — для сервера каталог просто создаётся; `store` наполняется read-through из SQLite.
-2. Подкоманды: `genodex serve` (по умолчанию), `genodex backup --to <dir> [--keep N]`, `genodex restore --from <dir> --to <dir> [--force]`, `genodex verify [--backup <dir>]`. Старый запуск `genodex -p 9000` сохраняем как `serve` (без бэк-совместимых сюрпризов в этих флагах).
-3. `--data` используется сервером для read-through: при старте весь SQLite читается в `store` (текущий in-memory MCP/API контракт не меняется). Записи со стороны MCP/API пока НЕ пишут в storage — storage подключается к интерфейсам отдельным PR (вне скоупа этого плана). То есть storage пока однонаправленный: SQLite → store.
-4. Авто-бэкап при штатном останове сервера: `backup --auto` в каталог `$GENODEX_DATA/backups` + периодический (не реже раза в сутки, простой таймер). На старте — `verify` бандла, если существует.
-5. Sentinel: если `db/` и `backup/` лежат на одном устройстве — warning. Проверка через `stat` блочный device ID.
+**Решения (подтверждены пользователем 2026-09-19):**
+1. `serve` — по умолчанию; старый запуск `genodex -p 9000` работает как раньше (первый аргумент не является подкомандой).
+2. Нет read-through и нет авто-бэкапа. Storage доступен только через usecases; каждый запрос идёт в SQLite.
+3. `store` — интерфейс хранилища (порт) с отдельными методами на каждую сущность; реализация — адаптер `sqlstore` над `internal/storage`.
+4. Авто-бэкап НЕ включаем (политика ротации — отдельный план). Остаются ручные `backup`/`restore`/`verify`.
+5. Sentinel: `db/` и каталог бэкапов на одном устройстве → warning в stderr (не fatal).
+
+**Слои (сверху вниз):**
+```
+internal/mcp, internal/httpapi    — хендлеры; зависят только от usecase-интерфейсов (deps.go)
+internal/usecases/<scenario>/     — сценарий; принимает/возвращает models.<Type>; хранилище через store.Store
+internal/store                    — порт: store.Store (типизированные методы на все сущности)
+internal/store/sqlstore           — адаптер: internal/storage → store.Store (JSON entity ⇄ blob)
+internal/storage                  — SQLite + журнал + backup/restore/verify (T1–T7)
+internal/entity                   — внешние типы (API/MCP JSON-контракты), не меняются
+internal/models                   — внутренние типы сценариев
+internal/app                      — сборка: storage → sqlstore → usecases → mcp/httpapi → mux
+```
 
 **Метрика готовности (DoD Task 8):**
-- `go build -o genealogy-mcp ./cmd/genodex` и `go vet ./...` без ошибок;
-- `genodex --data /tmp/x serve` стартует, `/api/health` отвечает, `store` наполнен из пустой БД;
-- `genodex backup --data /tmp/test --to /tmp/bkp` создаёт бандл; `genodex restore --from /tmp/bkp --to /tmp/restored` возвращает те же данные; `genodex verify --data /tmp/restored --backup /tmp/bkp` → ok.
+- `go build -o genealogy-mcp ./cmd/genodex`, `go vet ./...`, `go test ./...` без ошибок;
+- `genodex --data /tmp/x serve` стартует, `/api/health` отвечает, `store` as интерфейс НЕ является in-memory;
+- `genodex --data /tmp/test backup --to /tmp/bkp` создаёт бандл; `genodex restore --from /tmp/bkp --to /tmp/restored` отдаёт те же данные; `genodex --data /tmp/restored verify --backup /tmp/bkp` → ok;
+- публичные контракты не изменены: MCP `settlement_list`, HTTP `/api/health`, `/api/settlements`, `/api/docs` работают как раньше.
 
-- [ ] **Step 1: Открыть `cmd/genodex/main.go` и понять текущую структуру**
+- [ ] **Step 1: `internal/store` → порт**
 
-Прочитать `cmd/genodex/main.go`. Зафиксировать: как запускается сервер, как настраивается `store`, где выставляются route. Не менять HTTP/MCP контракты.
+`internal/store/store.go` превращается в интерфейс `store.Store` (методы на каждую сущность:
+`GetPerson/SavePerson/ListPeople`, `GetSettlement/SaveSettlement/ListSettlements`, …, тренд как в текущем
+concrete `Store`, но только объявления; возвращают `error`). Конкретика живёт в `sqlstore`.
+`internal/store/deps.go` содержит интерфейс (по конвенции `deps.go`).
 
-- [ ] **Step 2: Определить `--data` и подкоманды**
+- [ ] **Step 2: адаптер `internal/store/sqlstore`**
 
-Добавить флаг `--data` (default `.`), разбор подкоманд. `serve` — текущее поведение сервера; прочие подкоманды — утилиты.
+`sqlstore.Open(dataDir) (*sqlstore.Store, error)` — открывает `storage.Open`, методы реализуют
+`store.Store`: `entity` сериализуется в blob (`json.Marshal`), `search` = `storage.Normalize`
+из JSON-полей (для Person — по ФИО, для Settlement — по названию; остальные — по имени/названию),
+вызовы `storage.Save/Get/List/Delete`. Юнит-тест: `sqlstore.New` над `internal/storage` с
+тестовой сущностью (settlement), проверка `Save→List→Get`.
 
-- [ ] **Step 3: read-through: SQLite → store**
+- [ ] **Step 3: `internal/models` + сценарий `list_settlements`**
 
-При старте сервера открыть storage из `--data`, выполнить `List` по всем типам и наполнить `store`. Это повторный код из будущего репозитория — держать в одном месте `internal/store`? Нет: read-through живёт в `cmd/genodex`, чтобы не менять `store`. Ошибка чтения при старте — fatal (данные не должны молча теряться).
+`internal/models/settlement.go`: `models.Settlement` (внутренний тип, поля `ID/Name/Metadata`).
+`internal/usecases/list_settlements/`: `New(deps)` (deps — узкий интерфейс в `deps.go`,
+напр. `type settlementLister interface{ ListSettlements() ([]*entity.Settlement, error) }`)
+и метод `Handle(ctx) ([]models.Settlement, error)` — маппит entity→models. Тест с фейком.
 
-- [ ] **Step 4: `backup`, `restore`, `verify`**
+- [ ] **Step 4: переключить MCP/API на usecase**
 
-Подкоманды вызывают `Backup`, `Restore`, `Verify`. `restore --force` разрешает запись поверх существующего `db/` (по умолчанию — отказ). Вывод — краткий отчёт (`VerifyResult.String()`).
+`internal/mcp/deps.go`: интерфейс `SettlementService` (метод `ListSettlements` из сценария).
+`internal/mcp/server.go`, `settlement.go`: `NewServer(svc SettlementService)`. Аналогично
+`internal/httpapi/deps.go` + `NewHandler(st SettlementService, docsFS)`. Контракты JSON те же.
 
-- [ ] **Step 5: Авто-бэкап на останов**
+- [ ] **Step 5: `internal/app` — сборка**
 
-Graceful shutdown (`SIGTERM`/`SIGINT`) → авто-бэкап. Периодический таймер (например, каждые 24ч) в том же цикле. Ошибки бэкапа логируются, не блокируют сервер.
+`internal/app/app.go`: `New(cfg)` открывает `sqlstore`, собирает usecases, mcp, httpapi, mux;
+`Run(ctx)` стартует сервер; `Shutdown(ctx)` graceful. Флаги порта/веба приходят из `cmd`.
 
-- [ ] **Step 6: Sentinel**
+- [ ] **Step 6: CLI в `cmd/genodex`**
 
-При `Open(dataDir)`: `db/` и `backup/` на одном устройстве → warning в stderr на старте сервера (не fatal). Реализация: `os.Stat` → `syscall.Stat_t.Dev`.
+`cmd/genodex/main.go`: `flag --data` (default `.`, env `GENODEX_DATA`), разбор первого аргумента:
+`serve` (по умолчанию; `-p`, `-web` сохраняются), `backup --to <dir>`, `restore --from <dir> --to <dir> [--force]`,
+`verify [--backup <dir>]`. `backup/restore/verify` работают через `internal/storage` напрямую
+(утилиты, не слои приложения). Sentinal-warning в `cmd/genodex/data.go`.
+Smoke-тест (bash): старт сервера → `/api/health` → `/api/settlements`; цикл backup/restore/verify.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: удалить in-memory store**
+
+Выпилить старую реализацию с maps и mutex. Проверить, что нигде нет import `internal/store`
+как concrete-типа (только интерфейс).
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add cmd/genodex/
-git commit -m "feat(cli): флаги --data, backup/restore/verify/auto-бэкап"
+git add internal/store internal/models internal/usecases internal/mcp internal/httpapi internal/app cmd/genodex
+git commit -m "feat(cli): слои usecase, store как интерфейс, подкоманды backup/restore/verify/serve"
 ```
 
 ---
@@ -1740,17 +1782,21 @@ git commit -m "feat(cli): флаги --data, backup/restore/verify/auto-бэка
 
 1. `internal/storage` — пакет с `normalize.go`, `journal.go`, `db.go`, `storage.go`, `backup.go`, `restore.go`, `verify.go` (+ тесты), `go test ./internal/storage/` зелёный.
 2. Инвариант «журнал не младше БД» доказан тестом `TestStorageRecoversWhenDBLost` (потеря БД при живом журнале восстанавливается).
-3. CLI: `genodex backup/restore/verify` работают, read-through наполняет `store`, авто-бэкап на останов.
+3. Архитектура слоёв: `internal/store` — интерфейс (порт), `internal/store/sqlstore` — адаптер поверх `internal/storage`; MCP/API смотрят только в usecases; in-memory store удалён. `genodex backup/restore/verify` работают.
 4. `gofmt -l .` пусто, `go build ./...`, `go vet ./...`, `go test ./...` зелёные.
 5. Документация обновлена (architecture, usage, AGENTS).
-6. Существующие MCP/HTTP контракты не изменены; `internal/store` не изменён.
+6. Существующие MCP/HTTP контракты не изменены (та же JSON-форма у `settlement_list`, `/api/settlements`).
 
 ## Decision Points (спросить пользователя перед/в ходе выполнения)
 
 1. **Подтвердить разбор** первой подкоманды: `serve` — всегда по умолчанию? Или `genodex serve` required?
+   → **Решено (2026-09-19):** `serve` по умолчанию; `genodex -p 9000` остаётся рабочим.
 2. **Read-through**: загружать в `store` из SQLite при старте (однонаправленно) — ок? Или на этом этапе storage оставить полностью автономным (без read-through) до подключения интерфейсов?
+   → **Решено (2026-09-19):** read-through отклонён. Слои: MCP/API → usecases → storage. In-memory store удаляется; данные в памяти только в цепочке обработки запроса.
 3. **Авто-бэкап**: include в этом плане или отдельно (авто-бэкап требует выбора политики: расписание, ротация `--keep N`)?
+   → **Решено (2026-09-19):** не включаем; только ручные `backup`/`restore`/`verify`. Ротация — отдельный план.
 4. **Sentinel**: warning ok или сделать fatal при одинаковом устройстве (страхование от ошибочного бэкапа)?
+   → **Решено (2026-09-19):** warning в stderr, не fatal.
 
 ## Worth Noting (риски и открытые вопросы)
 
@@ -1758,4 +1804,6 @@ git commit -m "feat(cli): флаги --data, backup/restore/verify/auto-бэка
 - **`cgo` не используется**: `modernc.org/sqlite` — чистый Go, совместим с `CGO_ENABLED=0` и кросс-сборкой. `VACUUM INTO` поддерживается modernc.
 - **`go.mod`** — go 1.26.4; `golang.org/x/text` добавлен как зависимость нормализации (задача T1).
 - **AGENTS.md** упоминает `cmd/genealogy-mcp/main.go`, но фактическая точка входа — `cmd/genodex/main.go`; поправить в T9.
+- **Слой usecases** вводится в T8 (по решению пользователя): `internal/usecases/<scenario>/`, `internal/models` — внутренние типы. `internal/entity` остаются внешними контрактами JSON (не менять). Это соответствует `DEVELOPER-PREFERENCES.md` (handlers → scenario interface → storage; deps.go с интерфейсами).
+- **`internal/app`** — сборка приложения (по `DEVELOPER-PREFERENCES.md`: вся логика старта/останова там), `cmd/genodex/main.go` — только флаги и вызовы.
 - **Naming**: `genealogy-mcp` остаётся именем бинарника; подкоманды добавятся к нему же.
