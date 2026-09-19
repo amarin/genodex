@@ -1,13 +1,14 @@
 package httpapi
 
-import (
-	"net/http"
+import "net/http"
 
-	"github.com/amarin/genodex/internal/store"
-)
-
-func handleSettlementList(st *store.Store) http.HandlerFunc {
+func handleSettlementList(settlements SettlementService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, st.ListSettlements())
+		list, err := settlements.ListSettlements(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, list)
 	}
 }

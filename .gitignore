@@ -12,9 +12,9 @@
 !/DEVELOPER-PREFERENCES.md
 !/CHANGELOG.md
 
-# Binaries
-genealogy-mcp
-genodex
+# Binaries (repo root build artifacts)
+/genealogy-mcp
+/genodex
 
 # Node
 web/node_modules/

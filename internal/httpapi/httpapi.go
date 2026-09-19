@@ -4,16 +4,14 @@ import (
 	"encoding/json"
 	"io/fs"
 	"net/http"
-
-	"github.com/amarin/genodex/internal/store"
 )
 
 // NewHandler возвращает http.Handler с маршрутами /api.
 // docsFS — файловая система папки docs для раздела «Документация».
-func NewHandler(st *store.Store, docsFS fs.FS) http.Handler {
+func NewHandler(settlements SettlementService, docsFS fs.FS) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", handleHealth)
-	mux.HandleFunc("GET /api/settlements", handleSettlementList(st))
+	mux.HandleFunc("GET /api/settlements", handleSettlementList(settlements))
 	mux.HandleFunc("GET /api/docs", handleDocList(docsFS))
 	mux.HandleFunc("GET /api/docs/{path}", handleDocContent(docsFS))
 	return mux
