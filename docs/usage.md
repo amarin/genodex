@@ -19,20 +19,53 @@ go build ./...
 
 ## Запуск
 
+Бинарь `genodex` собирается из `cmd/genodex`. По умолчанию работает подкоманда `serve` (совместимость со старым запуском):
+
 ```bash
 # prod: фронтенд из бинарника (по умолчанию)
-go run ./cmd/genealogy-mcp -p 9000
+go run ./cmd/genodex -p 9000
 
 # dev: фронтенд с диска web/dist, без пересборки Go после правок фронта
-go run ./cmd/genealogy-mcp -p 9000 -web dev
+go run ./cmd/genodex -p 9000 -web dev
 ```
+
+### Данные
+
+Каталог данных, где лежит `db/genodex.db` и `db/journal.jsonl`:
+
+```bash
+genodex --data /path/to/data serve        # или после подкоманды
+genodex serve --data /path/to/data
+export GENODEX_DATA=/path/to/data         # env-переменная как дефолт
+```
+
+По умолчанию `--data` = `.` (текущий каталог).
+
+### Подкоманды
+
+```bash
+genodex serve [--data DIR] [-p 9000] [-web prod|dev]   # сервер (по умолчанию)
+genodex backup [--data DIR] [--to DIR]                 # бэкап: бандл «снапшот+журнал+манифест»
+genodex restore --from DIR --to DIR [--force]          # восстановление из бандла
+genodex verify [--data DIR] [--backup DIR]             # проверка целостности БД/журнала/бандла
+```
+
+- `backup` по умолчанию пишет в `<data>/backups/`.
+- Если каталог данных и каталог бэкапа на одном устройстве, `backup` печатает warning в stderr (бэкап не защитит от отказа диска).
+- `restore` требует пустой целевой каталог; `--force` разрешает запись поверх существующей БД (удаляет `db/genodex.db` и `db/journal.jsonl`).
+- `verify` без `--backup` проверяет базу и журнал; с `--backup` сверяет также манифест бандла. При несоответствии — ошибка и ненулевой код возврата.
 
 Флаги:
 
 | Флаг | Значение по умолчанию | Назначение |
 |------|----------------------|-----------|
-| `-p` | `9000` | Порт HTTP-сервера |
+| `-p` | `9000` | Порт HTTP-сервера (для `serve`) |
 | `-web` | `prod` | Режим веб-ассетов: `prod` (встроены в бинарник) или `dev` (с диска `web/dist`) |
+| `--data` | `.` или `GENODEX_DATA` | Каталог данных |
+| `--to` | `<data>/backups` | Каталог бэкапа (для `backup`) / целевой каталог (для `restore`) |
+| `--from` | — | Каталог бандла (для `restore`, обязателен) |
+| `--backup` | — | Каталог бандла для сверки (для `verify`, опционально) |
+| `--force` | `false` | Для `restore`: разрешить запись поверх существующей БД |
 
 Сервер останавливается по `Ctrl+C` (graceful shutdown, до 5 с).
 

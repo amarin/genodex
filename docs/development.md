@@ -9,7 +9,7 @@
 | `go build ./...` | Скомпилировать модуль. Требует существующий `web/dist` из-за `//go:embed`. |
 | `go vet ./...` | Статический анализ. |
 | `gofmt -w <файлы>` | Форматирование. Код должен оставаться gofmt-чистым. |
-| `go run ./cmd/genealogy-mcp -p <порт> [-web prod\|dev]` | Локальный запуск сервера. |
+| `go run ./cmd/genodex -p <порт> [-web prod\|dev]` | Локальный запуск сервера (`serve` — подкоманда по умолчанию). |
 
 ### Фронтенд (web/)
 
@@ -31,7 +31,7 @@
 
 - `web/dist/**` — результат сборки фронта;
 - `web/node_modules/**` — зависимости npm;
-- корневой бинарник `genealogy-mcp` — сборочный артефакт.
+- корневой бинарник `genealogy-mcp` — старый артефакт; актуальная сборка — `genodex` из `cmd/genodex`.
 
 ## Проверка перед сдачей
 
@@ -39,13 +39,23 @@
 gofmt -l .          # пусто
 go build ./...
 go vet ./...
+go test ./...       # storage (журнал/БД/backup/restore/verify), sqlstore, usecases
 ```
 
 Затем smoke-проверка основных маршрутов:
 
 ```bash
-go run ./cmd/genealogy-mcp -p 9000 &
+go run ./cmd/genodex -p 9000 &
 curl -s http://localhost:9000/api/health      # {"status":"ok"}
 curl -s http://localhost:9000/api/settlements # [...]
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:9000/  # 200
+```
+
+Резервное копирование данных (на диске):
+
+```bash
+go build -o genodex ./cmd/genodex
+./genodex backup --data /path/to/data --to /path/to/bkp
+./genodex verify --data /path/to/data --backup /path/to/bkp
+./genodex restore --from /path/to/bkp --to /path/to/restored
 ```

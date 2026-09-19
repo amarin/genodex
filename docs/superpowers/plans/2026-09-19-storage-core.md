@@ -1807,3 +1807,44 @@ git commit -m "feat(cli): слои usecase, store как интерфейс, п�
 - **Слой usecases** вводится в T8 (по решению пользователя): `internal/usecases/<scenario>/`, `internal/models` — внутренние типы. `internal/entity` остаются внешними контрактами JSON (не менять). Это соответствует `DEVELOPER-PREFERENCES.md` (handlers → scenario interface → storage; deps.go с интерфейсами).
 - **`internal/app`** — сборка приложения (по `DEVELOPER-PREFERENCES.md`: вся логика старта/останова там), `cmd/genodex/main.go` — только флаги и вызовы.
 - **Naming**: `genealogy-mcp` остаётся именем бинарника; подкоманды добавятся к нему же.
+
+---
+
+## Implementation notes (конец T8, 2026-09-19)
+
+**Статус:** Task 8 выполнена и закоммичена (`9483d61`, ветка `storage-core`).
+Smoke-цикл пройден: seed 3 записей → `backup` (journal=3, applied=3) → `verify` ok →
+`restore --to restored` → `verify` ok; повторный `restore` без `--force` отказывается
+(target already contains db), с `--force` проходит. Порча бандла (garbage в journal)
+детектится: `verify` → `ok=false`, `manifest_match=false`, exit 1. Sentinel-warning
+печатается, не fatal.
+
+**Расхождения с текстом плана (осознанные):**
+1. `internal/store/store.go` НЕ «превращён в интерфейс» — порт вынесен в
+   `internal/store/deps.go`, текстовый in-memory `store.go` удалён (что и было задачей).
+   Реализация — `internal/store/sqlstore/`.
+2. `sqlstore` разбит на файлы по сущностям (`sqlstore.go`, `person.go`, `settlement.go`,
+   `place.go`, `archive.go`, `records.go`) + `sqlstore_test.go`; отдельный
+   `sqlstore/deps.go` не создавался — методы сразу на `Store` (утверждение
+   `var _ store.Store` в `sqlstore.go`).
+3. Дополнительно исправлен `.gitignore`: правила `genealogy-mcp`/`genodex` заякорены
+   (`/genealogy-mcp`, `/genodex`), иначе bare-правило `genodex` игнорировало НОВЫЕ файлы
+   всего каталога `cmd/genodex/*.go`.
+4. CLI поддерживает `--data` и до подкоманды, и после: `genodex --data X backup --to Y`
+   = `genodex backup --data X --to Y` (через `peelDataFlag`/`chooseDataDir`). План не
+   требовал, но и не запрещал; обе формы работают.
+5. Бинарь собирается как `genodex` (имя из `cmd/genodex`), а не `genealogy-mcp`; в
+   DoD-строке плана написано `go build -o genealogy-mcp ./cmd/genodex` — исполнено было
+   `go build -o genodex ./cmd/genodex`.
+6. `go build ./...` в EMS-`web/embed.go` требует `web/dist`; он присутствует.
+7. Мокген-директивы в `deps.go` объявлены, но `go generate` не запускался (фейки
+   написаны руками; mockgen пригодится при росте числа сценариев).
+8. `internal/models` пока содержит только `settlement.go` — остальные сценарии заводятся
+   по мере перевода их эндпоинтов (только `settlement_list`/`/api/settlements` переведены;
+   других MCP-тулов сейчас нет).
+
+**Проверки Task 8 пройдены:** `gofmt -l .` пусто, `go build ./...`, `go vet ./...`,
+`go test ./... -count=1` зелёные (storage, sqlstore, list_settlements).
+
+**На Task 9 осталось:** обновить `docs/architecture.md`, `docs/usage.md`, `AGENTS.md`
+(Worth-noting: точка входа теперь `cmd/genodex/main.go`), финальные проверки и коммит.
