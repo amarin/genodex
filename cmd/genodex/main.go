@@ -13,6 +13,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/amarin/genodex"
 	"github.com/amarin/genodex/internal/httpapi"
 	"github.com/amarin/genodex/internal/mcp"
 	"github.com/amarin/genodex/internal/store"
@@ -27,9 +28,11 @@ func main() {
 	st := store.New()
 	mcpServer := mcp.NewServer(st)
 
+	docsFS := genodex.DocsFS(*webMode)
+
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", server.NewStreamableHTTPServer(mcpServer))
-	mux.Handle("/api/", httpapi.NewHandler(st))
+	mux.Handle("/api/", httpapi.NewHandler(st, docsFS))
 	mux.Handle("/static/", http.StripPrefix("/static/", web.StaticHandler(*webMode)))
 	mux.Handle("/", web.SPAHandler(*webMode))
 

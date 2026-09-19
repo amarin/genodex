@@ -1,0 +1,56 @@
+.docs-article table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+}
+
+.docs-article th,
+.docs-article td {
+  border: 1px solid #d9d9d9;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.docs-article thead th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.docs-article tr:nth-child(even) td {
+  background: #fafafa;
+}
+
+.docs-article pre {
+  background: #f6f8fa;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 12px;
+  overflow-x: auto;
+}
+
+.docs-article code {
+  background: #f6f8fa;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.docs-article pre code {
+  background: none;
+  padding: 0;
+}
+
+.docs-article blockquote {
+  margin: 16px 0;
+  padding: 4px 16px;
+  border-left: 4px solid #d9d9d9;
+  color: #595959;
+}
+
+.docs-article h1,
+.docs-article h2,
+.docs-article h3 {
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
