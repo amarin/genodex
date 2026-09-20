@@ -4,25 +4,25 @@ package models
 // либо ссылкой на сущность.
 type TextRef struct {
 	// Text — отображаемая строка (обязательна).
-	Text string `json:"text"`
+	Text string
 	// Ref — id целевой сущности (пусто, если элемент — просто текст).
-	Ref string `json:"ref,omitempty"`
+	Ref ID
 	// Type — тип целевой сущности (задаётся вместе с Ref).
-	Type string `json:"type,omitempty"`
+	Type Type
 }
 
 // NamedPeriod — наименование с периодом действия (открытым с одной или обеих сторон).
 type NamedPeriod struct {
-	Text  string `json:"text"`
-	Since string `json:"since,omitempty"`
-	Until string `json:"until,omitempty"`
+	Text  string
+	Since string
+	Until string
 }
 
 // PlaceRef — указание на место: TextRef, чья ссылка (если есть) ведёт на сущность
 // места (AdministrativeDivision | Church | Parish). Свободный текст — когда
 // сущности места ещё нет.
 type PlaceRef struct {
-	Text string `json:"text"`
-	Ref  string `json:"ref,omitempty"`
-	Type string `json:"type,omitempty"`
+	Text string
+	Ref  ID
+	Type Type
 }

@@ -18,13 +18,13 @@ type Anchor interface {
 // ArchiveAnchor — скан страницы единицы учёта в архиве.
 type ArchiveAnchor struct {
 	// NodeID — узел цепочки (единица учёта).
-	NodeID string `json:"node_id"`
+	NodeID ID
 	// DocumentID — уточнение до документа внутри единицы (опционально).
-	DocumentID string `json:"document_id,omitempty"`
+	DocumentID ID
 	// Page — номер скана/страницы.
-	Page int `json:"page"`
+	Page int
 	// Rect — координаты области выделения на изображении (опционально).
-	Rect string `json:"rect,omitempty"`
+	Rect string
 }
 
 // Kind возвращает дискриминатор.
@@ -33,9 +33,9 @@ func (a *ArchiveAnchor) Kind() AnchorKind { return AnchorArchive }
 // FileAnchor — файл с тайминговой привязкой.
 type FileAnchor struct {
 	// AttachmentID — вложение.
-	AttachmentID string `json:"attachment_id"`
+	AttachmentID ID
 	// Timecode — тайм-метка для аудио/видео (опционально).
-	Timecode string `json:"timecode,omitempty"`
+	Timecode string
 }
 
 // Kind возвращает дискриминатор.
@@ -44,7 +44,7 @@ func (a *FileAnchor) Kind() AnchorKind { return AnchorFile }
 // URLAnchor — внешняя ссылка.
 type URLAnchor struct {
 	// URL — адрес.
-	URL string `json:"url"`
+	URL string
 }
 
 // Kind возвращает дискриминатор.

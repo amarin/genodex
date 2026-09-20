@@ -42,19 +42,19 @@ const (
 // при вводе.
 type FactDate struct {
 	// Year — год (обязателен, кроме precision=unknown).
-	Year int `json:"year,omitempty"`
+	Year int
 	// Month — месяц (0, если неизвестен).
-	Month int `json:"month,omitempty"`
+	Month int
 	// Day — день (0, если неизвестен).
-	Day int `json:"day,omitempty"`
+	Day int
 	// Precision — верхняя известная точность.
-	Precision FactPrecision `json:"precision"`
+	Precision FactPrecision
 	// Modifier — вид формулировки.
-	Modifier FactModifier `json:"modifier"`
+	Modifier FactModifier
 	// YearTo/MonthTo/DayTo — верхняя граница для modifier=between.
-	YearTo  int `json:"year_to,omitempty"`
-	MonthTo int `json:"month_to,omitempty"`
-	DayTo   int `json:"day_to,omitempty"`
+	YearTo  int
+	MonthTo int
+	DayTo   int
 }
 
 // UnknownDate возвращает дату неизвестной точности.
