@@ -1,9 +1,16 @@
 package models
 
-// Archive — архив (внутренний тип сценариев).
-// JSON-теги совпадают с internal/entity, чтобы сохранить внешние контракты.
+// Archive — архив (хранилище с системой иерархии). RepositoryID — ссылка на
+// репозиторий (решение #25); Private — приватность (решение #24).
 type Archive struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	ID           ID
+	Name         string
+	System       *TextRef
+	RepositoryID ID
+	Notes        []TextRef
+	Sources      []SourceLink
+	Private      bool
 }
+
+// EntityType возвращает тип сущности.
+func (a *Archive) EntityType() Type { return TypeArchive }
