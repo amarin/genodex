@@ -24,17 +24,14 @@ const (
 	AdminDivisionMestechko AdminDivisionType = "mestechko"
 )
 
-// isDivisionUnit — единицы деления (не населённые пункты).
-func isDivisionUnit(t AdminDivisionType) bool {
+// IsSettlement сообщает, является ли тип видом населённого пункта.
+// Белый список: неизвестные и пустые значения населёнными пунктами не считаются.
+func (t AdminDivisionType) IsSettlement() bool {
 	switch t {
-	case AdminDivisionGovernorate, AdminDivisionDistrict, AdminDivisionVolost, AdminDivisionOther:
+	case AdminDivisionGorod, AdminDivisionSelo, AdminDivisionDerevnya, AdminDivisionHutor,
+		AdminDivisionPogost, AdminDivisionStanitsa, AdminDivisionMestechko:
 		return true
 	default:
 		return false
 	}
-}
-
-// IsSettlement сообщает, является ли тип видом населённого пункта.
-func (t AdminDivisionType) IsSettlement() bool {
-	return !isDivisionUnit(t)
 }
