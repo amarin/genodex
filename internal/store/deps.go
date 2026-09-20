@@ -6,6 +6,19 @@ import "github.com/amarin/genodex/internal/models"
 // Реализация: internal/store/sqlstore (адаптер поверх internal/storage).
 // MCP/API никогда не работают с портом напрямую — только через usecases.
 //
+// Контракт порта:
+//   - Get* возвращает (nil, nil), если сущности с таким id нет; ошибка — только
+//     при сбое хранилища.
+//   - Save* — upsert: сохраняет сущность целиком и заменяет её дочерние строки
+//     (имена, списки TextRef, доказательства и т. п.), а не дополняет их.
+//   - Внешние ключи проверяются хранилищем: SourceLink.CitationID должен
+//     указывать на существующую Citation, Citation.SourceID — на существующий
+//     Source, Residence и Relation требуют существующих персон и мест,
+//     непустые строгие id (ссылки на архив, репозиторий, приход и т. п.) должны
+//     существовать. Иначе Save* возвращает ошибку внешнего ключа, и ничего не
+//     записывается (сохранение атомарно). Ошибка Save* содержит вид и id
+//     сущности.
+//
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type Store interface {
 	// Person

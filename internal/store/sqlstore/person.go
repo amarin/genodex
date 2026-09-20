@@ -24,7 +24,9 @@ var personTextRefLists = []struct {
 
 // SavePerson сохраняет персону: главная строка (upsert) + перезапись имён,
 // списков TextRef, доказательств и поискового индекса.
-func (s *Store) SavePerson(p *models.Person) error {
+func (s *Store) SavePerson(p *models.Person) (err error) {
+	defer wrapSave(&err, "person", p.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
 			`INSERT INTO persons(id, gender, private) VALUES (?, ?, ?)

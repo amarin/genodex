@@ -130,7 +130,9 @@ func (s *Store) getDictionary(spec dictSpec, id models.ID, dest ...*string) (dic
 // --- Surname --------------------------------------------------------------
 
 // SaveSurname сохраняет словарную запись фамилии.
-func (s *Store) SaveSurname(v *models.Surname) error {
+func (s *Store) SaveSurname(v *models.Surname) (err error) {
+	defer wrapSave(&err, "surname", v.ID)
+
 	return s.saveDictionary(surnameSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
@@ -160,7 +162,9 @@ func (s *Store) ListSurnames() ([]*models.Surname, error) {
 // --- GivenName ------------------------------------------------------------
 
 // SaveGivenName сохраняет словарную запись имени.
-func (s *Store) SaveGivenName(v *models.GivenName) error {
+func (s *Store) SaveGivenName(v *models.GivenName) (err error) {
+	defer wrapSave(&err, "given name", v.ID)
+
 	return s.saveDictionary(givenNameSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical, string(v.Gender)},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
@@ -190,7 +194,9 @@ func (s *Store) ListGivenNames() ([]*models.GivenName, error) {
 // --- Patronymic -----------------------------------------------------------
 
 // SavePatronymic сохраняет словарную запись отчества.
-func (s *Store) SavePatronymic(v *models.Patronymic) error {
+func (s *Store) SavePatronymic(v *models.Patronymic) (err error) {
+	defer wrapSave(&err, "patronymic", v.ID)
+
 	return s.saveDictionary(patronymicSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
@@ -220,7 +226,9 @@ func (s *Store) ListPatronymics() ([]*models.Patronymic, error) {
 // --- Estate ---------------------------------------------------------------
 
 // SaveEstate сохраняет словарную запись сословия.
-func (s *Store) SaveEstate(v *models.Estate) error {
+func (s *Store) SaveEstate(v *models.Estate) (err error) {
+	defer wrapSave(&err, "estate", v.ID)
+
 	return s.saveDictionary(estateSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
@@ -250,7 +258,9 @@ func (s *Store) ListEstates() ([]*models.Estate, error) {
 // --- Title ----------------------------------------------------------------
 
 // SaveTitle сохраняет словарную запись звания/титула.
-func (s *Store) SaveTitle(v *models.Title) error {
+func (s *Store) SaveTitle(v *models.Title) (err error) {
+	defer wrapSave(&err, "title", v.ID)
+
 	return s.saveDictionary(titleSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,

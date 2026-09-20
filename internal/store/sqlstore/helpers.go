@@ -502,3 +502,12 @@ func (s *Store) searchIDs(table, query string) ([]models.ID, error) {
 		 WHERE entity_table = ? AND term LIKE ? ESCAPE '\' ORDER BY entity_id`,
 		table, escaped+"%")
 }
+
+// wrapSave дополняет ошибку сохранения видом и id сущности; %w сохраняет
+// исходную ошибку (например, нарушение внешнего ключа) для errors.Is/As.
+// Используется как defer wrapSave(&err, "person", p.ID) в методах Save*.
+func wrapSave(err *error, kind string, id models.ID) {
+	if *err != nil {
+		*err = fmt.Errorf("save %s %q: %w", kind, string(id), *err)
+	}
+}

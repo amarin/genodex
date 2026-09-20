@@ -857,3 +857,22 @@ func TestStoreRoundTripRest(t *testing.T) {
 		t.Fatalf("ListAdministrativeDivisions: err=%v len=%d", err, len(list))
 	}
 }
+
+// Ошибка Save* называет вид и id сущности и сохраняет исходную причину (FK).
+func TestSaveErrorNamesEntityAndID(t *testing.T) {
+	s := newStore(t)
+
+	err := s.SaveRelation(&models.Relation{
+		ID: "rel-x", Kind: models.RelationKindMarriage, PersonA: "нет-1", PersonB: "нет-2",
+	})
+	if err == nil {
+		t.Fatal("сохранение связи с несуществующими персонами должно упасть")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "relation") || !strings.Contains(msg, "rel-x") {
+		t.Fatalf("ошибка не называет вид и id: %v", err)
+	}
+	if !strings.Contains(msg, "FOREIGN KEY constraint failed") {
+		t.Fatalf("исходная причина потеряна: %v", err)
+	}
+}

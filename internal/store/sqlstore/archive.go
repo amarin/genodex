@@ -10,7 +10,9 @@ import (
 
 // SaveArchive сохраняет архив. RepositoryID — необязательная строгая ссылка:
 // пустой ID пишется как SQL NULL.
-func (s *Store) SaveArchive(a *models.Archive) error {
+func (s *Store) SaveArchive(a *models.Archive) (err error) {
+	defer wrapSave(&err, "archive", a.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "archives", string(a.ID), nil, []string{"system_id"}, nil)
 		if err != nil {
@@ -92,7 +94,9 @@ func (s *Store) ListArchives() ([]*models.Archive, error) {
 // --- ArchiveNode ----------------------------------------------------------
 
 // SaveArchiveNode сохраняет узел цепочки хранения.
-func (s *Store) SaveArchiveNode(n *models.ArchiveNode) error {
+func (s *Store) SaveArchiveNode(n *models.ArchiveNode) (err error) {
+	defer wrapSave(&err, "archive node", n.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "archive_nodes", string(n.ID),
 			[]string{"since_id", "until_id"}, []string{"parish_id"}, nil)
@@ -211,7 +215,9 @@ func (s *Store) ListArchiveNodes() ([]*models.ArchiveNode, error) {
 // --- ArchiveDocument ------------------------------------------------------
 
 // SaveArchiveDocument сохраняет документ внутри единицы учёта.
-func (s *Store) SaveArchiveDocument(d *models.ArchiveDocument) error {
+func (s *Store) SaveArchiveDocument(d *models.ArchiveDocument) (err error) {
+	defer wrapSave(&err, "archive document", d.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "archive_documents", string(d.ID),
 			[]string{"since_id", "until_id"}, []string{"parish_id"}, nil)
@@ -325,7 +331,9 @@ func (s *Store) ListArchiveDocuments() ([]*models.ArchiveDocument, error) {
 
 // SaveAttachment сохраняет файловое вложение. DocumentID — необязательная
 // ссылка: nil/пусто пишется как SQL NULL.
-func (s *Store) SaveAttachment(a *models.Attachment) error {
+func (s *Store) SaveAttachment(a *models.Attachment) (err error) {
+	defer wrapSave(&err, "attachment", a.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
 			`INSERT INTO attachments(id, kind, uri, filename, mime, page, node_id, document_id, note, private)

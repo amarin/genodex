@@ -9,7 +9,9 @@ import (
 // --- Relation -------------------------------------------------------------
 
 // SaveRelation сохраняет ребро графа родства.
-func (s *Store) SaveRelation(r *models.Relation) error {
+func (s *Store) SaveRelation(r *models.Relation) (err error) {
+	defer wrapSave(&err, "relation", r.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "relations", string(r.ID),
 			[]string{"since_id", "until_id"}, nil, nil)
@@ -110,7 +112,9 @@ func (s *Store) ListRelations() ([]*models.Relation, error) {
 // --- Residence ------------------------------------------------------------
 
 // SaveResidence сохраняет проживание персоны в месте.
-func (s *Store) SaveResidence(r *models.Residence) error {
+func (s *Store) SaveResidence(r *models.Residence) (err error) {
+	defer wrapSave(&err, "residence", r.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "residences", string(r.ID),
 			[]string{"since_id", "until_id"}, nil, nil)
@@ -197,7 +201,9 @@ func (s *Store) ListResidences() ([]*models.Residence, error) {
 // --- Family ---------------------------------------------------------------
 
 // SaveFamily сохраняет род/линию.
-func (s *Store) SaveFamily(f *models.Family) error {
+func (s *Store) SaveFamily(f *models.Family) (err error) {
+	defer wrapSave(&err, "family", f.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
 			`INSERT INTO families(id, name, private) VALUES (?, ?, ?)

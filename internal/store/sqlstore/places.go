@@ -9,7 +9,9 @@ import (
 // --- AdministrativeDivision -----------------------------------------------
 
 // SaveAdministrativeDivision сохраняет единицу административного деления.
-func (s *Store) SaveAdministrativeDivision(a *models.AdministrativeDivision) error {
+func (s *Store) SaveAdministrativeDivision(a *models.AdministrativeDivision) (err error) {
+	defer wrapSave(&err, "administrative division", a.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "administrative_divisions", string(a.ID),
 			[]string{"since_id", "until_id"}, nil, nil)
@@ -142,7 +144,9 @@ func (s *Store) ListAdministrativeDivisions() ([]*models.AdministrativeDivision,
 // --- Church ---------------------------------------------------------------
 
 // SaveChurch сохраняет церковь.
-func (s *Store) SaveChurch(c *models.Church) error {
+func (s *Store) SaveChurch(c *models.Church) (err error) {
+	defer wrapSave(&err, "church", c.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "churches", string(c.ID), nil, []string{"parish_id"}, nil)
 		if err != nil {
@@ -239,7 +243,9 @@ func (s *Store) ListChurches() ([]*models.Church, error) {
 // --- Parish ---------------------------------------------------------------
 
 // SaveParish сохраняет приход.
-func (s *Store) SaveParish(p *models.Parish) error {
+func (s *Store) SaveParish(p *models.Parish) (err error) {
+	defer wrapSave(&err, "parish", p.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "parishes", string(p.ID),
 			[]string{"since_id", "until_id"}, []string{"church_id"}, nil)

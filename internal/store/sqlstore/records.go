@@ -9,7 +9,9 @@ import (
 // --- Event ----------------------------------------------------------------
 
 // SaveEvent сохраняет событие вместе с коллекцией участников.
-func (s *Store) SaveEvent(e *models.Event) error {
+func (s *Store) SaveEvent(e *models.Event) (err error) {
+	defer wrapSave(&err, "event", e.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "events", string(e.ID),
 			[]string{"date_id"}, []string{"place_id"}, nil)
@@ -165,7 +167,9 @@ func (s *Store) ListEvents() ([]*models.Event, error) {
 
 // SaveSource сохраняет источник. RepositoryID — необязательная строгая
 // ссылка: пустой ID пишется как SQL NULL (иначе FK RESTRICT отвергнет вставку).
-func (s *Store) SaveSource(src *models.Source) error {
+func (s *Store) SaveSource(src *models.Source) (err error) {
+	defer wrapSave(&err, "source", src.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "sources", string(src.ID), []string{"date_id"}, nil, nil)
 		if err != nil {
@@ -250,7 +254,9 @@ func (s *Store) ListSources() ([]*models.Source, error) {
 // --- Citation -------------------------------------------------------------
 
 // SaveCitation сохраняет цитату из источника вместе с якорем.
-func (s *Store) SaveCitation(c *models.Citation) error {
+func (s *Store) SaveCitation(c *models.Citation) (err error) {
+	defer wrapSave(&err, "citation", c.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		old, err := collectMainRefs(tx, "citations", string(c.ID), nil, nil, []string{"anchor_id"})
 		if err != nil {
@@ -317,7 +323,9 @@ func (s *Store) ListCitations() ([]*models.Citation, error) {
 // --- Note -----------------------------------------------------------------
 
 // SaveNote сохраняет заметку (иерархия «книга → главы» через parent_id).
-func (s *Store) SaveNote(n *models.Note) error {
+func (s *Store) SaveNote(n *models.Note) (err error) {
+	defer wrapSave(&err, "note", n.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
 			`INSERT INTO notes(id, kind, title, text, parent_id, private) VALUES (?, ?, ?, ?, ?, ?)
@@ -373,7 +381,9 @@ func (s *Store) ListNotes() ([]*models.Note, error) {
 // --- Repository -----------------------------------------------------------
 
 // SaveRepository сохраняет хранилище-контейнер источников.
-func (s *Store) SaveRepository(r *models.Repository) error {
+func (s *Store) SaveRepository(r *models.Repository) (err error) {
+	defer wrapSave(&err, "repository", r.ID)
+
 	return s.db.Tx(func(tx *sql.Tx) error {
 		if _, err := tx.Exec(
 			`INSERT INTO repositories(id, name, type, address, private) VALUES (?, ?, ?, ?, ?)
