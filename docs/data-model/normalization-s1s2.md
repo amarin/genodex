@@ -222,9 +222,18 @@ timecode, url)` — все `Anchor`; колонки зависят от `kind`, 
 напр. `Citation.anchor` — anchor отдельно, в `anchors`. См. карту полей ниже.
 
 Многозначные `TextRef`-списки — связные таблицы вида
-`<entity>_<field>(entity_id, position, text, ref, ref_type)`, например
-`person_estates`, `administrative_division_items`, `family_members`, словарные
-`*_variants`, `*_items`, `source_notes` и т.д.
+`<entity>_<field>(entity_id, position, text_ref_id)`, например
+`person_estates`, `ad_items`, `family_members`, словарные `*_variants`,
+`*_items`, `source_notes` и т.д. Значение лежит не в колонках связной
+таблицы, а в общей `text_refs`, на которую указывает `text_ref_id`.
+
+Следствие для владельца: внешний ключ ведёт ИЗ дочерней строки В
+`text_refs` / `dates` / `anchors`, а не наоборот, поэтому `ON DELETE CASCADE`
+владельца сносит только связную строку — строка-значение остаётся сиротой.
+Чистит её `sqlstore` явно: при каждой перезаписи списка (и при перезаписи
+скалярных `*_id`-колонок главной строки) сначала собираются id значений,
+затем удаляются дочерние строки, и только после этого — сами строки
+`text_refs`/`dates`/`anchors`.
 
 ### Таблицы сущностей
 
