@@ -51,6 +51,8 @@ type FactDate struct {
 	Precision FactPrecision
 	// Modifier — вид формулировки.
 	Modifier FactModifier
+	// Calendar — календарь, в котором записана дата (пусто ≡ unknown).
+	Calendar FactCalendar
 	// YearTo/MonthTo/DayTo — верхняя граница для modifier=between.
 	YearTo  int
 	MonthTo int
@@ -167,6 +169,7 @@ func ParseFactDate(s string) (FactDate, error) {
 	if s == "" {
 		return FactDate{}, fmt.Errorf("fact date: пустая строка")
 	}
+	s, cal := splitCalendarSuffix(s)
 
 	mod := ModifierExact
 	lower := strings.ToLower(s)
@@ -209,8 +212,8 @@ func ParseFactDate(s string) (FactDate, error) {
 		}
 		return FactDate{
 			Year: lo.year, Month: lo.month, Day: lo.day, Precision: lo.precision,
-			Modifier: mod,
-			YearTo:   hi.year, MonthTo: hi.month, DayTo: hi.day,
+			Modifier: mod, Calendar: cal,
+			YearTo: hi.year, MonthTo: hi.month, DayTo: hi.day,
 		}, nil
 	}
 
@@ -220,8 +223,35 @@ func ParseFactDate(s string) (FactDate, error) {
 	}
 	return FactDate{
 		Year: c.year, Month: c.month, Day: c.day, Precision: c.precision,
-		Modifier: mod,
+		Modifier: mod, Calendar: cal,
 	}, nil
+}
+
+// calendarSuffixes — суффиксы календаря в конце строки даты (в нижнем регистре).
+// Порядок важен только в пределах одного календаря.
+var calendarSuffixes = []struct {
+	suffix   string
+	calendar FactCalendar
+}{
+	{"ст. ст.", FactCalendarJulian},
+	{"ст.ст.", FactCalendarJulian},
+	{"н. ст.", FactCalendarGregorian},
+	{"н.ст.", FactCalendarGregorian},
+}
+
+// splitCalendarSuffix отделяет суффикс календаря: «ст. ст.» — юлианский
+// (старый стиль), «н. ст.» — григорианский (новый стиль). Регистр не важен;
+// без суффикса календарь пуст. Суффиксы состоят из букв, не меняющих длину в
+// байтах при смене регистра, поэтому усечение по длине безопасно.
+func splitCalendarSuffix(s string) (string, FactCalendar) {
+	lower := strings.ToLower(s)
+	for _, sf := range calendarSuffixes {
+		if strings.HasSuffix(lower, sf.suffix) {
+			return strings.TrimSpace(s[:len(s)-len(sf.suffix)]), sf.calendar
+		}
+	}
+
+	return s, ""
 }
 
 // components — результат разбора числовых компонентов даты.
@@ -272,8 +302,25 @@ func parseComponents(s string) (components, error) {
 	return c, nil
 }
 
-// String возвращает каноническую текстовую форму даты.
+// String возвращает каноническую текстовую форму даты; для юлианского и
+// григорианского календаря добавляется суффикс « ст. ст.» / « н. ст.».
 func (d FactDate) String() string {
+	s := d.text()
+	if d.Precision == PrecisionUnknown {
+		return s
+	}
+	switch d.Calendar {
+	case FactCalendarJulian:
+		return s + " ст. ст."
+	case FactCalendarGregorian:
+		return s + " н. ст."
+	}
+
+	return s
+}
+
+// text возвращает форму даты без суффикса календаря.
+func (d FactDate) text() string {
 	if d.Precision == PrecisionUnknown {
 		return "?"
 	}

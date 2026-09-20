@@ -141,3 +141,76 @@ func mustParse(t *testing.T, s string) FactDate {
 	}
 	return d
 }
+
+func TestParseFactDateCalendar(t *testing.T) {
+	tests := []struct {
+		in   string
+		want FactDate
+	}{
+		{"1917-10-25 ст. ст.", FactDate{Year: 1917, Month: 10, Day: 25, Precision: PrecisionDay, Modifier: ModifierExact, Calendar: FactCalendarJulian}},
+		{"1917-10-25 ст.ст.", FactDate{Year: 1917, Month: 10, Day: 25, Precision: PrecisionDay, Modifier: ModifierExact, Calendar: FactCalendarJulian}},
+		{"1917-11-07 н. ст.", FactDate{Year: 1917, Month: 11, Day: 7, Precision: PrecisionDay, Modifier: ModifierExact, Calendar: FactCalendarGregorian}},
+		{"1917-11-07 н.ст.", FactDate{Year: 1917, Month: 11, Day: 7, Precision: PrecisionDay, Modifier: ModifierExact, Calendar: FactCalendarGregorian}},
+		{"1917 Ст. Ст.", FactDate{Year: 1917, Precision: PrecisionYear, Modifier: ModifierExact, Calendar: FactCalendarJulian}},
+		{"около 1881 ст. ст.", FactDate{Year: 1881, Precision: PrecisionYear, Modifier: ModifierApprox, Calendar: FactCalendarJulian}},
+		{"между 1880 и 1882 ст. ст.", FactDate{Year: 1880, Precision: PrecisionYear, Modifier: ModifierBetween, YearTo: 1882, Calendar: FactCalendarJulian}},
+		{"  1881-03  н. ст.  ", FactDate{Year: 1881, Month: 3, Precision: PrecisionMonth, Modifier: ModifierExact, Calendar: FactCalendarGregorian}},
+	}
+	for _, tt := range tests {
+		got, err := ParseFactDate(tt.in)
+		if err != nil {
+			t.Errorf("ParseFactDate(%q): unexpected error %v", tt.in, err)
+			continue
+		}
+		if got != tt.want {
+			t.Errorf("ParseFactDate(%q)=%+v, want %+v", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestParseFactDateCalendarErrors(t *testing.T) {
+	for _, in := range []string{"ст. ст.", "н. ст.", "между 1880 ст. ст."} {
+		if _, err := ParseFactDate(in); err == nil {
+			t.Errorf("ParseFactDate(%q): want error, got nil", in)
+		}
+	}
+}
+
+func TestFactDateStringCalendar(t *testing.T) {
+	tests := []struct {
+		in   FactDate
+		want string
+	}{
+		{FactDate{Year: 1917, Month: 10, Day: 25, Precision: PrecisionDay, Modifier: ModifierExact, Calendar: FactCalendarJulian}, "1917-10-25 ст. ст."},
+		{FactDate{Year: 1917, Month: 11, Day: 7, Precision: PrecisionDay, Modifier: ModifierExact, Calendar: FactCalendarGregorian}, "1917-11-07 н. ст."},
+		{FactDate{Year: 1917, Precision: PrecisionYear, Modifier: ModifierApprox, Calendar: FactCalendarJulian}, "около 1917 ст. ст."},
+		{FactDate{Year: 1917, Precision: PrecisionYear, Modifier: ModifierExact, Calendar: FactCalendarUnknown}, "1917"},
+		{FactDate{Year: 1917, Precision: PrecisionYear, Modifier: ModifierExact}, "1917"},
+		{FactDate{Precision: PrecisionUnknown, Modifier: ModifierExact, Calendar: FactCalendarJulian}, "?"},
+	}
+	for _, tt := range tests {
+		if got := tt.in.String(); got != tt.want {
+			t.Errorf("String(%+v)=%q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
+// Разбор и вывод обратимы для всех форм с календарём.
+func TestFactDateCalendarRoundTrip(t *testing.T) {
+	for _, in := range []string{
+		"1917-10-25 ст. ст.",
+		"1917-11-07 н. ст.",
+		"около 1881 ст. ст.",
+		"между 1880-03 и 1882-09-01 ст. ст.",
+		"до 1918 н. ст.",
+	} {
+		d, err := ParseFactDate(in)
+		if err != nil {
+			t.Errorf("parse %q: %v", in, err)
+			continue
+		}
+		if got := d.String(); got != in {
+			t.Errorf("String(Parse(%q))=%q", in, got)
+		}
+	}
+}
