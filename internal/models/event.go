@@ -1,12 +1,16 @@
 package models
 
-// Event — событие жизненного факта (внутренний тип сценариев).
-// JSON-теги совпадают с internal/entity, чтобы сохранить внешние контракты.
+// Event — событие жизненного факта. Private — приватность (решение #24).
 type Event struct {
-	ID        string            `json:"id"`
-	EventType string            `json:"type"`
-	Date      string            `json:"date,omitempty"`
-	Place     string            `json:"place,omitempty"`
-	PersonIDs []string          `json:"person_ids"`
-	Metadata  map[string]string `json:"metadata,omitempty"`
+	ID           ID
+	Type         EventType
+	Date         *FactDate
+	Place        *PlaceRef
+	Participants []EventParticipant
+	Sources      []SourceLink
+	Notes        []TextRef
+	Private      bool
 }
+
+// EntityType возвращает тип сущности.
+func (e *Event) EntityType() Type { return TypeEvent }
