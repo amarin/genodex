@@ -876,3 +876,40 @@ func TestSaveErrorNamesEntityAndID(t *testing.T) {
 		t.Fatalf("исходная причина потеряна: %v", err)
 	}
 }
+
+// TestStoreDateCalendarRoundTrip: календарь даты пишется и читается как есть,
+// включая пустое значение (пусто ≡ unknown, но идентичность сохраняется).
+func TestStoreDateCalendarRoundTrip(t *testing.T) {
+	s := newStore(t)
+
+	tests := []struct {
+		id       models.ID
+		calendar models.FactCalendar
+	}{
+		{"ev-cal-julian", models.FactCalendarJulian},
+		{"ev-cal-gregorian", models.FactCalendarGregorian},
+		{"ev-cal-unknown", models.FactCalendarUnknown},
+		{"ev-cal-empty", ""},
+	}
+	for _, tt := range tests {
+		date := models.FactDate{
+			Year: 1917, Month: 10, Day: 25,
+			Precision: models.PrecisionDay, Modifier: models.ModifierExact,
+			Calendar: tt.calendar,
+		}
+		if err := s.SaveEvent(&models.Event{ID: tt.id, Type: models.EventTypeBirth, Date: &date}); err != nil {
+			t.Fatalf("save event %s: %v", tt.id, err)
+		}
+
+		got, err := s.GetEvent(tt.id)
+		if err != nil {
+			t.Fatalf("get event %s: %v", tt.id, err)
+		}
+		if got.Date == nil {
+			t.Fatalf("event %s: дата потеряна", tt.id)
+		}
+		if got.Date.Calendar != tt.calendar {
+			t.Errorf("event %s: calendar = %q, want %q", tt.id, got.Date.Calendar, tt.calendar)
+		}
+	}
+}

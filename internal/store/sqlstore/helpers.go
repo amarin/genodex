@@ -225,18 +225,16 @@ func loadTextRefList(q queryer, table, ownerCol, ownerID string) ([]models.TextR
 // --- dates ----------------------------------------------------------------
 
 // insertDate пишет FactDate в dates и возвращает id; nil — 0 (колонка NULL).
-// Колонка calendar остаётся со значением по умолчанию: у FactDate нет поля
-// календаря.
 func insertDate(tx *sql.Tx, d *models.FactDate) (int64, error) {
 	if d == nil {
 		return 0, nil
 	}
 
 	res, err := tx.Exec(
-		`INSERT INTO dates(year, month, day, precision, modifier, year_to, month_to, day_to)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO dates(year, month, day, precision, modifier, year_to, month_to, day_to, calendar)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		d.Year, d.Month, d.Day, string(d.Precision), string(d.Modifier),
-		d.YearTo, d.MonthTo, d.DayTo)
+		d.YearTo, d.MonthTo, d.DayTo, string(d.Calendar))
 	if err != nil {
 		return 0, err
 	}
@@ -251,18 +249,19 @@ func loadDate(q queryer, id int64) (*models.FactDate, error) {
 	}
 
 	var (
-		d         models.FactDate
-		prec, mod string
+		d              models.FactDate
+		prec, mod, cal string
 	)
 
 	if err := q.QueryRow(
-		`SELECT year, month, day, precision, modifier, year_to, month_to, day_to
+		`SELECT year, month, day, precision, modifier, year_to, month_to, day_to, calendar
 		 FROM dates WHERE id = ?`, id,
-	).Scan(&d.Year, &d.Month, &d.Day, &prec, &mod, &d.YearTo, &d.MonthTo, &d.DayTo); err != nil {
+	).Scan(&d.Year, &d.Month, &d.Day, &prec, &mod, &d.YearTo, &d.MonthTo, &d.DayTo, &cal); err != nil {
 		return nil, err
 	}
 
 	d.Precision, d.Modifier = models.FactPrecision(prec), models.FactModifier(mod)
+	d.Calendar = models.FactCalendar(cal)
 
 	return &d, nil
 }

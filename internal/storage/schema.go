@@ -49,7 +49,7 @@ var schemaDDL = []string{
 		year_to   INTEGER NOT NULL DEFAULT 0,
 		month_to  INTEGER NOT NULL DEFAULT 0,
 		day_to    INTEGER NOT NULL DEFAULT 0,
-		calendar  TEXT    NOT NULL DEFAULT 'gregorian'
+		calendar  TEXT    NOT NULL DEFAULT ''
 	)`,
 
 	`CREATE TABLE IF NOT EXISTS text_refs (
