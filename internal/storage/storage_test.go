@@ -4,12 +4,52 @@ import (
 	"testing"
 )
 
+// savePerson кладёт персону в колоночную схему: строка persons, основное имя
+// в person_names (через text_refs) и термин в search_index.
+// Полноценный маппинг сущностей — задача internal/store/sqlstore.
 func savePerson(t *testing.T, s *Storage, id, surname string) {
 	t.Helper()
-	txt := []byte(`{"surname":"` + surname + `"}`)
-	if err := s.Save("person", id, txt, []byte(Normalize(surname))); err != nil {
+	db := s.DB()
+	if _, err := db.Exec(
+		`INSERT OR REPLACE INTO persons(id, gender, private) VALUES (?, 'unknown', 0)`, id,
+	); err != nil {
 		t.Fatal(err)
 	}
+	res, err := db.Exec(`INSERT INTO text_refs(text) VALUES (?)`, surname)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ref, err := res.LastInsertId()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO person_names(person_id, type, surname_id, given_id, patronymic_id)
+		 VALUES (?, 'main', ?, ?, ?)`, id, ref, ref, ref,
+	); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(
+		`INSERT OR REPLACE INTO search_index(entity_table, entity_id, field, term)
+		 VALUES ('persons', ?, 'surname', ?)`, id, Normalize(surname),
+	); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// personSurname читает каноническую фамилию основного имени персоны.
+func personSurname(t *testing.T, s *Storage, id string) (string, bool) {
+	t.Helper()
+	var surname string
+	err := s.DB().QueryRow(
+		`SELECT tr.text FROM person_names pn
+		 JOIN text_refs tr ON tr.id = pn.surname_id
+		 WHERE pn.person_id = ?`, id,
+	).Scan(&surname)
+	if err != nil {
+		return "", false
+	}
+	return surname, true
 }
 
 func TestStorageSaveGet(t *testing.T) {
@@ -19,9 +59,9 @@ func TestStorageSaveGet(t *testing.T) {
 		t.Fatal(err)
 	}
 	savePerson(t, s, "blohin", "Блохин")
-	got, ok, err := s.Get("person", "blohin")
-	if err != nil || !ok || string(got) != `{"surname":"Блохин"}` {
-		t.Fatalf("Get: ok=%v data=%s err=%v", ok, got, err)
+	got, ok := personSurname(t, s, "blohin")
+	if !ok || got != "Блохин" {
+		t.Fatalf("personSurname: ok=%v surname=%q", ok, got)
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
@@ -44,13 +84,13 @@ func TestStoragePersistsOnReopen(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer s2.Close()
-	got, ok, _ := s2.Get("person", "blohin")
-	if !ok || string(got) != `{"surname":"Блохин"}` {
-		t.Fatalf("after reopen: ok=%v data=%s", ok, got)
+	got, ok := personSurname(t, s2, "blohin")
+	if !ok || got != "Блохин" {
+		t.Fatalf("after reopen: ok=%v surname=%q", ok, got)
 	}
 }
 
-func TestStorageDelete(t *testing.T) {
+func TestStorageDeleteCascades(t *testing.T) {
 	dir := t.TempDir()
 	s, err := Open(dir)
 	if err != nil {
@@ -58,29 +98,17 @@ func TestStorageDelete(t *testing.T) {
 	}
 	defer s.Close()
 	savePerson(t, s, "blohin", "Блохин")
-	if err := s.Delete("person", "blohin"); err != nil {
+	if _, err := s.DB().Exec(`DELETE FROM persons WHERE id = 'blohin'`); err != nil {
 		t.Fatal(err)
 	}
-	_, ok, _ := s.Get("person", "blohin")
-	if ok {
-		t.Fatal("entity exists after Delete")
+	if _, ok := personSurname(t, s, "blohin"); ok {
+		t.Fatal("person_names остались после удаления персоны")
 	}
-}
-
-func TestStorageSearch(t *testing.T) {
-	dir := t.TempDir()
-	s, err := Open(dir)
+	n, err := s.DB().Count("persons")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer s.Close()
-	savePerson(t, s, "blohin", "Семёнов")
-	savePerson(t, s, "dorozhkin", "Дорожкин")
-	ids, err := s.Search("person", Normalize("семен"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(ids) != 1 || ids[0] != "blohin" {
-		t.Fatalf("Search = %v, want [blohin]", ids)
+	if n != 0 {
+		t.Fatalf("Count(persons) = %d, want 0", n)
 	}
 }

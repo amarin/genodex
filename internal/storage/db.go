@@ -4,62 +4,48 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
-	"time"
 
 	_ "modernc.org/sqlite"
 )
 
-const schemaVersion = 1
+// schemaVersion — версия схемы. 0 — первая колоночная схема; переход с
+// плоской таблицы entity не обратносовместим (старые данные не мигрируются).
+const schemaVersion = 0
 
-// entityRow — строка чтения сущности.
-type entityRow struct {
-	ID   string
-	Data []byte
-}
-
-// DB оборачивает одно SQLite-соединение. Текущая схема — переходная,
-// модель-агностичная (JSON в колонке data, поисковый индекс — в search);
-// нормализация — по плану docs/todo.md.
+// DB оборачивает одно SQLite-соединение. Схема — колоночная (сущность =
+// таблица, коллекция = связная таблица), см. docs/data-model/normalization-s1s2.md.
+// Маппинг сущностей на строки — забота internal/store/sqlstore; здесь только
+// соединение, схема и обслуживание.
 type DB struct {
 	d *sql.DB
 }
 
-// OpenDB открывает БД, включает WAL, foreign keys и создаёт схему.
+// OpenDB открывает БД, включает WAL и foreign keys и создаёт схему целиком.
 func OpenDB(path string) (*DB, error) {
 	d, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, err
 	}
+	// одно соединение: PRAGMA-настройки (в т.ч. foreign_keys) действуют
+	// на каждое соединение отдельно, единственное соединение гарантирует,
+	// что включённые здесь прагмы действуют для всех запросов
 	d.SetMaxOpenConns(1)
 
-	pragmas := []string{
+	for _, p := range []string{
 		"PRAGMA journal_mode=WAL",
 		"PRAGMA foreign_keys=ON",
 		"PRAGMA busy_timeout=5000",
-	}
-	for _, p := range pragmas {
+	} {
 		if _, err := d.Exec(p); err != nil {
 			d.Close()
 			return nil, fmt.Errorf("open: %w", err)
 		}
 	}
 
-	ddl := []string{
-		`CREATE TABLE IF NOT EXISTS meta (
-			key   TEXT PRIMARY KEY,
-			value TEXT NOT NULL
-		)`,
-		`CREATE TABLE IF NOT EXISTS entity (
-			entity_type TEXT NOT NULL,
-			id          TEXT NOT NULL,
-			data        TEXT NOT NULL,
-			search      TEXT NOT NULL DEFAULT '',
-			updated_at  TEXT NOT NULL,
-			PRIMARY KEY (entity_type, id)
-		)`,
-		`CREATE INDEX IF NOT EXISTS idx_entity_search
-			ON entity (entity_type, search)`,
-	}
+	ddl := append(
+		[]string{`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`},
+		schemaDDL...,
+	)
 	for _, q := range ddl {
 		if _, err := d.Exec(q); err != nil {
 			d.Close()
@@ -75,91 +61,40 @@ func OpenDB(path string) (*DB, error) {
 	return &DB{d: d}, nil
 }
 
-// Upsert сохраняет сущность (INSERT OR REPLACE). search — уже нормализованный
-// конкатенат поисковых строк сущности.
-func (d *DB) Upsert(entityType, id string, data, search []byte) error {
-	_, err := d.d.Exec(
-		`INSERT OR REPLACE INTO entity(entity_type, id, data, search, updated_at)
-		 VALUES (?, ?, ?, ?, ?)`,
-		entityType, id, string(data), string(search), time.Now().UTC().Format(time.RFC3339Nano),
-	)
-	return err
-}
+// Exec выполняет запрос без результата.
+func (d *DB) Exec(query string, args ...any) (sql.Result, error) { return d.d.Exec(query, args...) }
 
-func (d *DB) Delete(entityType, id string) error {
-	_, err := d.d.Exec(`DELETE FROM entity WHERE entity_type = ? AND id = ?`, entityType, id)
-	return err
-}
+// Query выполняет запрос с множеством строк.
+func (d *DB) Query(query string, args ...any) (*sql.Rows, error) { return d.d.Query(query, args...) }
 
-func (d *DB) Get(entityType, id string) ([]byte, bool, error) {
-	var data string
-	err := d.d.QueryRow(
-		`SELECT data FROM entity WHERE entity_type = ? AND id = ?`, entityType, id,
-	).Scan(&data)
-	if err == sql.ErrNoRows {
-		return nil, false, nil
-	}
+// QueryRow выполняет запрос с одной строкой.
+func (d *DB) QueryRow(query string, args ...any) *sql.Row { return d.d.QueryRow(query, args...) }
+
+// Tx выполняет fn в транзакции; при ошибке — откат.
+func (d *DB) Tx(fn func(tx *sql.Tx) error) error {
+	tx, err := d.d.Begin()
 	if err != nil {
-		return nil, false, err
+		return err
 	}
-	return []byte(data), true, nil
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }
 
-// List возвращает все сущности типа в недетерминированном порядке.
-func (d *DB) List(entityType string) ([]entityRow, error) {
-	rows, err := d.d.Query(
-		`SELECT id, data FROM entity WHERE entity_type = ?`, entityType,
-	)
-	if err != nil {
-		return nil, err
+// Count считает строки таблицы из реестра (валидация имени защищает от
+// SQL-инъекции: имя подставляется в текст запроса, а не параметром).
+func (d *DB) Count(table string) (int, error) {
+	if !tableNames[table] {
+		return 0, fmt.Errorf("unknown table %q", table)
 	}
-	defer rows.Close()
-	var out []entityRow
-	for rows.Next() {
-		var r entityRow
-		var data string
-		if err := rows.Scan(&r.ID, &data); err != nil {
-			return nil, err
-		}
-		r.Data = []byte(data)
-		out = append(out, r)
-	}
-	return out, rows.Err()
-}
-
-// Search возвращает id сущностей, чей search-индекс содержит query (полное
-// или частичное совпадение). query обязан быть уже нормализованным.
-func (d *DB) Search(entityType, query string) ([]string, error) {
-	rows, err := d.d.Query(
-		`SELECT id FROM entity
-		 WHERE entity_type = ? AND search LIKE '%' || ? || '%'
-		 ORDER BY id`,
-		entityType, query,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var out []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		out = append(out, id)
-	}
-	return out, rows.Err()
-}
-
-func (d *DB) Count(entityType string) (int, error) {
 	var n int
-	err := d.d.QueryRow(
-		`SELECT COUNT(*) FROM entity WHERE entity_type = ?`, entityType,
-	).Scan(&n)
+	err := d.d.QueryRow("SELECT COUNT(*) FROM " + table).Scan(&n)
 	return n, err
 }
 
-// IntegrityCheck выполняет PRAGMA integrity_check (максимум 4 строки ошибок).
+// IntegrityCheck выполняет PRAGMA integrity_check.
 func (d *DB) IntegrityCheck() error {
 	rows, err := d.d.Query("PRAGMA integrity_check")
 	if err != nil {
@@ -186,4 +121,5 @@ func (d *DB) VacuumInto(path string) error {
 	return err
 }
 
+// Close закрывает соединение.
 func (d *DB) Close() error { return d.d.Close() }

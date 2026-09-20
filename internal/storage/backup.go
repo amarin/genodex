@@ -41,17 +41,15 @@ func Backup(s *Storage, toDir string) (Manifest, error) {
 		return Manifest{}, err
 	}
 
+	// счётчики — по таблицам сущностей из реестра схемы (см. schema.go)
 	counts := map[string]int{}
-	for _, et := range []string{
-		"person", "settlement", "church", "parish", "administrative_division",
-		"archive", "event", "source",
-	} {
-		n, err := s.db.Count(et)
+	for _, t := range tables {
+		n, err := s.db.Count(t)
 		if err != nil {
 			return Manifest{}, err
 		}
 		if n > 0 {
-			counts[et] = n
+			counts[t] = n
 		}
 	}
 

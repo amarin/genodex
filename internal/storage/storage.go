@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 )
 
-// Storage — точка входа: SQLite-хранилище с WAL. Все записи идут через Save/Delete.
-// Плоская таблица entity (JSON в колонке data) — переходный формат до нормализации;
-// план работ: docs/todo.md.
+// Storage — точка входа: SQLite-хранилище с WAL и колоночной схемой.
+// Доступ к данным — через Storage.DB() (Exec/Query/QueryRow/Tx), которым
+// пользуется internal/store/sqlstore. Само хранилище о модели не знает.
 type Storage struct {
 	dir string
 	db  *DB
@@ -26,29 +26,10 @@ func Open(dataDir string) (*Storage, error) {
 	return &Storage{dir: dataDir, db: db}, nil
 }
 
-// Save пишет полный образ сущности (JSON + нормализованный поисковый текст) в БД.
-func (s *Storage) Save(entityType, id string, data, search []byte) error {
-	return s.db.Upsert(entityType, id, data, search)
-}
+// DB возвращает доступ к соединению.
+func (s *Storage) DB() *DB { return s.db }
 
-func (s *Storage) Delete(entityType, id string) error {
-	return s.db.Delete(entityType, id)
-}
-
-func (s *Storage) Get(entityType, id string) ([]byte, bool, error) {
-	return s.db.Get(entityType, id)
-}
-
-func (s *Storage) List(entityType string) ([]entityRow, error) {
-	return s.db.List(entityType)
-}
-
-func (s *Storage) Search(entityType, query string) ([]string, error) {
-	return s.db.Search(entityType, Normalize(query))
-}
-
-func (s *Storage) Count(entityType string) (int, error) { return s.db.Count(entityType) }
-
+// Close закрывает хранилище.
 func (s *Storage) Close() error { return s.db.Close() }
 
 // Dir возвращает каталог данных (нужно backup/restore).

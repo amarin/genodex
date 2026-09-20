@@ -28,11 +28,11 @@ func TestRestoreRoundTrip(t *testing.T) {
 		t.Fatalf("Restore: %v", err)
 	}
 	defer rs.Close()
-	got, ok, _ := rs.Get("person", "blohin")
-	if !ok || string(got) != `{"surname":"Блохин"}` {
-		t.Fatalf("restored blohin: ok=%v data=%s", ok, got)
+	got, ok := personSurname(t, rs, "blohin")
+	if !ok || got != "Блохин" {
+		t.Fatalf("restored blohin: ok=%v surname=%q", ok, got)
 	}
-	n, _ := rs.Count("person")
+	n, _ := rs.DB().Count("persons")
 	if n != 2 {
 		t.Fatalf("restored Count = %d, want 2", n)
 	}

@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 )
 
-// VerifyResult — детали проверки.
+// VerifyResult — детали проверки. EntitiesByType индексируется именем
+// таблицы сущности (persons, administrative_divisions, ...) — тем же ключом,
+// что и entity_counts манифеста.
 type VerifyResult struct {
 	OK              bool
 	Integrity       error
@@ -34,6 +36,7 @@ func Verify(s *Storage, backupDir string) (*VerifyResult, error) {
 		} else if got != m.SnapshotSHA {
 			ok = false
 		}
+		// ключи манифеста — имена таблиц из реестра схемы
 		for et, want := range m.EntityCounts {
 			n, err := s.db.Count(et)
 			if err != nil {

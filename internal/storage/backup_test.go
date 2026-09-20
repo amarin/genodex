@@ -21,8 +21,8 @@ func TestBackupCreatesBundle(t *testing.T) {
 	if m.SchemaVersion != schemaVersion {
 		t.Fatalf("SchemaVersion = %d, want %d", m.SchemaVersion, schemaVersion)
 	}
-	if n := m.EntityCounts["person"]; n != 2 {
-		t.Fatalf("EntityCounts[person] = %d, want 2", n)
+	if n := m.EntityCounts["persons"]; n != 2 {
+		t.Fatalf("EntityCounts[persons] = %d, want 2", n)
 	}
 	if _, err := ReadManifest(dst); err != nil {
 		t.Fatalf("ReadManifest: %v", err)

@@ -37,7 +37,7 @@ func Restore(srcDir, toDir string) (*Storage, error) {
 		return nil, fmt.Errorf("open restored: %w", err)
 	}
 
-	// 3. сверка целостности и счётчиков
+	// 3. сверка целостности и счётчиков (ключи — имена таблиц сущностей)
 	if err := s.db.IntegrityCheck(); err != nil {
 		s.Close()
 		return nil, fmt.Errorf("integrity of restored db: %w", err)
