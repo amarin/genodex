@@ -10,10 +10,14 @@ import (
 // Restore создаёт новое хранилище в toDir из бандла srcDir:
 // снапшот копируется как genodex.db, затем БД сверяется целостностью
 // и счётчиками манифеста.
-func Restore(srcDir, toDir string) (*Storage, error) {
+func Restore(srcDir, toDir string) (s *Storage, err error) {
 	m, err := ReadManifest(srcDir)
 	if err != nil {
 		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	if m.SchemaVersion != schemaVersion {
+		return nil, fmt.Errorf("restore: версия схемы бандла %d не совпадает с текущей %d",
+			m.SchemaVersion, schemaVersion)
 	}
 
 	dbDir := filepath.Join(toDir, "db")
@@ -27,30 +31,41 @@ func Restore(srcDir, toDir string) (*Storage, error) {
 	}
 
 	// 1. снапшот → genodex.db
-	if err := copyFile(filepath.Join(srcDir, m.SnapshotFile), dbPath); err != nil {
+	// С этого момента любая ошибка убирает скопированную БД (и -wal/-shm),
+	// чтобы повторная попытка не упиралась в «target already contains».
+	defer func() {
+		if err != nil {
+			for _, suf := range []string{"", "-wal", "-shm"} {
+				os.Remove(dbPath + suf)
+			}
+		}
+	}()
+	if err = copyFile(filepath.Join(srcDir, m.SnapshotFile), dbPath); err != nil {
 		return nil, fmt.Errorf("copy snapshot: %w", err)
 	}
 
 	// 2. открываем как обычное хранилище
-	s, err := Open(toDir)
+	s, err = Open(toDir)
 	if err != nil {
 		return nil, fmt.Errorf("open restored: %w", err)
 	}
 
 	// 3. сверка целостности и счётчиков (ключи — имена таблиц сущностей)
-	if err := s.db.IntegrityCheck(); err != nil {
+	if err = s.db.IntegrityCheck(); err != nil {
 		s.Close()
 		return nil, fmt.Errorf("integrity of restored db: %w", err)
 	}
 	for et, want := range m.EntityCounts {
-		got, err := s.db.Count(et)
+		var got int
+		got, err = s.db.Count(et)
 		if err != nil {
 			s.Close()
 			return nil, err
 		}
 		if got != want {
 			s.Close()
-			return nil, fmt.Errorf("count %s: got %d want %d", et, got, want)
+			err = fmt.Errorf("count %s: got %d want %d", et, got, want)
+			return nil, err
 		}
 	}
 	return s, nil
