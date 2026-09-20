@@ -291,12 +291,14 @@ timecode, url)` — все `Anchor`; колонки зависят от `kind`, 
 `search_index(entity_table TEXT, entity_id TEXT, field TEXT, term TEXT COLLATE BINARY,
 PRIMARY KEY(entity_table, entity_id, field, term))`.
 
-- Термины — normalized lower в Go (`strings.ToLower` из stdlib, корректно для
-  кириллицы).
+- Термины нормализует `storage.Normalize` (нижний регистр, ё→е, свёртка
+  диакритики), а не `strings.ToLower`.
 - Канонический регистр остаётся в колонках сущностей; индекс — производная копия.
 - При `Save` сущности её поисковые поля (name/label/canonical + variants
-  + тексты TextRef) переписываются в индекс; при `Delete` — удаляются каскадом
-  по владельцу.
+  + тексты TextRef) переписываются в индекс. `search_index` и `source_links`
+  полиморфны и внешнего ключа на владельца не имеют, поэтому каскада нет:
+  sqlstore чистит их явно (сейчас — при `Save`; любой будущий `Delete*` обязан
+  делать то же).
 - Запрос: `WHERE term LIKE ?` с параметром = уже lowered строка + `%`
   (без участия sqlite-коллаций — регистронезависимость обеспечена нормализацией
   обеих сторон в Go).

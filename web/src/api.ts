@@ -1,7 +1,7 @@
 export interface Settlement {
   id: string;
   name: string;
-  metadata?: Record<string, string>;
+  type: string;
 }
 
 export async function fetchSettlements(): Promise<Settlement[]> {
