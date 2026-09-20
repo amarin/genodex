@@ -60,6 +60,11 @@ func TestOptionalAndListTextRefs(t *testing.T) {
 
 	refs := []TextRef{{Text: "a"}, {Text: "b"}, {}}
 	wantInvalid(t, "список", finish("", validateTextRefs("notes", refs, "")), "", "notes[2].text")
+	// Две битые записи: сообщается первая.
+	wantInvalid(t, "две битые", finish("", validateTextRefs("notes", []TextRef{{}, {Text: " "}}, "")), "", "notes[0].text")
+	// Ожидаемый тип пробрасывается в каждый элемент.
+	wantInvalid(t, "want пробрасывается",
+		finish("", validateTextRefs("x", []TextRef{{Ref: testID(TypeSurname), Type: TypeSurname}}, TypeGivenName)), "", "x[0].type")
 	if e := validateTextRefs("notes", refs[:2], ""); e != nil {
 		t.Errorf("корректный список: %v", e)
 	}

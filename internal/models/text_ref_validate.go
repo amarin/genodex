@@ -31,8 +31,8 @@ func (r TextRef) validateAs(want Type) *ValidationError {
 	if want != "" && r.Type != want {
 		return fieldErr("type", "ожидается тип %s, получен %s", want, r.Type)
 	}
-	if err := r.Ref.Validate(r.Type); err != nil {
-		return fieldErr("ref", "%v", err)
+	if e := idErr("ref", r.Ref, r.Type); e != nil {
+		return e
 	}
 
 	return nil

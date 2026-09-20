@@ -14,7 +14,12 @@ type ValidationError struct {
 	Field string
 	// Reason — причина по-русски.
 	Reason string
+	// Err — исходная ошибка, если есть.
+	Err error
 }
+
+// Unwrap возвращает исходную ошибку (для errors.Is/As).
+func (e *ValidationError) Unwrap() error { return e.Err }
 
 // Error возвращает «сущность: поле: причина» (пустые части опускаются).
 func (e *ValidationError) Error() string {
@@ -35,6 +40,19 @@ func (e *ValidationError) Error() string {
 // fieldErr создаёт ошибку для поля.
 func fieldErr(field, format string, args ...any) *ValidationError {
 	return &ValidationError{Field: field, Reason: fmt.Sprintf(format, args...)}
+}
+
+// idErr проверяет идентификатор нужного типа: nil, если он корректен, иначе
+// ошибка поля; исходная ошибка доступна через Unwrap (errors.Is(…, ErrInvalidID)).
+func idErr(field string, id ID, want Type) *ValidationError {
+	err := id.Validate(want)
+	if err == nil {
+		return nil
+	}
+	e := fieldErr(field, "%v", err)
+	e.Err = err
+
+	return e
 }
 
 // within добавляет к пути поля префикс родительского поля; nil остаётся nil.

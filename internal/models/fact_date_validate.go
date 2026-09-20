@@ -119,7 +119,16 @@ func (d FactDate) validateUpper() *ValidationError {
 		startDay = 1
 	}
 	if ord(d.YearTo, endMonth, endDay) < ord(d.Year, startMonth, startDay) {
-		return fieldErr("year_to", "верхняя граница раньше нижней")
+		// Указываем компонент, из-за которого верхняя граница оказалась раньше.
+		field := "day_to"
+		switch {
+		case d.YearTo < d.Year:
+			field = "year_to"
+		case endMonth < startMonth:
+			field = "month_to"
+		}
+
+		return fieldErr(field, "верхняя граница раньше нижней")
 	}
 
 	return nil

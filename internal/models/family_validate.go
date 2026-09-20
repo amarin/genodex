@@ -9,14 +9,14 @@ func (f *Family) Validate() error {
 }
 
 func (f *Family) validate() *ValidationError {
-	if err := f.ID.Validate(TypeFamily); err != nil {
-		return fieldErr("id", "%v", err)
+	if e := idErr("id", f.ID, TypeFamily); e != nil {
+		return e
 	}
 	if strings.TrimSpace(f.Name) == "" {
 		return fieldErr("name", "название рода обязательно")
 	}
 
-	if e := validateTextRefs("members", f.Members, ""); e != nil {
+	if e := validateTextRefs("members", f.Members, TypePerson); e != nil {
 		return e
 	}
 	if e := validateTextRefs("notes", f.Notes, ""); e != nil {

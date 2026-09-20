@@ -119,11 +119,9 @@ func (c FactCalendar) Valid() bool {
 // населённых пунктов).
 func (t AdminDivisionType) Valid() bool {
 	switch t {
-	case AdminDivisionGovernorate, AdminDivisionDistrict, AdminDivisionVolost, AdminDivisionOther,
-		AdminDivisionGorod, AdminDivisionSelo, AdminDivisionDerevnya, AdminDivisionHutor,
-		AdminDivisionPogost, AdminDivisionStanitsa, AdminDivisionMestechko:
+	case AdminDivisionGovernorate, AdminDivisionDistrict, AdminDivisionVolost, AdminDivisionOther:
 		return true
 	}
 
-	return false
+	return t.IsSettlement()
 }

@@ -8,8 +8,8 @@ func (r *Relation) Validate() error {
 }
 
 func (r *Relation) validate() *ValidationError {
-	if err := r.ID.Validate(TypeRelation); err != nil {
-		return fieldErr("id", "%v", err)
+	if e := idErr("id", r.ID, TypeRelation); e != nil {
+		return e
 	}
 	if !r.Kind.Valid() {
 		return fieldErr("kind", "недопустимый вид связи %q", r.Kind)
@@ -26,11 +26,11 @@ func (r *Relation) validate() *ValidationError {
 		return fieldErr("rel_type", "допустим только при kind=associate")
 	}
 
-	if err := r.PersonA.Validate(TypePerson); err != nil {
-		return fieldErr("person_a", "%v", err)
+	if e := idErr("person_a", r.PersonA, TypePerson); e != nil {
+		return e
 	}
-	if err := r.PersonB.Validate(TypePerson); err != nil {
-		return fieldErr("person_b", "%v", err)
+	if e := idErr("person_b", r.PersonB, TypePerson); e != nil {
+		return e
 	}
 	if r.PersonA == r.PersonB {
 		return fieldErr("person_b", "связь персоны с самой собой")

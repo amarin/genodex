@@ -8,8 +8,8 @@ func (l SourceLink) Validate() error {
 }
 
 func (l SourceLink) validate() *ValidationError {
-	if err := l.CitationID.Validate(TypeCitation); err != nil {
-		return fieldErr("citation_id", "%v", err)
+	if e := idErr("citation_id", l.CitationID, TypeCitation); e != nil {
+		return e
 	}
 	if l.Reliability != "" && !l.Reliability.Valid() {
 		return fieldErr("reliability", "недопустимая достоверность %q", l.Reliability)

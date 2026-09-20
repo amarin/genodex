@@ -7,14 +7,14 @@ func (r *Residence) Validate() error {
 }
 
 func (r *Residence) validate() *ValidationError {
-	if err := r.ID.Validate(TypeResidence); err != nil {
-		return fieldErr("id", "%v", err)
+	if e := idErr("id", r.ID, TypeResidence); e != nil {
+		return e
 	}
-	if err := r.PersonID.Validate(TypePerson); err != nil {
-		return fieldErr("person_id", "%v", err)
+	if e := idErr("person_id", r.PersonID, TypePerson); e != nil {
+		return e
 	}
-	if err := r.PlaceID.Validate(TypeAdministrativeDivision); err != nil {
-		return fieldErr("place_id", "%v", err)
+	if e := idErr("place_id", r.PlaceID, TypeAdministrativeDivision); e != nil {
+		return e
 	}
 
 	if e := validatePeriod(r.Since, r.Until); e != nil {

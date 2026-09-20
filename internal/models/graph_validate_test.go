@@ -57,6 +57,7 @@ func TestRelationValidateErrors(t *testing.T) {
 		{"associate с плохим rel_type", func(r *Relation) { r.Kind, r.RelType = RelationKindAssociate, "Godparent" }, "rel_type"},
 		{"rel_type у blood", func(r *Relation) { r.RelType = "neighbor" }, "rel_type"},
 		{"person_a не персона", func(r *Relation) { r.PersonA = testID(TypeFamily) }, "person_a"},
+		{"person_b не персона", func(r *Relation) { r.PersonB = testID(TypeFamily) }, "person_b"},
 		{"пустой person_b", func(r *Relation) { r.PersonB = "" }, "person_b"},
 		{"связь с самой собой", func(r *Relation) { r.PersonB = r.PersonA }, "person_b"},
 		{"начало позже конца", func(r *Relation) {
@@ -137,6 +138,7 @@ func TestFamilyValidate(t *testing.T) {
 		{"пустое имя", func(f *Family) { f.Name = "" }, "name"},
 		{"имя из пробелов", func(f *Family) { f.Name = "   " }, "name"},
 		{"пустой член рода", func(f *Family) { f.Members = append(f.Members, TextRef{}) }, "members[2].text"},
+		{"член рода — не персона", func(f *Family) { f.Members[0] = TextRef{Ref: testID(TypeFamily), Type: TypeFamily} }, "members[0].type"},
 		{"член рода — битая ссылка", func(f *Family) { f.Members[0].Ref = "x" }, "members[0].ref"},
 		{"пустая заметка", func(f *Family) { f.Notes[0] = TextRef{} }, "notes[0].text"},
 		{"плохая цитата", func(f *Family) { f.Sources[0].CitationID = "c" }, "sources[0].citation_id"},

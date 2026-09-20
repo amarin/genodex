@@ -9,11 +9,15 @@ func (s *Surname) Validate() error {
 
 // Validate проверяет запись словаря имён; признак пола обязателен.
 func (g *GivenName) Validate() error {
+	return finish(TypeGivenName, g.validate())
+}
+
+func (g *GivenName) validate() *ValidationError {
 	if e := validateDictionary(TypeGivenName, g.ID, g.Canonical, g.Variants, g.Items, g.Notes); e != nil {
-		return finish(TypeGivenName, e)
+		return e
 	}
 	if !g.Gender.Valid() {
-		return finish(TypeGivenName, fieldErr("gender", "обязателен допустимый пол имени, получено %q", g.Gender))
+		return fieldErr("gender", "обязателен допустимый пол имени, получено %q", g.Gender)
 	}
 
 	return nil
@@ -38,8 +42,8 @@ func (t *Title) Validate() error {
 // непустая каноническая форма, варианты — того же типа, что и словарь,
 // носители и заметки — любые корректные TextRef.
 func validateDictionary(t Type, id ID, canonical string, variants, items, notes []TextRef) *ValidationError {
-	if err := id.Validate(t); err != nil {
-		return fieldErr("id", "%v", err)
+	if e := idErr("id", id, t); e != nil {
+		return e
 	}
 	if strings.TrimSpace(canonical) == "" {
 		return fieldErr("canonical", "каноническая форма обязательна")

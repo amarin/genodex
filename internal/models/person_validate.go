@@ -7,8 +7,8 @@ func (p *Person) Validate() error {
 }
 
 func (p *Person) validate() *ValidationError {
-	if err := p.ID.Validate(TypePerson); err != nil {
-		return fieldErr("id", "%v", err)
+	if e := idErr("id", p.ID, TypePerson); e != nil {
+		return e
 	}
 	if p.Gender != "" && !p.Gender.Valid() {
 		return fieldErr("gender", "недопустимый пол %q", p.Gender)

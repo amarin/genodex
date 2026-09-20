@@ -138,3 +138,54 @@ func TestValidOpenEnum(t *testing.T) {
 		}
 	}
 }
+
+func TestClosedEnumsRejectForeignValues(t *testing.T) {
+	// Значения, допустимые для другого enum'а, здесь недопустимы.
+	checks := []struct {
+		name  string
+		valid bool
+	}{
+		{"NameGender(unknown)", NameGender("unknown").Valid()},
+		{"PersonGender(neutral)", PersonGender("neutral").Valid()},
+		{"Reliability(male)", Reliability("male").Valid()},
+		{"SourceKind(scan)", SourceKind("scan").Valid()},
+		{"AttachmentKind(memory)", AttachmentKind("memory").Valid()},
+		{"FactPrecision(exact)", FactPrecision("exact").Valid()},
+		{"FactModifier(year)", FactModifier("year").Valid()},
+		{"AnchorKind(archival-scan)", AnchorKind("archival-scan").Valid()},
+		{"RelationKind(friend)", RelationKind("friend").Valid()},
+		{"FactCalendar(male)", FactCalendar("male").Valid()},
+	}
+	for _, c := range checks {
+		if c.valid {
+			t.Errorf("%s не должен быть допустим", c.name)
+		}
+	}
+}
+
+func TestValidationErrorUnwrapsID(t *testing.T) {
+	// Разворачивание до ErrInvalidID и сохранение *ValidationError с теми же
+	// сущностью и полем.
+	cases := []struct {
+		name   string
+		err    error
+		entity Type
+		field  string
+	}{
+		{"id персоны", (&Person{ID: "garbage"}).Validate(), TypePerson, "id"},
+		{"citation_id в персоне",
+			(&Person{ID: testID(TypePerson), Sources: []SourceLink{{CitationID: "c"}}}).Validate(),
+			TypePerson, "sources[0].citation_id"},
+		{"ref в TextRef", TextRef{Ref: "x", Type: TypeNote}.Validate(), "", "ref"},
+	}
+	for _, c := range cases {
+		if !errors.Is(c.err, ErrInvalidID) {
+			t.Errorf("%s: errors.Is(ErrInvalidID) = false, err = %v", c.name, c.err)
+		}
+		wantInvalid(t, c.name, c.err, c.entity, c.field)
+	}
+
+	if (&ValidationError{Reason: "x"}).Unwrap() != nil {
+		t.Error("Unwrap без Err должен возвращать nil")
+	}
+}

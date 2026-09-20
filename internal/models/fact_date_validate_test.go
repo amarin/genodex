@@ -58,7 +58,8 @@ func TestFactDateValidate(t *testing.T) {
 		{"between MonthTo 13", FactDate{Year: 1880, Precision: PrecisionYear, Modifier: ModifierBetween, YearTo: 1882, MonthTo: 13}, "month_to"},
 		{"between DayTo 31 февраля", FactDate{Year: 1880, Precision: PrecisionYear, Modifier: ModifierBetween, YearTo: 1882, MonthTo: 2, DayTo: 31}, "day_to"},
 		{"between верхняя раньше нижней", FactDate{Year: 1900, Precision: PrecisionYear, Modifier: ModifierBetween, YearTo: 1899}, "year_to"},
-		{"between верхний месяц раньше нижнего", FactDate{Year: 1900, Month: 6, Precision: PrecisionMonth, Modifier: ModifierBetween, YearTo: 1900, MonthTo: 3}, "year_to"},
+		{"between верхний месяц раньше нижнего", FactDate{Year: 1900, Month: 6, Precision: PrecisionMonth, Modifier: ModifierBetween, YearTo: 1900, MonthTo: 3}, "month_to"},
+		{"between верхний день раньше нижнего", FactDate{Year: 1880, Month: 3, Day: 20, Precision: PrecisionDay, Modifier: ModifierBetween, YearTo: 1880, MonthTo: 3, DayTo: 10}, "day_to"},
 	}
 	for _, tt := range invalid {
 		wantInvalid(t, tt.name, tt.d.Validate(), "", tt.field)
@@ -115,4 +116,44 @@ func TestValidatePeriod(t *testing.T) {
 		t.Errorf("период в разных календарях: %v", e)
 	}
 	wantInvalid(t, "разные календари, начало позже", finish("", validatePeriod(greg, &FactDate{Year: 1917, Month: 10, Day: 24, Precision: PrecisionDay, Modifier: ModifierExact, Calendar: FactCalendarJulian})), "", "since")
+}
+
+func TestParseThenValidate(t *testing.T) {
+	accepted := []string{
+		"1881", "1881-03", "1881-03-15", "около 1881", "до 1881", "после 1881",
+		"между 1880 и 1882", "между 1880-03 и 1882-09-01", "между 1880 и 1882-03-05",
+		"1917-10-25 ст. ст.", "1917-11-07 н. ст.", "около 1881 ст. ст.",
+		"между 1880-03 и 1882-09-01 ст. ст.", "1900-02-29 ст. ст.",
+	}
+	for _, s := range accepted {
+		d, err := ParseFactDate(s)
+		if err != nil {
+			t.Errorf("ParseFactDate(%q): %v", s, err)
+
+			continue
+		}
+		if err := d.Validate(); err != nil {
+			t.Errorf("Validate(ParseFactDate(%q)): %v", s, err)
+		}
+	}
+
+	// Разбор принимает, Validate — отвергает: Validate служит воротами.
+	rejected := []struct {
+		in    string
+		field string
+	}{
+		{"1881-02-31", "day"},
+		{"1881-04-31", "day"},
+		{"1900-02-29 н. ст.", "day"},
+		{"между 1882 и 1880", "year_to"},
+	}
+	for _, tt := range rejected {
+		d, err := ParseFactDate(tt.in)
+		if err != nil {
+			t.Errorf("ParseFactDate(%q): %v", tt.in, err)
+
+			continue
+		}
+		wantInvalid(t, tt.in, d.Validate(), "", tt.field)
+	}
 }
