@@ -64,12 +64,15 @@
   упорядочены по времени; формат совпадает с `identifiers.md`.
 
 ### S3. Валидация: основа и люди
-- **Файлы:** `models/validation.go` (`ValidationError`, хелперы закрытых и
-  открытых enum'ов, проверка `TextRef`/`SourceLink`/`FactDate`/периодов),
-  `models/*_validate.go` для `Person`, `PersonName`, `Relation`, `Residence`,
-  `Family`, словарей; тесты таблично.
+- **Файлы:** `models/validation.go` (`ValidationError`, `fieldErr`, `within`,
+  `indexed`, `finish`, `validOpenEnum`), `models/enum_valid.go` (`Valid()`
+  закрытых enum'ов), `models/fact_date_validate.go`, `text_ref_validate.go`,
+  `source_link_validate.go`, `person_validate.go`, `person_name_validate.go`,
+  `relation_validate.go`, `residence_validate.go`, `family_validate.go`,
+  `dictionary_validate.go`; тесты таблично.
 - **Интерфейсы:** `(*ValidationError).Error()`, `Validate() error` на
-  перечисленных сущностях, `validateEnum`/`validateOpenEnum`.
+  перечисленных сущностях, `Valid() bool` у закрытых enum'ов,
+  `validOpenEnum(string) bool` для открытых.
 - **Приёмка:** правила §2.3 покрыты (в том числе `Relation`: `associate` ↔
   `RelType`, `PersonA != PersonB`; `since <= until`).
 
@@ -79,6 +82,16 @@
   `ArchiveNode`, `ArchiveDocument`, `Attachment`; тесты.
 - **Приёмка:** для каждой сущности: валидный экземпляр проходит, каждый
   нарушенный инвариант даёт `*ValidationError` с полем.
+- **Предпосылки из S3:**
+  - helper `validateOptionalID` для `*ID` и необязательных `ID` (`ParentID`,
+    `DocumentID`, `RepositoryID`);
+  - `PlaceRef` — отдельная структура с тремя допустимыми типами цели
+    (`administrative_division | church | parish`), а `validateAs` принимает один
+    тип: нужно обобщить (`...Type`) или свести `PlaceRef` к `TextRef`;
+  - `NamedPeriod.Since`/`Until` — строки, `validatePeriod` к ним неприменим;
+  - `ArchiveNodeType` не имеет констант и `Valid()` — нужно решение
+    «закрытый/открытый»;
+  - `*TextRef` (`Church.Parish`, `ArchiveNode.Parish`) — нужен вариант helper'а.
 
 ## Часть B/C — хранилище и порт
 
