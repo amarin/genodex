@@ -1,19 +1,19 @@
 package models
 
-// SourceLink — доказательство: связь «утверждение → источник».
-// Применяется к любому утверждению любой сущности.
+// SourceLink — доказательство: связь «утверждение → цитата» (решение #21).
+// Применяется к любому утверждению любой сущности. Цепочка:
+// SourceLink.CitationID → Citation.SourceID → Source.
 type SourceLink struct {
-	// SourceID — id источника (строгая ссылка).
-	SourceID string `json:"source_id"`
+	// CitationID — id цитаты (строгая ссылка).
+	CitationID ID
 	// TargetType — тип сущности-утверждения.
-	TargetType string `json:"target_type"`
+	TargetType Type
 	// TargetID — id сущности-утверждения.
-	TargetID string `json:"target_id"`
-	// Reliability — частная достоверность именно этого утверждения
-	// по этому источнику.
-	Reliability string `json:"reliability,omitempty"`
+	TargetID ID
+	// Reliability — частная достоверность именно этого утверждения по этой цитате.
+	Reliability Reliability
 	// Role — роль утверждения.
-	Role string `json:"role,omitempty"`
+	Role string
 	// Note — примечание.
-	Note string `json:"note,omitempty"`
+	Note string
 }
