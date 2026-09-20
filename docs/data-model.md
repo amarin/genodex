@@ -23,17 +23,12 @@
    `SourceLink` (скан достоверен для имён, но идентификация персоны — возможный
    однофамилец).
 
-## Разделы
+## Описания сущностей
 
-- [Типы значений](data-model/values.md) — `TextRef`, `NamedPeriod`, `FactDate`,
-  `PlaceRef`, `Anchor`, `SourceLink`
-- [Люди и идентичность](data-model/people.md) — `Person`, `Relation`, `Family`,
-  словари имён/сословий/званий
-- [Места и административное деление](data-model/places.md) — `AdministrativeDivision`,
-  `Church`, `Parish`
-- [Жизненные факты и утверждения](data-model/facts.md) — `Event`, `Residence`
-- [Доказательства](data-model/evidence.md) — `Source`, `SourceLink`, `Attachment`
-- [Архивная цепочка](data-model/archives.md) — `Archive`, `Fund`, `Inventory`, `Case`
+Все описания сущностей находятся в [models](models.md).
+
+## Тематические разделы
+
 - [Карта связей](data-model/graph.md) — граф связей и строгие vs свободные ссылки
 - [Идентификаторы](data-model/identifiers.md) — правила id
 - [Принятые решения (log)](data-model/decisions.md) — журнал согласованных решений

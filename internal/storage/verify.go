@@ -10,38 +10,17 @@ import (
 type VerifyResult struct {
 	OK              bool
 	Integrity       error
-	ReplayedSeq     uint64
-	AppliedSeq      uint64
 	EntitiesByType  map[string]int
-	JournalEntries  int
 	ManifestMatches bool
 }
 
-// Verify проверяет целостность журнала и БД (без записи) и, если задан
-// каталог бандла, свежесть копии бэкапа.
+// Verify проверяет целостность БД (без записи) и, если задан каталог бандла,
+// свежесть копии бэкапа (снапшот и манифест).
 func Verify(s *Storage, backupDir string) (*VerifyResult, error) {
 	res := &VerifyResult{EntitiesByType: map[string]int{}}
 	res.Integrity = s.db.IntegrityCheck()
 	if res.Integrity != nil {
 		return res, nil // результат «бито», но вернём детали
-	}
-
-	// перечитываем журнал целиком и считаем записи (не меняя applied_seq)
-	count := 0
-	var last uint64
-	err := s.journal.ReplayAll(func(e JournalEntry) error {
-		count++
-		last = e.Seq
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("journal: %w", err)
-	}
-	res.JournalEntries = count
-	res.ReplayedSeq = last
-	res.AppliedSeq, err = s.db.AppliedSeq()
-	if err != nil {
-		return nil, err
 	}
 
 	if backupDir != "" {
@@ -53,11 +32,6 @@ func Verify(s *Storage, backupDir string) (*VerifyResult, error) {
 		if got, err := fileSHA(filepath.Join(backupDir, m.SnapshotFile)); err != nil {
 			return nil, err
 		} else if got != m.SnapshotSHA {
-			ok = false
-		}
-		if got, err := fileSHA(filepath.Join(backupDir, m.JournalFile)); err != nil {
-			return nil, err
-		} else if got != m.JournalSHA {
 			ok = false
 		}
 		for et, want := range m.EntityCounts {
@@ -79,8 +53,8 @@ func Verify(s *Storage, backupDir string) (*VerifyResult, error) {
 
 func (r *VerifyResult) String() string {
 	return fmt.Sprintf(
-		"verify ok=%v journal=%d replayed=%d applied=%d manifest_match=%v",
-		r.OK, r.JournalEntries, r.ReplayedSeq, r.AppliedSeq, r.ManifestMatches,
+		"verify ok=%v manifest_match=%v entities=%d",
+		r.OK, r.ManifestMatches, len(r.EntitiesByType),
 	)
 }
 

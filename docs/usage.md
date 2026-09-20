@@ -31,7 +31,7 @@ go run ./cmd/genodex -p 9000 -web dev
 
 ### Данные
 
-Каталог данных, где лежит `db/genodex.db` и `db/journal.jsonl`:
+Каталог данных, где лежит `db/genodex.db`:
 
 ```bash
 genodex --data /path/to/data serve        # или после подкоманды
@@ -39,21 +39,21 @@ genodex serve --data /path/to/data
 export GENODEX_DATA=/path/to/data         # env-переменная как дефолт
 ```
 
-По умолчанию `--data` = `.` (текущий каталог).
+По умолчанию `--data` = `.data` (подкаталог текущего каталога).
 
 ### Подкоманды
 
 ```bash
 genodex serve [--data DIR] [-p 9000] [-web prod|dev]   # сервер (по умолчанию)
-genodex backup [--data DIR] [--to DIR]                 # бэкап: бандл «снапшот+журнал+манифест»
+genodex backup [--data DIR] [--to DIR]                 # бэкап: бандл «снапшот+манифест»
 genodex restore --from DIR --to DIR [--force]          # восстановление из бандла
-genodex verify [--data DIR] [--backup DIR]             # проверка целостности БД/журнала/бандла
+genodex verify [--data DIR] [--backup DIR]             # проверка целостности БД/бандла
 ```
 
 - `backup` по умолчанию пишет в `<data>/backups/`.
 - Если каталог данных и каталог бэкапа на одном устройстве, `backup` печатает warning в stderr (бэкап не защитит от отказа диска).
-- `restore` требует пустой целевой каталог; `--force` разрешает запись поверх существующей БД (удаляет `db/genodex.db` и `db/journal.jsonl`).
-- `verify` без `--backup` проверяет базу и журнал; с `--backup` сверяет также манифест бандла. При несоответствии — ошибка и ненулевой код возврата.
+- `restore` требует пустой целевой каталог; `--force` разрешает запись поверх существующей БД (удаляет `db/genodex.db`).
+- `verify` без `--backup` проверяет базу; с `--backup` сверяет также манифест бандла. При несоответствии — ошибка и ненулевой код возврата.
 
 Флаги:
 
@@ -61,7 +61,7 @@ genodex verify [--data DIR] [--backup DIR]             # проверка цел
 |------|----------------------|-----------|
 | `-p` | `9000` | Порт HTTP-сервера (для `serve`) |
 | `-web` | `prod` | Режим веб-ассетов: `prod` (встроены в бинарник) или `dev` (с диска `web/dist`) |
-| `--data` | `.` или `GENODEX_DATA` | Каталог данных |
+| `--data` | `.data` или `GENODEX_DATA` | Каталог данных |
 | `--to` | `<data>/backups` | Каталог бэкапа (для `backup`) / целевой каталог (для `restore`) |
 | `--from` | — | Каталог бандла (для `restore`, обязателен) |
 | `--backup` | — | Каталог бандла для сверки (для `verify`, опционально) |

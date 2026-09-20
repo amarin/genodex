@@ -17,17 +17,15 @@ const manifestFile = "manifest.json"
 type Manifest struct {
 	SchemaVersion int            `json:"schema_version"`
 	CreatedAt     string         `json:"created_at"`
-	AppliedSeq    uint64         `json:"applied_seq"`
 	SnapshotFile  string         `json:"snapshot_file"`
 	SnapshotSHA   string         `json:"snapshot_sha256"`
-	JournalFile   string         `json:"journal_file"`
-	JournalSHA    string         `json:"journal_sha256"`
 	EntityCounts  map[string]int `json:"entity_counts"`
 }
 
-// Backup создаёт в toDir консистентный бандл: снапшот (VACUUM INTO), копию
-// журнала и манифест, который пишется последним. Порядок гарантирует: если
-// манифест прочитается — значит и снапшот, и журнал уже на месте и целы.
+// Backup создаёт в toDir консистентный бандл: снапшот (VACUUM INTO) и манифест,
+// который пишется последним. Порядок гарантирует: если манифест прочитался —
+// значит, снапшот уже на месте и цел. Бэкап — стандартная функция обслуживания;
+// для защиты от отказа диска цель должна лежать на другом устройстве (см. warnSentinel).
 func Backup(s *Storage, toDir string) (Manifest, error) {
 	if err := os.MkdirAll(toDir, 0o755); err != nil {
 		return Manifest{}, err
@@ -43,24 +41,10 @@ func Backup(s *Storage, toDir string) (Manifest, error) {
 		return Manifest{}, err
 	}
 
-	jrnFile := "journal-" + ts + ".jsonl"
-	jrnPath := filepath.Join(toDir, jrnFile)
-	if err := s.copyJournal(jrnPath); err != nil {
-		return Manifest{}, err
-	}
-	jrnSHA, err := fileSHA(jrnPath)
-	if err != nil {
-		return Manifest{}, err
-	}
-
 	counts := map[string]int{}
-	applied, err := s.db.AppliedSeq()
-	if err != nil {
-		return Manifest{}, err
-	}
 	for _, et := range []string{
-		"person", "settlement", "church", "parish", "governorate", "district",
-		"volost", "archive", "fund", "inventory", "case", "event", "marriage", "source",
+		"person", "settlement", "church", "parish", "administrative_division",
+		"archive", "event", "source",
 	} {
 		n, err := s.db.Count(et)
 		if err != nil {
@@ -74,32 +58,14 @@ func Backup(s *Storage, toDir string) (Manifest, error) {
 	m := Manifest{
 		SchemaVersion: schemaVersion,
 		CreatedAt:     time.Now().UTC().Format(time.RFC3339),
-		AppliedSeq:    applied,
 		SnapshotFile:  snapFile,
 		SnapshotSHA:   snapSHA,
-		JournalFile:   jrnFile,
-		JournalSHA:    jrnSHA,
 		EntityCounts:  counts,
 	}
 	if err := writeManifest(toDir, m); err != nil {
 		return Manifest{}, err
 	}
 	return m, nil
-}
-
-func (s *Storage) copyJournal(dst string) error {
-	in, err := os.Open(filepath.Join(s.dir, "db", "journal.jsonl"))
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
 }
 
 func fileSHA(path string) (string, error) {

@@ -39,7 +39,7 @@
 gofmt -l .          # пусто
 go build ./...
 go vet ./...
-go test ./...       # storage (журнал/БД/backup/restore/verify), sqlstore, usecases
+go test ./...       # storage (БД/backup/restore/verify), sqlstore, usecases
 ```
 
 Затем smoke-проверка основных маршрутов:

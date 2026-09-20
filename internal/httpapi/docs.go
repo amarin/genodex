@@ -12,6 +12,24 @@ type docFile struct {
 	Title string `json:"title"`
 }
 
+func listDocs(fsys fs.FS) ([]docFile, error) {
+	var files []docFile
+	entries, err := fs.ReadDir(fsys, ".")
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		path := e.Name()
+		title := docTitle(fsys, path)
+		files = append(files, docFile{Path: path, Title: title})
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	return files, nil
+}
+
 func walkDocs(fsys fs.FS) ([]docFile, error) {
 	var files []docFile
 	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
@@ -48,7 +66,7 @@ func docTitle(fsys fs.FS, path string) string {
 
 func handleDocList(fsys fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		files, err := walkDocs(fsys)
+		files, err := listDocs(fsys)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return

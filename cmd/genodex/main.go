@@ -69,6 +69,10 @@ func peelDataFlag(args []string) (string, []string) {
 
 // runServe запускает HTTP-сервер (MCP + API + web) поверх хранилища в --data.
 func runServe(ctx context.Context, preDataDir string, args []string) error {
+	// явная подкоманда serve может стоять и после флагов: genodex -p 9000 --data X serve
+	if n := len(args); n > 0 && args[n-1] == "serve" {
+		args = args[:n-1]
+	}
 	fs := newFlagSet("serve")
 	_ = dataDirFlag(fs)
 	port := fs.Int("p", 9000, "HTTP server port")

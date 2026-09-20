@@ -16,10 +16,11 @@ Incoming handlers receive a request, extract all data (headers, cookies, URL par
 
 Each scenario is a separate package. Accepts arguments and returns results only via `models.<Type>` types. Only exceptions: `context.Context` on input and `error` on output. Encapsulates the minimal set of objects needed to interact with subsystems (storage, config, etc.).
 
-### models vs entity
+### models vs transport
 
-- `internal/entity` — external types defining API/MCP JSON contracts.
-- `internal/models` — internal application types used by scenarios and handlers.
+- `internal/models` — domain types: the single source of truth for data structures, used by scenarios, storage and definitions. No JSON tags; stable once designed.
+- `internal/transport` — DTOs (JSON tags) for public API/MCP contracts plus `models` → DTO converters. Imported only by handlers (`internal/httpapi`, `internal/mcp`); it may change freely with the contract without touching `models`.
+- `internal/entity` is removed; nothing imports it.
 
 ## App and Initialization
 

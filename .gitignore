@@ -16,6 +16,9 @@
 /genealogy-mcp
 /genodex
 
+# Local data store (default --data dir)
+.data/
+
 # Node
 web/node_modules/
 

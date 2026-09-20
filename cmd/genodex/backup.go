@@ -40,9 +40,8 @@ func runBackup(ctx context.Context, preDataDir string, args []string) error {
 	}
 
 	log.Printf("backup done: %s", toDir)
-	log.Printf("  snapshot: %s (sha256 %s)", m.SnapshotFile, shortSHA(m.SnapshotSHA))
-	log.Printf("  journal:  %s (applied_seq %d, entity_counts %d)",
-		m.JournalFile, m.AppliedSeq, len(m.EntityCounts))
+	log.Printf("  snapshot: %s (sha256 %s, entity_counts %d)",
+		m.SnapshotFile, shortSHA(m.SnapshotSHA), len(m.EntityCounts))
 	return nil
 }
 

@@ -55,19 +55,6 @@ func TestDBSearchNormalized(t *testing.T) {
 	}
 }
 
-func TestDBAppliedSeq(t *testing.T) {
-	db := openTestDB(t)
-	if seq, _ := db.AppliedSeq(); seq != 0 {
-		t.Fatalf("initial AppliedSeq = %d", seq)
-	}
-	if err := db.SetAppliedSeq(42); err != nil {
-		t.Fatal(err)
-	}
-	if seq, _ := db.AppliedSeq(); seq != 42 {
-		t.Fatalf("AppliedSeq = %d, want 42", seq)
-	}
-}
-
 func TestDBIntegrityAndVacuumInto(t *testing.T) {
 	db := openTestDB(t)
 	_ = db.Upsert("person", "blohin", []byte(`{}`), []byte("x"))

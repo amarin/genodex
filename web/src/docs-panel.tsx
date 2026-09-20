@@ -1,74 +1,122 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Breadcrumb, List, Spin, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { fetchDoc, fetchDocList, type DocFile } from "./api";
 import "./docs-panel.css";
 
-type DocsPanelProps = {
-  onError?: (message: string) => void;
-};
+export default function DocsPanel() {
+  const { docPath } = useParams<{ docPath: string }>();
+  const navigate = useNavigate();
 
-export default function DocsPanel({ onError }: DocsPanelProps) {
   const [files, setFiles] = useState<DocFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [current, setCurrent] = useState<DocFile | null>(null);
   const [content, setContent] = useState<string | null>(null);
   const [contentLoading, setContentLoading] = useState(false);
+  const filesRef = useRef<DocFile[]>([]);
 
   useEffect(() => {
     fetchDocList()
       .then(setFiles)
       .catch((e: Error) => {
         setError(e.message);
-        onError?.(e.message);
       })
       .finally(() => setLoading(false));
-  }, [onError]);
+  }, []);
+  filesRef.current = files;
 
-  const openDoc = (file: DocFile) => {
-    setCurrent(file);
+  // При монтировании или изменении docPath — загружаем документ
+  const [currentFile, setCurrentFile] = useState<DocFile | null>(null);
+
+  useEffect(() => {
+    const path = docPath || "index.md";
     setContentLoading(true);
     setContent(null);
-    fetchDoc(file.path)
-      .then(setContent)
+    setCurrentFile(null);
+    setError(null);
+    fetchDoc(path)
+      .then((text) => {
+        setContent(text);
+        setCurrentFile(filesRef.current.find((f) => f.path === path) ?? null);
+      })
       .catch((e: Error) => setError(e.message))
       .finally(() => setContentLoading(false));
-  };
+  }, [docPath]);
+
+  const openDoc = useCallback(
+    (file: DocFile) => {
+      navigate(`/docs/${file.path}`, { relative: "path" });
+    },
+    [navigate],
+  );
 
   const backToList = () => {
-    setCurrent(null);
-    setContent(null);
-    setError(null);
+    navigate("/docs");
   };
 
   // Ссылки внутри markdown: относительная ссылка на .md открывает статью на месте.
-  const resolveDocLink = (href: string): DocFile | null => {
-    if (!current || href.startsWith("http://") || href.startsWith("https://") || href.startsWith("#")) {
-      return null;
+  // Сначала ищем в корневом списке файлов, если не нашли — пробуем загрузить напрямую.
+  const resolveDocLink = async (href: string): Promise<DocFile | null> => {
+    if (!href.startsWith("http://") && !href.startsWith("https://") && !href.startsWith("#")) {
+      const cleaned = href.replace(/^\.\//, "").replace(/[?#].*$/, "");
+      if (cleaned.endsWith(".md")) {
+        // Сначала ищем в списке файлов (корневой уровень)
+        const found = filesRef.current.find((f) => f.path === cleaned);
+        if (found) {
+          return found;
+        }
+        // Если не нашли — пробуем загрузить по полному пути, чтобы проверить существование
+        // и создать метаданные "на лету"
+        try {
+          const title = cleaned.replace(/\.md$/, "");
+          await fetchDoc(cleaned);
+          return { path: cleaned, title };
+        } catch {
+          return null;
+        }
+      }
     }
-    const baseDir = current.path.includes("/")
-      ? current.path.slice(0, current.path.lastIndexOf("/") + 1)
-      : "";
-    const raw = `${baseDir}${href}`;
-    const cleaned = raw.replace(/^\.\//, "").replace(/[?#].*$/, "");
-    if (!cleaned.endsWith(".md")) {
-      return null;
-    }
-    return files.find((f) => f.path === cleaned) ?? null;
+    return null;
   };
 
   const markdownComponents = {
     a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
-      const target = resolveDocLink(href ?? "");
-      if (target) {
+      const [resolved, setResolved] = useState<DocFile | null>(null);
+      const [loading, setLoading] = useState(false);
+
+      useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        resolveDocLink(href ?? "")
+          .then((r) => {
+            if (!cancelled) {
+              setResolved(r);
+              setLoading(false);
+            }
+          })
+          .catch(() => {
+            if (!cancelled) {
+              setLoading(false);
+            }
+          });
+        return () => {
+          cancelled = true;
+        };
+      }, [href]);
+
+      if (loading) {
+        return <span className="docs-link-loading">{children}</span>;
+      }
+
+      if (resolved) {
         return (
           <a
             href="#"
             onClick={(e) => {
               e.preventDefault();
-              openDoc(target);
+              openDoc(resolved);
             }}
           >
             {children}
@@ -83,13 +131,13 @@ export default function DocsPanel({ onError }: DocsPanelProps) {
     return <Spin />;
   }
 
-  if (current != null) {
+  if (currentFile != null) {
     return (
       <>
         <Breadcrumb
           items={[
             { title: <a onClick={backToList}>Документация</a> },
-            { title: current.title },
+            { title: currentFile.title },
           ]}
         />
         {error != null && <Alert type="error" showIcon message={error} />}

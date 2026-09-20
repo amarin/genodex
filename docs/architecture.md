@@ -2,7 +2,7 @@
 
 ## Обзор
 
-Сервис построен слоями: внешние интерфейсы (MCP и HTTP API) → сценарии (usecase) → порт хранилища → SQLite с журналом. Все слои живут в одном процессе, одного бинарника достаточно для запуска. Долговременное хранилище — на диске (SQLite + append-only журнал); в памяти данные живут только в цепочке обработки запроса.
+Сервис построен слоями: внешние интерфейсы (MCP и HTTP API) → сценарии (usecase) → порт хранилища → SQLite. Все слои живут в одном процессе, одного бинарника достаточно для запуска. Долговременное хранилище — на диске (SQLite); в памяти данные живут только в цепочке обработки запроса.
 
 ```
                     ┌──────────────────────────────┐
@@ -25,10 +25,10 @@
                             ▼
               internal/store/sqlstore         (адаптер: JSON entity ⇄ blob)
                             ▼
-                  internal/storage            (SQLite + журнал + backup/restore/verify)
+                  internal/storage            (SQLite + backup/restore/verify)
                             ▼
-                  internal/entity (внешние JSON-контракты)
-                  internal/models (внутренние типы сценариев)
+                  internal/models (домен: сущности, value-типы, enum, ID; без JSON)
+                  internal/transport (DTO + конвертеры models → JSON; только mcp/httpapi)
                   internal/definitions (встроенные данные)
 ```
 
@@ -38,12 +38,12 @@
 |------|-----------|
 | `cmd/genodex/main.go` | Точка входа: подкоманды `serve` (по умолчанию), `backup`, `restore`, `verify`; `--data` (или env `GENODEX_DATA`). |
 | `internal/app/` | Сборка приложения: storage → sqlstore → usecases → mcp/httpapi → mux. `New`, `Run(ctx)` (graceful shutdown), останов хранилища. |
-| `internal/entity/` | Доменные модели — внешние JSON-контракты сервиса (человек, нас. пункт, церковь, приход, губерния, уезд, волость, архив, фонд, опись, дело, событие, брак, источник). JSON-теги задают форму JSON в `/api` и MCP-тулах. |
-| `internal/models/` | Внутренние типы сценариев (не контракты API). |
+| `internal/models/` | Домен: сущности (человек, административное деление, церковь, приход, архив, событие, источник, семья и др.), value-типы (`FactDate`, `TextRef`, `Anchor`, `SourceLink`), enum-домены, `ID`, `Type`. Единственный внутренний пакет с данными: сценарии, хранилище и `definitions` говорят на нём. Без JSON-тегов и внешних зависимостей; стабилен после проектирования. |
+| `internal/transport/` | DTO публичных контрактов (`/api/*`, MCP-тулы): типы с JSON-тегами и конвертеры `models → DTO`. Единственное место, где определена форма JSON на проводе; импортируют только `internal/httpapi` и `internal/mcp`. Изменение контракта правится здесь и не трогает домен и хранилище. |
 | `internal/usecases/<scenario>/` | Сценарии: узкий интерфейс в `deps.go`, бизнес-логика, принимают/возвращают `models.<Type>`. MCP/API зависят только от этих интерфейсов. |
 | `internal/store/` | Порт хранилища: интерфейс `store.Store` (типизированные `Get`/`Save`/`List` на каждую сущность). `deps.go` — объявление. |
 | `internal/store/sqlstore/` | Адаптер: `internal/storage` → `store.Store`. Сериализует `entity` в JSON-блоб, нормализует поисковые поля (`storage.Normalize`). |
-| `internal/storage/` | Долговременное хранилище: SQLite (снапшот) + append-only журнал (JSONL) + `backup`/`restore`/`verify`. Восстанавливается из журнала при потере БД. |
+| `internal/storage/` | Долговременное хранилище: SQLite (переходная плоская схема, нормализация — по плану `docs/todo.md`) + `backup`/`restore`/`verify`. |
 | `internal/definitions/` | Встроенные доменные определения. `russia/` — системы административного деления (Российская империя 19 в., СССР). |
 | `internal/mcp/` | Слой MCP на `github.com/mark3labs/mcp-go`. `NewServer` создаёт `server.MCPServer`, регистрирует тулы. Транспорт — Streamable HTTP. |
 | `internal/httpapi/` | Слой HTTP API: JSON-роуты `/api/*` (health, settlements, docs). Использует те же сценарии, что и MCP. |
@@ -54,17 +54,18 @@
 
 1. Клиент (MCP-клиент, браузер, curl) обращается к одному из маршрутов (`/mcp`, `/api/*`) или к CLI-подкоманде.
 2. Хендлер `internal/mcp` или `internal/httpapi` вызывает сценарий (`internal/usecases/...`) через узкий интерфейс (`deps.go`).
-3. Сценарий работает с портом `internal/store` (`store.Store`) и типами `internal/models`/`internal/entity`.
-4. `sqlstore` сериализует сущности в JSON-блоб и сохраняет/читает через `internal/storage` (SQLite + журнал).
-5. Результат возвращается сценарию, сериализуется в JSON и уходит клиенту.
+3. Сценарий работает с портом `internal/store` (`store.Store`) и типами `internal/models`.
+4. `sqlstore` сохраняет/читает сущности через `internal/storage` (SQLite).
+5. Результат возвращается хендлеру, тот конвертирует `models` в DTO `internal/transport`, сериализует в JSON и отдаёт клиенту.
+
+> Переход на эту схему выполняется по `docs/data-model/normalization-s1s2.md`: пока он не завершён, в коде ещё есть `internal/entity` и JSON-блоб в `sqlstore`.
 
 ## Хранилище и восстановление
 
-- Долговременные данные: `db/genodex.db` (SQLite-снапшот) + `db/journal.jsonl` (append-only журнал полных образов сущностей).
-- При старте `internal/storage` реплеит журнал, если снапшот отстал («журнал не младше БД» — инвариант, тест `TestStorageRecoversWhenDBLost`).
-- Резервное копирование ручное: `genodex backup [--data DIR] [--to DIR]` → бандл «снапшот + журнал + манифест (SHA)».
-- `genodex restore --from DIR --to DIR [--force]` — восстановление из бандла в пустую директорию (`--force` — в занятую, удаляет существующую БД и журнал).
-- `genodex verify [--data DIR] [--backup DIR]` — проверка целостности базы, журнала и (при `--backup`) манифеста бандла; ненулевой exit при несоответствии.
+- Долговременные данные: `db/genodex.db` (SQLite, WAL). Все записи идут через транзакции БД; отдельного журнала приложений нет.
+- Резервное копирование ручное: `genodex backup [--data DIR] [--to DIR]` → бандл «снапшот (VACUUM INTO) + манифест (SHA-256, счётчики сущностей)».
+- `genodex restore --from DIR --to DIR [--force]` — восстановление из бандла в пустую директорию (`--force` — в занятую, удаляет существующую БД).
+- `genodex verify [--data DIR] [--backup DIR]` — проверка целостности базы и (при `--backup`) манифеста бандла; ненулевой exit при несоответствии.
 - Sentinel: если `db/` и каталог бэкапа лежат на одном устройстве, `backup` печатает warning в stderr (не fatal).
 
 ## Веб-раздача

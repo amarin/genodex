@@ -3,6 +3,13 @@ package entity
 // EntityType тип сущности генеалогии
 type EntityType string
 
+// Каталог типов соответствует решениям docs/data-model/decisions.md:
+//
+//	#1  брак/погребение — значения Event.type, отдельных сущностей нет
+//	#2  единая рекурсивная AdministrativeDivision (без Governorate/District/Volost)
+//	#14 архивы: рекурсивный ArchiveNode (без типизированных Fund/Inventory/Case)
+//	#15 ArchiveDocument
+//	#16 Attachment
 const (
 	TypePerson                 EntityType = "person"
 	TypeSurname                EntityType = "surname"
@@ -12,18 +19,13 @@ const (
 	TypeTitle                  EntityType = "title"
 	TypeChurch                 EntityType = "church"
 	TypeParish                 EntityType = "parish"
-	TypeGovernorate            EntityType = "governorate"
 	TypeAdministrativeDivision EntityType = "administrative_division"
-	TypeDistrict               EntityType = "district"
-	TypeVolost                 EntityType = "volost"
 	TypeSettlement             EntityType = "settlement"
 	TypeEvent                  EntityType = "event"
-	TypeMarriage               EntityType = "marriage"
-	TypeBurial                 EntityType = "burial"
 	TypeSource                 EntityType = "source"
 	TypeFamily                 EntityType = "family"
 	TypeArchive                EntityType = "archive"
-	TypeFund                   EntityType = "fund"
-	TypeInventory              EntityType = "inventory"
-	TypeCase                   EntityType = "case"
+	TypeArchiveNode            EntityType = "archive_node"
+	TypeArchiveDocument        EntityType = "archive_document"
+	TypeAttachment             EntityType = "attachment"
 )

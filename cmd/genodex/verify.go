@@ -8,8 +8,8 @@ import (
 	"github.com/amarin/genodex/internal/storage"
 )
 
-// runVerify проверяет целостность журнала и БД и, если задан --backup,
-// свежесть бэкап-бандла (снапшот+журнал против манифеста).
+// runVerify проверяет целостность БД и, если задан --backup,
+// свежесть бэкап-бандла (снапшот против манифеста).
 func runVerify(ctx context.Context, preDataDir string, args []string) error {
 	fs := newFlagSet("verify")
 	_ = dataDirFlag(fs)

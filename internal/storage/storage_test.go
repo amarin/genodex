@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
@@ -30,7 +28,7 @@ func TestStorageSaveGet(t *testing.T) {
 	}
 }
 
-func TestStorageReplayOnReopen(t *testing.T) {
+func TestStoragePersistsOnReopen(t *testing.T) {
 	dir := t.TempDir()
 	s, err := Open(dir)
 	if err != nil {
@@ -49,37 +47,6 @@ func TestStorageReplayOnReopen(t *testing.T) {
 	got, ok, _ := s2.Get("person", "blohin")
 	if !ok || string(got) != `{"surname":"Блохин"}` {
 		t.Fatalf("after reopen: ok=%v data=%s", ok, got)
-	}
-}
-
-func TestStorageRecoversWhenDBLost(t *testing.T) {
-	dir := t.TempDir()
-	s, err := Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	savePerson(t, s, "blohin", "Блохин")
-	savePerson(t, s, "dorozhkin", "Дорожкин")
-	if err := s.Close(); err != nil {
-		t.Fatal(err)
-	}
-	// симуляция потери БД при живом журнале
-	if err := os.Remove(filepath.Join(dir, "db", "genodex.db")); err != nil {
-		t.Fatal(err)
-	}
-
-	s2, err := Open(dir)
-	if err != nil {
-		t.Fatalf("не смогли восстановить БД из журнала: %v", err)
-	}
-	defer s2.Close()
-	n, _ := s2.Count("person")
-	if n != 2 {
-		t.Fatalf("Count after DB loss = %d, want 2 (replay из журнала)", n)
-	}
-	got, ok, _ := s2.Get("person", "dorozhkin")
-	if !ok || string(got) != `{"surname":"Дорожкин"}` {
-		t.Fatalf("recovered dorozhkin: ok=%v data=%s", ok, got)
 	}
 }
 

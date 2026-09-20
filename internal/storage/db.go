@@ -17,8 +17,9 @@ type entityRow struct {
 	Data []byte
 }
 
-// DB оборачивает одно SQLite-соединение. Сущности хранятся модель-агностично:
-// JSON в колонке data, нормализованный поисковый индекс — в колонке search.
+// DB оборачивает одно SQLite-соединение. Текущая схема — переходная,
+// модель-агностичная (JSON в колонке data, поисковый индекс — в search);
+// нормализация — по плану docs/todo.md.
 type DB struct {
 	d *sql.DB
 }
@@ -148,30 +149,6 @@ func (d *DB) Search(entityType, query string) ([]string, error) {
 		out = append(out, id)
 	}
 	return out, rows.Err()
-}
-
-// SetAppliedSeq фиксирует, до какого seq журнала БД актуальна.
-func (d *DB) SetAppliedSeq(seq uint64) error {
-	_, err := d.d.Exec(
-		`INSERT OR REPLACE INTO meta(key, value) VALUES ('applied_seq', ?)`, seq,
-	)
-	return err
-}
-
-func (d *DB) AppliedSeq() (uint64, error) {
-	var v string
-	err := d.d.QueryRow(`SELECT value FROM meta WHERE key = 'applied_seq'`).Scan(&v)
-	if err == sql.ErrNoRows {
-		return 0, nil
-	}
-	if err != nil {
-		return 0, err
-	}
-	seq, err := ParseUint64(v)
-	if err != nil {
-		return 0, fmt.Errorf("applied_seq: %w", err)
-	}
-	return seq, nil
 }
 
 func (d *DB) Count(entityType string) (int, error) {

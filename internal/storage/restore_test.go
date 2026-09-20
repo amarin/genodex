@@ -14,7 +14,6 @@ func TestRestoreRoundTrip(t *testing.T) {
 	}
 	savePerson(t, s, "blohin", "Блохин")
 	savePerson(t, s, "dorozhkin", "Дорожкин")
-	seq := s.LastSeq()
 	bkpDir := filepath.Join(t.TempDir(), "backup")
 	if _, err := Backup(s, bkpDir); err != nil {
 		t.Fatal(err)
@@ -29,9 +28,6 @@ func TestRestoreRoundTrip(t *testing.T) {
 		t.Fatalf("Restore: %v", err)
 	}
 	defer rs.Close()
-	if rs.LastSeq() != seq {
-		t.Fatalf("restored LastSeq = %d, want %d", rs.LastSeq(), seq)
-	}
 	got, ok, _ := rs.Get("person", "blohin")
 	if !ok || string(got) != `{"surname":"Блохин"}` {
 		t.Fatalf("restored blohin: ok=%v data=%s", ok, got)

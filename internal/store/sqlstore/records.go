@@ -21,21 +21,6 @@ func (s *Store) ListEvents() ([]*entity.Event, error) {
 	return listJSON[entity.Event](s, string(entity.TypeEvent))
 }
 
-// GetMarriage получает брак по ID.
-func (s *Store) GetMarriage(id string) (*entity.Marriage, error) {
-	return getJSON[entity.Marriage](s, string(entity.TypeMarriage), id)
-}
-
-// SaveMarriage сохраняет брак; поисковый индекс — по дате.
-func (s *Store) SaveMarriage(m *entity.Marriage) error {
-	return s.saveJSON(string(entity.TypeMarriage), m.ID, m, m.Date)
-}
-
-// ListMarriages возвращает все браки.
-func (s *Store) ListMarriages() ([]*entity.Marriage, error) {
-	return listJSON[entity.Marriage](s, string(entity.TypeMarriage))
-}
-
 // GetSource получает источник по ID.
 func (s *Store) GetSource(id string) (*entity.Source, error) {
 	return getJSON[entity.Source](s, string(entity.TypeSource), id)

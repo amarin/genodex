@@ -1,3 +1,4 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Alert, Card, Layout, List, Spin, Tabs, Typography } from "antd";
 import { BookOutlined, HomeOutlined } from "@ant-design/icons";
@@ -39,6 +40,18 @@ function SettlementsTab() {
 }
 
 export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/docs" replace />} />
+        <Route path="/docs" element={<AppContent />} />
+        <Route path="/docs/:docPath*" element={<AppContent />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+function AppContent() {
   return (
     <Layout style={{ minHeight: "100vh" }}>
       <Header style={{ color: "#fff", fontSize: 18 }}>Genealogy MCP</Header>

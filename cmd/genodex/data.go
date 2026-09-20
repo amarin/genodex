@@ -7,12 +7,12 @@ import (
 	"syscall"
 )
 
-// defaultDataDir возвращает каталог данных: значение GENODEX_DATA или ".".
+// defaultDataDir возвращает каталог данных: значение GENODEX_DATA или ".data".
 func defaultDataDir() string {
 	if v := os.Getenv("GENODEX_DATA"); v != "" {
 		return v
 	}
-	return "."
+	return ".data"
 }
 
 // dataDirFlag регистрирует флаг --data с дефолтом из GENODEX_DATA.

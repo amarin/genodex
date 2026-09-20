@@ -34,11 +34,9 @@ func runRestore(ctx context.Context, preDataDir string, args []string) error {
 	}
 
 	if *force {
-		for _, name := range []string{"db/genodex.db", "db/journal.jsonl"} {
-			p := filepath.Join(toDir, name)
-			if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("--force: remove %s: %w", p, err)
-			}
+		p := filepath.Join(toDir, "db", "genodex.db")
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("--force: remove %s: %w", p, err)
 		}
 	}
 

@@ -41,4 +41,5 @@
 `id`, `name`, `church` (`TextRef?`), `settlements []TextRef`, `since?`, `until?`,
 `notes []TextRef`, `sources`.
 
-- Приход связан с делами метрик через `Case.parish` (см. [Архивную цепочку](archives.md)).
+- Приход связан с делами метрик через `ArchiveNode.parish` (узел-дело) и
+  `ArchiveDocument.parish` (см. [Архивную цепочку](archives.md)).

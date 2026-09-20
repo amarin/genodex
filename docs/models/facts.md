@@ -4,7 +4,7 @@
 
 `id`, `type` (расширяемый, напр. `birth`/`death`/`burial`/`marriage`/`confession`/`census`),
 `date FactDate?`, `place PlaceRef?`, `participants [{person_id, role, note?}]`, `sources []SourceLink`,
-`notes []TextRef`.
+`notes []TextRef`, `private`.
 
 - Единый тип для всех жизненных фактов: брак и погребение — значения `type`, не отдельные
   сущности.
@@ -13,6 +13,6 @@
 ## Residence (проживание)
 
 `id`, `person_id` (строгая), `place_id` (строгая, `AdministrativeDivision`),
-`since?`, `until?`, `sources []SourceLink`, `note`.
+`since?`, `until?`, `sources []SourceLink`, `note`, `private`.
 
 - Одна персона — несколько проживаний с периодами.
