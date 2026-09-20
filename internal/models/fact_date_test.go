@@ -243,6 +243,50 @@ func TestFactDateCompareCalendars(t *testing.T) {
 		{"1917-10-25", "1917-11-06 н. ст.", CompareEarlier},
 		{"1917-10-25 ст. ст.", "1917-11-06 ст. ст.", CompareEarlier},
 		{"1917-10-25 н. ст.", "1917-11-06 н. ст.", CompareEarlier},
+		// Обрезка длины месяца: юлианский февраль 1900 (29 дней) кончается 13 марта н. ст.
+		{"1900-02 ст. ст.", "1900-03-14 н. ст.", CompareEarlier},
+		{"1900-03-14 н. ст.", "1900-02 ст. ст.", CompareLater},
+		{"1900-02 ст. ст.", "1900-03-13 н. ст.", CompareIndeterminate},
+		{"1900-03-13 н. ст.", "1900-02 ст. ст.", CompareIndeterminate},
+	}
+	for _, tt := range tests {
+		a, b := mustParse(t, tt.a), mustParse(t, tt.b)
+		if got := a.Compare(b); got != tt.want {
+			t.Errorf("Compare(%q, %q)=%v, want %v", tt.a, tt.b, got, tt.want)
+		}
+	}
+}
+
+// Явный календарь unknown подавляет пересчёт: сравнение идёт «как есть».
+func TestFactDateCompareUnknownCalendarSuppressesConversion(t *testing.T) {
+	unknown := func(s string) FactDate {
+		d := mustParse(t, s)
+		d.Calendar = FactCalendarUnknown
+		return d
+	}
+	if got := unknown("1917-10-25").Compare(mustParse(t, "1917-11-06 н. ст.")); got != CompareEarlier {
+		t.Errorf("unknown vs н. ст.: got %v, want CompareEarlier", got)
+	}
+	if got := mustParse(t, "1917-10-25 ст. ст.").Compare(unknown("1917-11-06")); got != CompareEarlier {
+		t.Errorf("ст. ст. vs unknown: got %v, want CompareEarlier", got)
+	}
+}
+
+func TestFactDateCompareBetweenYearUpperBound(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want FactCompare
+	}{
+		// Верхняя граница «между 1899 и 1901» — 31 декабря 1901.
+		{"между 1899 и 1901", "1901-06-01", CompareIndeterminate},
+		{"1901-06-01", "между 1899 и 1901", CompareIndeterminate},
+		{"между 1899 и 1901", "1902-01-01", CompareEarlier},
+		{"1902-01-01", "между 1899 и 1901", CompareLater},
+		{"между 1899 и 1901", "1898-12-31", CompareLater},
+		{"1898-12-31", "между 1899 и 1901", CompareEarlier},
+		// 1900-12-27 ст. ст. = 1901-01-09 н. ст., внутри интервала.
+		{"между 1899 и 1901 н. ст.", "1900-12-27 ст. ст.", CompareIndeterminate},
+		{"1900-12-27 ст. ст.", "между 1899 и 1901 н. ст.", CompareIndeterminate},
 	}
 	for _, tt := range tests {
 		a, b := mustParse(t, tt.a), mustParse(t, tt.b)

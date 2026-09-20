@@ -123,7 +123,7 @@ func (d FactDate) singleBounds() (ordinal, ordinal) {
 // точно так же, как точка начала; верхняя определяется наличием to-компонентов.
 func (d FactDate) betweenBounds() bound {
 	lo, _ := d.singleBounds()
-	hi := ord(d.YearTo, 1, 1)
+	hi := ord(d.YearTo, 12, 31)
 	switch {
 	case d.DayTo != 0:
 		hi = ord(d.YearTo, d.MonthTo, d.DayTo)
@@ -299,7 +299,7 @@ func ParseFactDate(s string) (FactDate, error) {
 }
 
 // calendarSuffixes — суффиксы календаря в конце строки даты (в нижнем регистре).
-// Порядок важен только в пределах одного календаря.
+// Суффиксы взаимно не пересекаются, порядок не важен.
 var calendarSuffixes = []struct {
 	suffix   string
 	calendar FactCalendar
