@@ -214,3 +214,61 @@ func TestFactDateCalendarRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+func TestFactDateCompareCalendars(t *testing.T) {
+	tests := []struct {
+		a, b string
+		want FactCompare
+	}{
+		// 25 октября 1917 ст. ст. — это 7 ноября 1917 н. ст.: один и тот же день.
+		{"1917-10-25 ст. ст.", "1917-11-07 н. ст.", CompareIndeterminate},
+		{"1917-11-07 н. ст.", "1917-10-25 ст. ст.", CompareIndeterminate},
+		// Без пересчёта 25 октября было бы «раньше» 6 ноября — пересчёт это исправляет.
+		{"1917-10-25 ст. ст.", "1917-11-06 н. ст.", CompareLater},
+		{"1917-11-06 н. ст.", "1917-10-25 ст. ст.", CompareEarlier},
+		{"1917-10-25 ст. ст.", "1917-11-08 н. ст.", CompareEarlier},
+		// Юлианский месяц покрывает 14 января – 13 февраля 1918 н. ст.
+		{"1918-01 ст. ст.", "1918-02-01 н. ст.", CompareIndeterminate},
+		{"1918-01 ст. ст.", "1918-02-14 н. ст.", CompareEarlier},
+		{"1918-01 ст. ст.", "1918-01-13 н. ст.", CompareLater},
+		// 1900 — високосный год в юлианском календаре: 29 февраля ст. ст. = 13 марта н. ст.
+		{"1900-02-29 ст. ст.", "1900-03-13 н. ст.", CompareIndeterminate},
+		{"1900-02-29 ст. ст.", "1900-03-12 н. ст.", CompareLater},
+		// Границы «до»/«после» остаются бесконечными и после пересчёта.
+		{"до 1917-10-25 ст. ст.", "1917-11-08 н. ст.", CompareEarlier},
+		{"после 1917-10-25 ст. ст.", "1917-11-06 н. ст.", CompareLater},
+		{"после 1917-10-25 ст. ст.", "1917-11-08 н. ст.", CompareIndeterminate},
+		// Календарь неизвестен или совпадает — сравнение «как есть».
+		{"1917-10-25 ст. ст.", "1917-11-06", CompareEarlier},
+		{"1917-10-25", "1917-11-06 н. ст.", CompareEarlier},
+		{"1917-10-25 ст. ст.", "1917-11-06 ст. ст.", CompareEarlier},
+		{"1917-10-25 н. ст.", "1917-11-06 н. ст.", CompareEarlier},
+	}
+	for _, tt := range tests {
+		a, b := mustParse(t, tt.a), mustParse(t, tt.b)
+		if got := a.Compare(b); got != tt.want {
+			t.Errorf("Compare(%q, %q)=%v, want %v", tt.a, tt.b, got, tt.want)
+		}
+	}
+}
+
+func TestJulianToGregorian(t *testing.T) {
+	tests := []struct {
+		y, m, d          int
+		wantY, wantM, wD int
+	}{
+		{1917, 10, 25, 1917, 11, 7},
+		{1918, 1, 31, 1918, 2, 13},
+		{1900, 2, 29, 1900, 3, 13},
+		{1582, 10, 4, 1582, 10, 14},
+		{1700, 2, 28, 1700, 3, 10},
+		{1800, 1, 1, 1800, 1, 12}, // до 1 марта 1800 разница ещё 11 дней
+	}
+	for _, tt := range tests {
+		gy, gm, gd := jdnToGregorian(julianToJDN(tt.y, tt.m, tt.d))
+		if gy != tt.wantY || gm != tt.wantM || gd != tt.wD {
+			t.Errorf("Julian %d-%02d-%02d → Gregorian %d-%02d-%02d, want %d-%02d-%02d",
+				tt.y, tt.m, tt.d, gy, gm, gd, tt.wantY, tt.wantM, tt.wD)
+		}
+	}
+}

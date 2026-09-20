@@ -134,12 +134,20 @@ func (d FactDate) betweenBounds() bound {
 }
 
 // Compare сравнивает даты по интервалам: раньше / позже / перекрытие
-// (неопределимо).
+// (неопределимо). Если одна дата юлианская, а другая григорианская, границы
+// юлианской переводятся в григорианские; в остальных случаях (одинаковые
+// календари, unknown или пустой календарь) сравнение идёт «как есть».
 func (d FactDate) Compare(other FactDate) FactCompare {
 	a, okA := d.bounds()
 	b, okB := other.bounds()
 	if !okA || !okB {
 		return CompareIndeterminate
+	}
+	switch {
+	case d.Calendar == FactCalendarJulian && other.Calendar == FactCalendarGregorian:
+		a = a.fromJulian()
+	case d.Calendar == FactCalendarGregorian && other.Calendar == FactCalendarJulian:
+		b = b.fromJulian()
 	}
 	switch {
 	case a.hi < b.lo:
@@ -149,6 +157,69 @@ func (d FactDate) Compare(other FactDate) FactCompare {
 	default:
 		return CompareIndeterminate
 	}
+}
+
+// julianToJDN возвращает юлианский день (JDN) для даты юлианского календаря.
+func julianToJDN(y, m, d int) int {
+	a := (14 - m) / 12
+	yy := y + 4800 - a
+	mm := m + 12*a - 3
+
+	return d + (153*mm+2)/5 + 365*yy + yy/4 - 32083
+}
+
+// jdnToGregorian возвращает дату григорианского календаря по юлианскому дню.
+func jdnToGregorian(jdn int) (year, month, day int) {
+	a := jdn + 32044
+	b := (4*a + 3) / 146097
+	c := a - 146097*b/4
+	d := (4*c + 3) / 1461
+	e := c - 1461*d/4
+	m := (5*e + 2) / 153
+
+	day = e - (153*m+2)/5 + 1
+	month = m + 3 - 12*(m/10)
+	year = 100*b + d - 4800 + m/10
+
+	return year, month, day
+}
+
+// julianMonthDays — число дней месяца в юлианском календаре (високосный год —
+// каждый четвёртый).
+func julianMonthDays(y, m int) int {
+	switch m {
+	case 2:
+		if y%4 == 0 {
+			return 29
+		}
+
+		return 28
+	case 4, 6, 9, 11:
+		return 30
+	default:
+		return 31
+	}
+}
+
+// julianOrdToGregorian переводит порядковый номер юлианской даты в
+// григорианский. Бесконечные границы не меняются; «31-е» верхней границы
+// месяца сначала ограничивается реальным последним днём юлианского месяца.
+func julianOrdToGregorian(o ordinal) ordinal {
+	if o == ordMin || o == ordMax {
+		return o
+	}
+
+	y, m, d := int(o)/10000, int(o)/100%100, int(o)%100
+	if last := julianMonthDays(y, m); d > last {
+		d = last
+	}
+
+	return ord(jdnToGregorian(julianToJDN(y, m, d)))
+}
+
+// fromJulian переводит обе границы интервала из юлианского календаря в григорианский.
+func (b bound) fromJulian() bound {
+	return bound{julianOrdToGregorian(b.lo), julianOrdToGregorian(b.hi)}
 }
 
 // SameYear сообщает, совпадает ли год обеих дат.
