@@ -7,6 +7,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/amarin/genodex/internal/transport"
 )
 
 // registerSettlementTools регистрирует тулы для работы с населёнными пунктами.
@@ -31,7 +33,7 @@ func settlementListHandler(settlements SettlementService) server.ToolHandlerFunc
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить список: %v", err)), nil
 		}
 
-		data, err := json.Marshal(list)
+		data, err := json.Marshal(transport.SettlementsFromModels(list))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сериализовать список: %v", err)), nil
 		}

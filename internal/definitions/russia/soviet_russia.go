@@ -1,14 +1,14 @@
 package russia
 
-import "github.com/amarin/genodex/internal/entity"
+import "github.com/amarin/genodex/internal/models"
 
 const (
-	Republic entity.AdministrativeDivisionType = "республика"
-	Oblast   entity.AdministrativeDivisionType = "область"
-	Rayon    entity.AdministrativeDivisionType = "район"
+	Republic models.AdminDivisionType = "республика"
+	Oblast   models.AdminDivisionType = "область"
+	Rayon    models.AdminDivisionType = "район"
 )
 
-var UnitedSovietSocialistRepublicsSystem = entity.AdministrativeDivisionSystem{
+var UnitedSovietSocialistRepublicsSystem = models.AdministrativeDivisionSystem{
 	Name:      "Административное деление СССР",
-	Relations: []entity.AdministrativeDivisionType{Republic, Oblast, Rayon},
+	Relations: []models.AdminDivisionType{Republic, Oblast, Rayon},
 }

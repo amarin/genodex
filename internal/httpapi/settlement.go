@@ -1,6 +1,10 @@
 package httpapi
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/amarin/genodex/internal/transport"
+)
 
 func handleSettlementList(settlements SettlementService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -9,6 +13,6 @@ func handleSettlementList(settlements SettlementService) http.HandlerFunc {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusOK, list)
+		writeJSON(w, http.StatusOK, transport.SettlementsFromModels(list))
 	}
 }

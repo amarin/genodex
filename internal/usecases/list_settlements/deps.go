@@ -1,10 +1,10 @@
 package list_settlements
 
-import "github.com/amarin/genodex/internal/entity"
+import "github.com/amarin/genodex/internal/models"
 
-// SettlementRepo — зависимость сценария: срез порта store.Store.
+// AdminDivisionRepo — зависимость сценария: срез порта store.Store.
 //
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
-type SettlementRepo interface {
-	ListSettlements() ([]*entity.Settlement, error)
+type AdminDivisionRepo interface {
+	ListAdministrativeDivisions() ([]*models.AdministrativeDivision, error)
 }

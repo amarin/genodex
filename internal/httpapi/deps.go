@@ -8,5 +8,5 @@ import (
 
 // SettlementService — контракт сценария «список населённых пунктов».
 type SettlementService interface {
-	ListSettlements(ctx context.Context) ([]models.Settlement, error)
+	ListSettlements(ctx context.Context) ([]models.AdministrativeDivision, error)
 }

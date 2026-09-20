@@ -21,10 +21,6 @@ func TestNoJSONTags(t *testing.T) {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
 			continue
 		}
-		// settlement.go удаляется в Task 13
-		if e.Name() == "settlement.go" {
-			continue
-		}
 		f, err := parser.ParseFile(fset, e.Name(), nil, 0)
 		if err != nil {
 			t.Fatal(err)

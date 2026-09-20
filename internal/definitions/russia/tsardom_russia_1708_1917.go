@@ -1,14 +1,14 @@
 package russia
 
-import "github.com/amarin/genodex/internal/entity"
+import "github.com/amarin/genodex/internal/models"
 
 const (
-	Governorate entity.AdministrativeDivisionType = "губерния"
-	Uyezd       entity.AdministrativeDivisionType = "уезд"
-	Volost      entity.AdministrativeDivisionType = "волость"
+	Governorate models.AdminDivisionType = "губерния"
+	Uyezd       models.AdminDivisionType = "уезд"
+	Volost      models.AdminDivisionType = "волость"
 )
 
-var TsardomRussiaGovernorateSystem = entity.AdministrativeDivisionSystem{
+var TsardomRussiaGovernorateSystem = models.AdministrativeDivisionSystem{
 	Name:      "Административное деление Европейской Части Российской Империи 19 века",
-	Relations: []entity.AdministrativeDivisionType{Governorate, Uyezd, Volost},
+	Relations: []models.AdminDivisionType{Governorate, Uyezd, Volost},
 }

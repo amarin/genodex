@@ -5,23 +5,24 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/amarin/genodex/internal/entity"
+	"github.com/amarin/genodex/internal/models"
 )
 
 type fakeRepo struct {
-	list []*entity.Settlement
+	list []*models.AdministrativeDivision
 	err  error
 }
 
-func (f *fakeRepo) ListSettlements() ([]*entity.Settlement, error) {
+func (f *fakeRepo) ListAdministrativeDivisions() ([]*models.AdministrativeDivision, error) {
 	return f.list, f.err
 }
 
-func TestScenarioListSettlements(t *testing.T) {
+func TestScenarioListSettlementsFiltersDivisions(t *testing.T) {
 	sc := New(&fakeRepo{
-		list: []*entity.Settlement{
-			{ID: "sett-1", Name: "Давыдово"},
-			{ID: "sett-2", Name: "Никифорово", Metadata: map[string]string{"volost_id": "v-1"}},
+		list: []*models.AdministrativeDivision{
+			{ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo},
+			{ID: "ad-2", Name: "Никифоровская", Type: models.AdminDivisionVolost},
+			{ID: "ad-3", Name: "Никифорово", Type: models.AdminDivisionDerevnya},
 		},
 	})
 
@@ -29,14 +30,8 @@ func TestScenarioListSettlements(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListSettlements: %v", err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("len=%d, want 2", len(got))
-	}
-	if got[0].ID != "sett-1" || got[0].Name != "Давыдово" {
-		t.Errorf("got[0]=%+v", got[0])
-	}
-	if got[1].Metadata["volost_id"] != "v-1" {
-		t.Errorf("got[1].Metadata=%v", got[1].Metadata)
+	if len(got) != 2 || got[0].ID != "ad-1" || got[1].ID != "ad-3" {
+		t.Fatalf("got %+v, want ad-1 и ad-3 (волость отфильтрована)", got)
 	}
 }
 
