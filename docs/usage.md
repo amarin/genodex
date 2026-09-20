@@ -75,7 +75,7 @@ genodex verify [--data DIR] [--backup DIR]             # проверка цел
 |------|-----------|
 | `/mcp` | MCP-сервер, транспорт Streamable HTTP. Для AI-ассистентов и MCP-клиентов. |
 | `/api/health` | Проверка живости: `{"status":"ok"}`. |
-| `/api/settlements` | Список населённых пунктов (JSON). |
+| `/api/settlements` | Список населённых пунктов (JSON): массив `[{"id", "name", "type"}]`. |
 | `/static/` | Собранные ассеты SPA (JS/CSS). |
 | `/` | Веб-интерфейс (SPA): `index.html`, для неизвестных путей — fallback на неё. |
 

@@ -23,7 +23,7 @@
                             ▼
                     internal/store            (порт: store.Store)
                             ▼
-              internal/store/sqlstore         (адаптер: JSON entity ⇄ blob)
+              internal/store/sqlstore         (адаптер: models ⇄ строки колоночной схемы)
                             ▼
                   internal/storage            (SQLite + backup/restore/verify)
                             ▼
@@ -42,8 +42,8 @@
 | `internal/transport/` | DTO публичных контрактов (`/api/*`, MCP-тулы): типы с JSON-тегами и конвертеры `models → DTO`. Единственное место, где определена форма JSON на проводе; импортируют только `internal/httpapi` и `internal/mcp`. Изменение контракта правится здесь и не трогает домен и хранилище. |
 | `internal/usecases/<scenario>/` | Сценарии: узкий интерфейс в `deps.go`, бизнес-логика, принимают/возвращают `models.<Type>`. MCP/API зависят только от этих интерфейсов. |
 | `internal/store/` | Порт хранилища: интерфейс `store.Store` (типизированные `Get`/`Save`/`List` на каждую сущность). `deps.go` — объявление. |
-| `internal/store/sqlstore/` | Адаптер: `internal/storage` → `store.Store`. Сериализует `entity` в JSON-блоб, нормализует поисковые поля (`storage.Normalize`). |
-| `internal/storage/` | Долговременное хранилище: SQLite (переходная плоская схема, нормализация — по плану `docs/todo.md`) + `backup`/`restore`/`verify`. |
+| `internal/store/sqlstore/` | Адаптер: `internal/storage` → `store.Store`. Отображает сущности `internal/models` на наборы строк колоночной схемы `internal/storage`, нормализует поисковые поля (`storage.Normalize`). |
+| `internal/storage/` | Долговременное хранилище: SQLite (колоночная схема, `schema_version` 0, таблица `search_index`) + `backup`/`restore`/`verify`. |
 | `internal/definitions/` | Встроенные доменные определения. `russia/` — системы административного деления (Российская империя 19 в., СССР). |
 | `internal/mcp/` | Слой MCP на `github.com/mark3labs/mcp-go`. `NewServer` создаёт `server.MCPServer`, регистрирует тулы. Транспорт — Streamable HTTP. |
 | `internal/httpapi/` | Слой HTTP API: JSON-роуты `/api/*` (health, settlements, docs). Использует те же сценарии, что и MCP. |
@@ -57,8 +57,6 @@
 3. Сценарий работает с портом `internal/store` (`store.Store`) и типами `internal/models`.
 4. `sqlstore` сохраняет/читает сущности через `internal/storage` (SQLite).
 5. Результат возвращается хендлеру, тот конвертирует `models` в DTO `internal/transport`, сериализует в JSON и отдаёт клиенту.
-
-> Переход на эту схему выполняется по `docs/data-model/normalization-s1s2.md`: пока он не завершён, в коде ещё есть `internal/entity` и JSON-блоб в `sqlstore`.
 
 ## Хранилище и восстановление
 

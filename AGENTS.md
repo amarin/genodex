@@ -4,10 +4,10 @@ Project instructions for AI agents (Codex, Claude, LGTM). The authoritative docs
 
 ## About the project
 - Single-binary service for a personal genealogy data store. Dev-facing entry point: `go run ./cmd/genodex -p <port> [-web prod|dev]` (`serve` is the default subcommand).
-- Layered storage: `internal/mcp`, `internal/httpapi` → `internal/usecases/<scenario>/` → `internal/store` (port) → `internal/store/sqlstore` (adapter) → `internal/storage` (SQLite; переходная плоская схема, нормализация — по плану `docs/todo.md`). `internal/app` wires everything; data lives on disk (no in-memory store).
+- Layered storage: `internal/mcp`, `internal/httpapi` → `internal/usecases/<scenario>/` → `internal/store` (port) → `internal/store/sqlstore` (adapter) → `internal/storage` (SQLite; колоночная схема, `schema_version` 0). `internal/app` wires everything; data lives on disk (no in-memory store).
 - Two public interfaces: MCP (under `/mcp`, Streamable HTTP) for AI assistants, and HTTP API + web SPA (under `/api`, `/static`, `/`) for humans.
 - Backend in Go; frontend (Vite + React 18 + antd) is built into `web/dist` and embedded via `//go:embed all:dist`.
-- `internal/models` holds the domain types for all service entities (no per-type detail here) and has no JSON tags; `internal/transport` holds the DTOs (JSON tags + converters) that define the API/MCP JSON shapes and is imported only by `internal/httpapi` and `internal/mcp`. `internal/entity` is being removed (see `docs/data-model/normalization-s1s2.md`).
+- `internal/models` holds the domain types for all service entities (no per-type detail here) and has no JSON tags; `internal/transport` holds the DTOs (JSON tags + converters) that define the API/MCP JSON shapes and is imported only by `internal/httpapi` and `internal/mcp`.
 
 ## Developer preferences
 - `DEVELOPER-PREFERENCES.md` — project-specific code style, architecture, and development preferences. Always follow.
