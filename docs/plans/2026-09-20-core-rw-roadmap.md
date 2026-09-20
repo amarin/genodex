@@ -52,10 +52,12 @@
 - **План:** `2026-09-20-core-rw-s01-calendar.md`.
 
 ### S2. Формат `ID` и генератор
-- **Файлы:** `models/id.go` (+`id_test.go`), `models/type.go` (префиксы),
+- **Файлы:** `models/id.go` (+`id_test.go`), `models/id_prefix.go` (таблица префиксов),
   `internal/idgen/idgen.go` (+тест).
 - **Интерфейсы:** `Type.IDPrefix() string`, `ParseID(ID) (Type, error)`,
-  `ID.Validate(Type) error`; `idgen.Generator` c
+  `ID.Validate(Type) error`, `TypeByIDPrefix(string) (Type, bool)`,
+  `AllTypes() []Type`, `BuildID(Type, string) (ID, error)`, `ErrInvalidID`;
+  `idgen.Generator` c
   `New(Type) models.ID` (ULID, монотонный в пределах миллисекунды).
 - **Приёмка:** таблица 21 тип ↔ префикс без коллизий; `Validate` отвергает
   чужой префикс, неверную длину и алфавит; `idgen` — 10 000 значений уникальны и
@@ -141,7 +143,9 @@
 - `List*`-тесты для всех 21 типа.
 - DSN `_pragma` для `foreign_keys` и `busy_timeout`.
 - Устаревшие абзацы: спека S1+S2 §5 (каскад), `docs/todo.md` (открытые вопросы,
-  новый блок), пометка о словаре `definitions/russia`.
+  новый блок), пометка о словаре `definitions/russia`,
+  `docs/superpowers/specs/2026-09-19-storage-design.md` (ссылка на отменённое
+  правило id «транслит + дисамбигуатор»).
 - **Приёмка:** дерево зелёное; в `docs/` нет утверждений, противоречащих коду.
 
 ## Часть D — контракты и срез на делениях

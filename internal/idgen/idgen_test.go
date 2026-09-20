@@ -3,6 +3,7 @@ package idgen
 import (
 	"bytes"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -38,6 +39,13 @@ func TestEncode(t *testing.T) {
 // fixedClock возвращает управляемые часы.
 func fixedClock(ms *int64) func() time.Time {
 	return func() time.Time { return time.UnixMilli(*ms) }
+}
+
+// body возвращает ULID — всё после первого «-».
+func body(id models.ID) string {
+	_, b, _ := strings.Cut(string(id), "-")
+
+	return b
 }
 
 func TestNewValidForAllTypes(t *testing.T) {
@@ -79,14 +87,22 @@ func TestClockGoingBackwardsKeepsOrder(t *testing.T) {
 func TestNewMillisecondAdvances(t *testing.T) {
 	ms := int64(1_700_000_000_000)
 	// Две порции энтропии: вторая нужна при переходе на новую миллисекунду.
-	src := append(bytes.Repeat([]byte{0}, 10), bytes.Repeat([]byte{0}, 10)...)
-	g := &Generator{now: fixedClock(&ms), rand: bytes.NewReader(src)}
+	g := &Generator{now: fixedClock(&ms), rand: bytes.NewReader(make([]byte, 20))}
 
 	a := g.New(models.TypePerson)
+	if want := encode(uint64(ms), [10]byte{}); body(a) != want {
+		t.Errorf("первый id: тело %q, want %q", body(a), want)
+	}
 	ms++
 	b := g.New(models.TypePerson)
 	if b <= a {
 		t.Errorf("%q не больше %q после смены миллисекунды", b, a)
+	}
+	if want := encode(uint64(ms), [10]byte{})[:10]; body(b)[:10] != want {
+		t.Errorf("второй id: время %q, want %q", body(b)[:10], want)
+	}
+	if body(b)[:10] == body(a)[:10] {
+		t.Errorf("время не изменилось: %q и %q", body(a)[:10], body(b)[:10])
 	}
 }
 
@@ -103,6 +119,42 @@ func TestEntropyOverflowMovesToNextMillisecond(t *testing.T) {
 	}
 	if err := second.Validate(models.TypePerson); err != nil {
 		t.Errorf("после переполнения id невалиден: %v", err)
+	}
+
+	full := [10]byte{0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+	if want := encode(uint64(ms), full)[:10]; body(first)[:10] != want {
+		t.Errorf("первый id: время %q, want %q", body(first)[:10], want)
+	}
+	if want := encode(uint64(ms)+1, [10]byte{})[:10]; body(second)[:10] != want {
+		t.Errorf("второй id: время %q, want %q (миллисекунда перенесена вперёд)", body(second)[:10], want)
+	}
+
+	// Третий вызов в те же часы: байты источника исчерпаны, но генератор идёт
+	// по пути инкремента (lastMs = ms+1) и не читает источник.
+	third := g.New(models.TypePerson)
+	if third <= second {
+		t.Errorf("%q не больше %q", third, second)
+	}
+	if want := encode(uint64(ms)+1, [10]byte{})[:10]; body(third)[:10] != want {
+		t.Errorf("третий id: время %q, want %q", body(third)[:10], want)
+	}
+}
+
+// Метка времени в id следует за часами.
+func TestTimestampFollowsClock(t *testing.T) {
+	ms := int64(1_700_000_000_000)
+	g := &Generator{now: fixedClock(&ms), rand: bytes.NewReader(make([]byte, 20))}
+
+	a := g.New(models.TypePerson)
+	ms += int64(time.Hour / time.Millisecond)
+	b := g.New(models.TypePerson)
+
+	ta, tb := body(a)[:10], body(b)[:10]
+	if ta >= tb {
+		t.Errorf("время через час не больше: %q и %q", ta, tb)
+	}
+	if want := encode(uint64(ms), [10]byte{})[:10]; tb != want {
+		t.Errorf("время второго id %q, want %q", tb, want)
 	}
 }
 
@@ -158,12 +210,29 @@ func TestConcurrentUnique(t *testing.T) {
 }
 
 func TestUnknownTypePanics(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Error("New для типа без префикса должен паниковать")
-		}
+	// Источник даёт ровно одну порцию энтропии: если панику на неизвестном
+	// типе вызовет уже сгенерированное тело, порция будет потрачена зря.
+	ms := int64(1_700_000_000_000)
+	g := &Generator{now: fixedClock(&ms), rand: bytes.NewReader(make([]byte, 10))}
+
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("New для типа без префикса должен паниковать")
+			}
+		}()
+		g.New(models.Type("nonsense"))
 	}()
-	New().New(models.Type("nonsense"))
+
+	// Состояние генератора не изменилось: первая порция энтропии цела.
+	first := g.New(models.TypePerson)
+	second := g.New(models.TypePerson)
+	if second <= first {
+		t.Errorf("после паники %q не больше %q", second, first)
+	}
+	if want := encode(uint64(ms), [10]byte{}); body(first) != want {
+		t.Errorf("первый id после паники: тело %q, want %q", body(first), want)
+	}
 }
 
 type errReader struct{}

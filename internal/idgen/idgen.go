@@ -37,6 +37,11 @@ func New() *Generator {
 // нет префикса или источник случайности вернул ошибку: это ошибка программиста
 // или среды, а не входных данных.
 func (g *Generator) New(t models.Type) models.ID {
+	// Тип проверяем до генерации, чтобы неизвестный тип не сдвигал состояние.
+	if t.IDPrefix() == "" {
+		panic(fmt.Sprintf("idgen: для типа %q нет префикса", string(t)))
+	}
+
 	id, err := models.BuildID(t, g.nextBody())
 	if err != nil {
 		panic("idgen: " + err.Error())
@@ -50,6 +55,7 @@ func (g *Generator) nextBody() string {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	// Время — 48-битное окно (1970 → ~год 10889); часы до 1970 не поддерживаются.
 	ms := uint64(g.now().UnixMilli())
 	if g.started && ms <= g.lastMs {
 		// Та же миллисекунда (или часы ушли назад): сохраняем порядок,

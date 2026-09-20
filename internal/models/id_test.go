@@ -145,6 +145,11 @@ func TestParseID(t *testing.T) {
 		"I-" + validBody[:25] + "U",       // запрещённая буква U
 		"I-8" + validBody[1:],             // переполнение 48 бит времени
 		"I-" + validBody[:10] + "-" + validBody[11:], // лишний дефис в теле
+		"И-" + validBody,               // кириллический префикс, похожий на латинский
+		"I-" + validBody[:25] + "\x00", // нулевой байт в теле
+		" I-" + validBody,              // пробел перед префиксом
+		"I-" + validBody + " ",         // пробел после тела
+		"I-" + validBody[:25] + "Ё",    // не-ASCII символ в теле
 	}
 	for _, in := range invalid {
 		if got, err := ParseID(ID(in)); err == nil || !errors.Is(err, ErrInvalidID) {
@@ -161,8 +166,19 @@ func TestIDValidate(t *testing.T) {
 	if err := id.Validate(TypeFamily); err == nil || !errors.Is(err, ErrInvalidID) {
 		t.Errorf("Validate(family) для персоны: %v, want ErrInvalidID", err)
 	}
-	if err := ID("").Validate(TypePerson); err == nil {
-		t.Error("пустой ID должен быть отвергнут")
+	if err := ID("").Validate(TypePerson); err == nil || !errors.Is(err, ErrInvalidID) {
+		t.Errorf("пустой ID: %v, want ErrInvalidID", err)
+	}
+}
+
+// AllTypes отдаёт копию: изменение результата не влияет на следующие вызовы.
+func TestAllTypesReturnsCopy(t *testing.T) {
+	first := AllTypes()
+	orig := first[0]
+	first[0] = Type("mutated")
+
+	if again := AllTypes(); again[0] != orig {
+		t.Errorf("AllTypes()[0] = %q после изменения копии, want %q", again[0], orig)
 	}
 }
 
