@@ -1,10 +1,16 @@
 package models
 
-// Parish — приход (внутренний тип сценариев).
-// JSON-теги совпадают с internal/entity, чтобы сохранить внешние контракты.
+// Parish — приход.
 type Parish struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	ChurchID string            `json:"church_id,omitempty"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	ID          ID
+	Name        string
+	Church      *TextRef
+	Settlements []TextRef
+	Since       *FactDate
+	Until       *FactDate
+	Notes       []TextRef
+	Sources     []SourceLink
 }
+
+// EntityType возвращает тип сущности.
+func (p *Parish) EntityType() Type { return TypeParish }

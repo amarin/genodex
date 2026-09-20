@@ -1,9 +1,15 @@
 package models
 
-// Church — церковь (внутренний тип сценариев).
-// JSON-теги совпадают с internal/entity, чтобы сохранить внешние контракты.
+// Church — церковь.
 type Church struct {
-	ID       string            `json:"id"`
-	Name     string            `json:"name"`
-	Metadata map[string]string `json:"metadata,omitempty"`
+	ID          ID
+	Name        string
+	Parish      *TextRef
+	Settlements []TextRef
+	Variants    []string
+	Notes       []TextRef
+	Sources     []SourceLink
 }
+
+// EntityType возвращает тип сущности.
+func (c *Church) EntityType() Type { return TypeChurch }
