@@ -441,7 +441,7 @@ func TestTxContextCancelInsideKeepsContextError(t *testing.T) {
 }
 
 // TestTxContextPanicRollsBack: паника в fn откатывает транзакцию, повторно
-// однимается и не оставляет единственное соединение занятым.
+// поднимается и не оставляет единственное соединение занятым.
 func TestTxContextPanicRollsBack(t *testing.T) {
 	db := openTestDB(t)
 

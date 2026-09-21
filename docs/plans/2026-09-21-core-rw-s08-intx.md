@@ -89,15 +89,10 @@ func (d *DB) TxContext(ctx context.Context, fn func(tx *sql.Tx) error) error {
 		return err
 	}
 	// одно соединение: незакрытая транзакция заблокировала бы все следующие
-	// запросы, поэтому паника в fn тоже откатывает её
-	defer func() {
-		if p := recover(); p != nil {
-			_ = tx.Rollback()
-			panic(p)
-		}
-	}()
+	// запросы, поэтому откат — на любом выходе из fn (ошибка, паника, Goexit);
+	// после Commit он возвращает sql.ErrTxDone и ничего не делает
+	defer func() { _ = tx.Rollback() }()
 	if err := fn(tx); err != nil {
-		_ = tx.Rollback()
 		return ctxCause(ctx, err)
 	}
 	return ctxCause(ctx, tx.Commit())
@@ -593,7 +588,7 @@ Expected: gofmt пусто, `vet` чисто, тесты `ok`.
 |---|---|
 | в `inTx` (`sqlstore.go`) удалить ветку `if s.scoped { return fn(s.run(ctx)) }` | `TestInTxCommitsCitationAndPersonAtomically`, `TestInTxRollsBackEverythingOnError`, `TestInTxSeesOwnWrites` (таймаут 10 с) |
 | в `InTx` (`tx.go`) удалить ветку `if s.scoped { return fn(s) }` | `TestInTxNestedUsesSameTransaction`, `TestInTxNestedErrorPropagatesToOuter`, `TestInTxNestedHasNoSavepoint` |
-| в `TxContext` (`db.go`) удалить `defer func() { … recover … }()` | `TestTxContextPanicRollsBack`, `TestInTxPanicRollsBackAndKeepsStoreUsable` |
+| в `TxContext` (`db.go`) удалить `defer func() { _ = tx.Rollback() }()` | `TestTxContextPanicRollsBack`, `TestInTxPanicRollsBackAndKeepsStoreUsable` |
 | в `run` (`sqlstore.go`) заменить `x: s.exec` на `x: s.db` | `TestInTxCommitsCitationAndPersonAtomically` и др. (таймаут 10 с) |
 
 - [ ] **Step 4: Commit**
