@@ -207,6 +207,12 @@ func TestCreateFKIndexesSkipsCoveredColumns(t *testing.T) {
 		`CREATE TABLE child_unique (x TEXT, y TEXT REFERENCES parent(id), UNIQUE (y, x))`,
 		// FK-колонка вторая в UNIQUE: ведущего индекса нет
 		`CREATE TABLE child_second (a TEXT, b TEXT REFERENCES parent(id), UNIQUE (a, b))`,
+		// индекс по выражению: покрытием не считается и не мешает открытию
+		`CREATE TABLE child_expr (owner TEXT REFERENCES parent(id), name TEXT)`,
+		`CREATE INDEX child_expr_lower ON child_expr (lower(name))`,
+		// частичный индекс: покрытием не считается
+		`CREATE TABLE child_partial (owner TEXT REFERENCES parent(id), n INTEGER)`,
+		`CREATE INDEX child_partial_idx ON child_partial (owner) WHERE n > 5`,
 	} {
 		if _, err := d.Exec(q); err != nil {
 			t.Fatalf("%s: %v", q, err)
@@ -225,6 +231,8 @@ func TestCreateFKIndexesSkipsCoveredColumns(t *testing.T) {
 		"child_explicit": "my_owner_idx",
 		"child_unique":   "sqlite_autoindex_child_unique_1",
 		"child_second":   "idx_child_second_b,sqlite_autoindex_child_second_1",
+		"child_expr":     "child_expr_lower,idx_child_expr_owner",
+		"child_partial":  "child_partial_idx,idx_child_partial_owner",
 	}
 	for table, wantNames := range want {
 		got, err := queryStrings(d,
@@ -260,5 +268,72 @@ func TestLookupsUseIndexes(t *testing.T) {
 		if !strings.Contains(plan, tt.index) {
 			t.Errorf("%s\nплан: %s\nожидается индекс %s", tt.query, plan, tt.index)
 		}
+	}
+}
+
+// БД, созданная до S5 (без сгенерированных FK-индексов), при открытии
+// получает индексы, данные и целостность остаются нетронутыми.
+func TestOpenDBUpgradesDatabaseWithoutFKIndexes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "old.db")
+
+	old, err := OpenDB(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var dropped []string
+	for _, r := range pragmaRows(t, old,
+		`SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'idx\_%' ESCAPE '\' AND name <> 'idx_source_links_target'`) {
+		dropped = append(dropped, fmt.Sprint(r[0]))
+	}
+	if len(dropped) < 100 {
+		t.Fatalf("сброшено индексов %d, ожидается не меньше 100", len(dropped))
+	}
+	for _, name := range dropped {
+		if _, err := old.Exec("DROP INDEX " + quoteIdent(name)); err != nil {
+			t.Fatalf("DROP INDEX %s: %v", name, err)
+		}
+	}
+
+	for _, q := range []string{
+		`INSERT INTO text_refs(text) VALUES ('a')`,
+		`INSERT INTO persons(id) VALUES ('I-x')`,
+		`INSERT INTO person_estates(person_id, position, text_ref_id) VALUES ('I-x', 0, 1)`,
+	} {
+		if _, err := old.Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if err := old.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	upgraded, err := OpenDB(path)
+	if err != nil {
+		t.Fatalf("открытие БД без FK-индексов: %v", err)
+	}
+	defer upgraded.Close()
+
+	for table, want := range map[string]int{"text_refs": 1, "persons": 1, "person_estates": 1} {
+		var n int
+		if err := upgraded.QueryRow("SELECT COUNT(*) FROM " + quoteIdent(table)).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		if n != want {
+			t.Errorf("%s: строк %d, ожидается %d", table, n, want)
+		}
+	}
+
+	fresh, err := OpenDB(filepath.Join(t.TempDir(), "fresh.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fresh.Close()
+
+	if got, want := indexNames(t, upgraded), indexNames(t, fresh); strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("набор индексов после обновления (%d) отличается от свежей БД (%d)", len(got), len(want))
+	}
+	if err := upgraded.IntegrityCheck(); err != nil {
+		t.Errorf("IntegrityCheck: %v", err)
 	}
 }
