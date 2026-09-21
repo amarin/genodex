@@ -1609,3 +1609,14 @@ git commit -m "test(store): удаление 21 сущности, InUseError, ч
 git add docs/data-model/core-read-write.md docs/plans/2026-09-20-core-rw-roadmap.md
 git commit -m "docs: S7 — Delete* и граф внешних ключей"
 ```
+
+---
+
+## Правки по итогам ревью (внесены после выполнения задач)
+
+Код в репозитории — источник истины; плановые блоки выше описывают первую версию. Отличия:
+
+- `delete.go`, запрос ссылающихся по `source_links`: `SELECT DISTINCT target_type, target_id … WHERE <e.col> = ?` (без `DISTINCT` цель со многими ссылками вытесняла остальные из `Referrers` — `LIMIT` действовал до удаления повторов); колонка берётся из ребра графа, а не жёстко `citation_id`.
+- `delete.go`, отложенная обёртка ошибки: `errors.Is(err, models.ErrNotFound)` и `errors.As(err, &inUse)` вместо `==` и приведения типа.
+- `fkgraph.go`: уточнён комментарий `valueCols`.
+- `delete_test.go`: добавлен `TestDeleteInUseCitationDistinctTargets`; фикстура `fullChain` — с кириллицей; `TestDeleteCanceledContext` проверяет, что ошибка сбоя называет вид и id.

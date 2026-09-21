@@ -118,8 +118,10 @@
   сборка и тесты всего репозитория зелёные.
 
 ### S7. `Delete*`
-- **Файлы:** `models/errors.go` (`InUseError`, `EntityRef`), `store/deps.go`,
-  `sqlstore/delete.go` (общая реализация), тесты.
+- **Файлы:** `models/errors.go` (`InUseError`, `EntityRef`, `MaxReferrers`),
+  `store/deps.go`, `sqlstore/fkgraph.go` (граф внешних ключей),
+  `sqlstore/delete.go` (общая реализация), тесты; план —
+  `2026-09-21-core-rw-s07-delete.md`.
 - **Интерфейсы:** `Delete<Entity>(ctx, id) error` для 21 сущности.
 - **Приёмка:** удаляет сущность, дочерние строки, записи `search_index` и
   `source_links`, осиротевшие значения; ссылающиеся сущности → `*InUseError` со
