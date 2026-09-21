@@ -49,7 +49,8 @@ type keyedRow[K comparable, V any] struct {
 
 // queryGrouped выполняет запрос по IN-списку ключей (кусками) и раскладывает
 // строки по ключу с сохранением порядка строк. args — параметры, стоящие в
-// запросе до IN-списка; sqlFor получает готовые плейсхолдеры IN.
+// запросе до IN-списка; sqlFor получает готовые плейсхолдеры IN. Ключи должны
+// быть различны: повтор, разнесённый границей куска, вернул бы строки дважды.
 func queryGrouped[K comparable, V any](
 	q queryer, keys []K, args []any, sqlFor func(in string) string, scan func(*sql.Rows) (K, V, error),
 ) (map[K][]V, error) {
@@ -75,7 +76,9 @@ func queryGrouped[K comparable, V any](
 	return out, err
 }
 
-// loadTextRefsByID читает TextRef по id (нули пропускаются).
+// loadTextRefsByID читает TextRef по id (нули пропускаются). Отсутствующий
+// в таблице id не даёт записи — читатель получит нулевое значение; внешние
+// ключи делают такой id недостижимым.
 func loadTextRefsByID(q queryer, ids []int64) (map[int64]models.TextRef, error) {
 	out := make(map[int64]models.TextRef, len(ids))
 
