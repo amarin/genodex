@@ -108,8 +108,10 @@
   повторное открытие БД идемпотентно.
 
 ### S6. `ErrNotFound` и `ctx` в порту
-- **Файлы:** `models/errors.go` (`ErrNotFound`), `store/deps.go`, `sqlstore/*`,
-  сгенерированный мок, тесты, `usecases/list_settlements`.
+- **Файлы:** `models/errors.go` (`ErrNotFound`), `storage/db.go` (`*Context`-методы),
+  `store/deps.go`, `sqlstore/*` (`runner`, `inTx`), сгенерированные моки,
+  тесты (`sqlstore/context_test.go`), `usecases/list_settlements`; план —
+  `2026-09-21-core-rw-s06-notfound-ctx.md`.
 - **Интерфейсы:** все методы порта принимают `ctx context.Context` первым
   аргументом; `Get*` возвращает `ErrNotFound`.
 - **Приёмка:** тесты `Get` для отсутствующего id проверяют `errors.Is(err, ErrNotFound)`;
