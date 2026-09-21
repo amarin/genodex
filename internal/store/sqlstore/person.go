@@ -218,7 +218,9 @@ func (s *Store) getPeople(ctx context.Context, ids []models.ID) ([]*models.Perso
 			continue
 		}
 
-		p := found[0]
+		// копия: даже при повторе id в ids результаты не делят один указатель
+		person := *found[0]
+		p := &person
 
 		for _, nr := range names[string(id)] {
 			p.Names = append(p.Names, models.PersonName{
