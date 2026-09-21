@@ -98,6 +98,7 @@ func TestDivisionQueryMatches(t *testing.T) {
 		{"без фильтров", DivisionQuery{}, volost, true},
 		{"вид: населённый пункт проходит", DivisionQuery{Kind: DivisionKindSettlement}, selo, true},
 		{"вид: волость не проходит", DivisionQuery{Kind: DivisionKindSettlement}, volost, false},
+		{"вид: единица без типа не проходит (белый список)", DivisionQuery{Kind: DivisionKindSettlement}, AdministrativeDivision{}, false},
 		{"тип совпал", DivisionQuery{Type: AdminDivisionVolost}, volost, true},
 		{"тип не совпал", DivisionQuery{Type: AdminDivisionVolost}, selo, false},
 		{"вид и тип пересекаются", DivisionQuery{Kind: DivisionKindSettlement, Type: AdminDivisionVolost}, volost, false},
