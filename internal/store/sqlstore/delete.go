@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -27,13 +28,12 @@ func (s *Store) deleteEntity(ctx context.Context, typ models.Type, id models.ID)
 
 	defer func() {
 		// ErrNotFound и *InUseError несут смысл сами, остальное — сбой хранилища.
-		if err == nil || err == models.ErrNotFound {
+		var inUse *models.InUseError
+		if err == nil || errors.Is(err, models.ErrNotFound) || errors.As(err, &inUse) {
 			return
 		}
 
-		if _, inUse := err.(*models.InUseError); !inUse {
-			err = fmt.Errorf("delete %s %q: %w", typ, string(id), err)
-		}
+		err = fmt.Errorf("delete %s %q: %w", typ, string(id), err)
 	}()
 
 	g, err := s.graph(ctx)
@@ -147,7 +147,7 @@ func referrers(tx runner, g *schemaGraph, typ models.Type, id models.ID, limit i
 		switch owner, isChild := g.owner(e.child); {
 		case e.child == "source_links":
 			// полиморфная связь «утверждение → цитата»: ссылающийся — цель ссылки
-			query = `SELECT target_type, target_id FROM source_links WHERE citation_id = ?
+			query = `SELECT DISTINCT target_type, target_id FROM source_links WHERE ` + e.col + ` = ?
 			         ORDER BY target_type, target_id LIMIT ?`
 			args = []any{string(id), limit}
 		case isChild:

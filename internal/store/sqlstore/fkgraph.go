@@ -121,7 +121,7 @@ func (g *schemaGraph) owner(child string) (fkEdge, bool) {
 }
 
 // valueCols группирует колонки таблицы, ссылающиеся на общие value-таблицы:
-// value-таблица → колонки. Порядок таблиц — как в valueTables.
+// value-таблица → колонки (порядок колонок — как в схеме).
 func (g *schemaGraph) valueCols(table string) map[string][]string {
 	out := map[string][]string{}
 
