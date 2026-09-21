@@ -40,7 +40,8 @@ const maxRune = "\U0010FFFF"
 
 // searchSQL строит запрос Search: диапазон по term (использует idx_search_term),
 // одна строка на сущность, для публичного доступа — исключение приватных строк
-// таблиц privateTables (имена берутся из схемы, значения — параметрами).
+// таблиц privateTables (имена берутся из схемы и заключаются в кавычки,
+// значения — параметрами). Порядок — по таблице сущности и id.
 func searchSQL(privateTables []string) string {
 	var b strings.Builder
 
@@ -50,7 +51,7 @@ func searchSQL(privateTables []string) string {
 
 	for _, t := range privateTables {
 		b.WriteString(` AND NOT (si.entity_table = '` + t + `' AND EXISTS (
-			SELECT 1 FROM ` + t + ` e WHERE e.id = si.entity_id AND e.private = 1))`)
+			SELECT 1 FROM "` + t + `" e WHERE e.id = si.entity_id AND e.private = 1))`)
 	}
 
 	b.WriteString(`

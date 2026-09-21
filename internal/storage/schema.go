@@ -579,7 +579,7 @@ var schemaDDL = []string{
 
 	// Термины нормализуются в Go (Normalize): нижний регистр, ё→е, без
 	// диакритики. Обе стороны сравнения нормализованы, поэтому коллация
-	// бинарная, а запрос — обычный LIKE.
+	// бинарная, а префиксный запрос — диапазон по term (см. idx_search_term).
 	`CREATE TABLE IF NOT EXISTS search_index (
 		entity_table TEXT NOT NULL,
 		entity_id    TEXT NOT NULL,
