@@ -52,3 +52,47 @@ type Hit struct {
 	Label string // подпись сущности: имя, название, заголовок; при пустой — ID
 	Field string // поле поискового индекса: name, title, place, …
 }
+
+// DivisionKind — предметный вид единицы деления для фильтра списка.
+type DivisionKind string
+
+// DivisionKindSettlement — только населённые пункты (AdminDivisionType.IsSettlement).
+const DivisionKindSettlement DivisionKind = "settlement"
+
+// Valid сообщает, допустимо ли значение фильтра (пустое — «без фильтра»).
+func (k DivisionKind) Valid() bool { return k == "" || k == DivisionKindSettlement }
+
+// DivisionQuery — запрос списка единиц административного деления: необязательные
+// фильтры по виду и типу (пересекаются) и окно. Окно применяется после фильтра.
+type DivisionQuery struct {
+	Kind DivisionKind      // "" — без фильтра; settlement — только населённые пункты
+	Type AdminDivisionType // "" — без фильтра; иначе точное совпадение типа
+	Page Page
+}
+
+// Validate проверяет запрос: неизвестные вид и тип, отрицательные размер и
+// сдвиг окна — *ValidationError (поля названы как параметры контракта).
+// Размер окна больше MaxPageLimit не ошибка: Page.Normalized сужает его.
+func (q DivisionQuery) Validate() error {
+	switch {
+	case !q.Kind.Valid():
+		return fieldErr("kind", "неизвестный вид %q (допустимо: %q)", q.Kind, DivisionKindSettlement)
+	case q.Type != "" && !q.Type.Valid():
+		return fieldErr("type", "неизвестный тип единицы деления %q", q.Type)
+	case q.Page.Limit < 0:
+		return fieldErr("limit", "не может быть отрицательным: %d", q.Page.Limit)
+	case q.Page.Offset < 0:
+		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
+	}
+
+	return nil
+}
+
+// Matches сообщает, проходит ли единица деления фильтры запроса.
+func (q DivisionQuery) Matches(d AdministrativeDivision) bool {
+	if q.Kind == DivisionKindSettlement && !d.Type.IsSettlement() {
+		return false
+	}
+
+	return q.Type == "" || d.Type == q.Type
+}

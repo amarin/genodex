@@ -1,6 +1,9 @@
 package models
 
-import "testing"
+import (
+	"errors"
+	"testing"
+)
 
 func TestPageNormalized(t *testing.T) {
 	cases := []struct {
@@ -33,5 +36,76 @@ func TestAccessZeroValueIsFull(t *testing.T) {
 
 	if AccessPublic == AccessFull {
 		t.Fatal("AccessPublic совпадает с AccessFull")
+	}
+}
+
+func TestDivisionKindValid(t *testing.T) {
+	for _, k := range []DivisionKind{"", DivisionKindSettlement} {
+		if !k.Valid() {
+			t.Errorf("DivisionKind(%q).Valid() = false", k)
+		}
+	}
+
+	if DivisionKind("village").Valid() {
+		t.Error("неизвестный вид признан допустимым")
+	}
+}
+
+func TestDivisionQueryValidate(t *testing.T) {
+	cases := []struct {
+		name  string
+		q     DivisionQuery
+		field string // "" — запрос корректен
+	}{
+		{"пустой запрос", DivisionQuery{}, ""},
+		{"вид и тип", DivisionQuery{Kind: DivisionKindSettlement, Type: AdminDivisionSelo}, ""},
+		{"окно больше предела — не ошибка", DivisionQuery{Page: Page{Limit: 10 * MaxPageLimit}}, ""},
+		{"неизвестный вид", DivisionQuery{Kind: "village"}, "kind"},
+		{"неизвестный тип", DivisionQuery{Type: "castle"}, "type"},
+		{"отрицательный размер окна", DivisionQuery{Page: Page{Limit: -1}}, "limit"},
+		{"отрицательный сдвиг", DivisionQuery{Page: Page{Offset: -5}}, "offset"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := c.q.Validate()
+			if c.field == "" {
+				if err != nil {
+					t.Fatalf("Validate() = %v, ожидалось nil", err)
+				}
+
+				return
+			}
+
+			var ve *ValidationError
+			if !errors.As(err, &ve) || ve.Field != c.field {
+				t.Fatalf("Validate() = %v, ожидалась *ValidationError по полю %q", err, c.field)
+			}
+		})
+	}
+}
+
+func TestDivisionQueryMatches(t *testing.T) {
+	selo := AdministrativeDivision{Type: AdminDivisionSelo}
+	volost := AdministrativeDivision{Type: AdminDivisionVolost}
+
+	cases := []struct {
+		name string
+		q    DivisionQuery
+		d    AdministrativeDivision
+		want bool
+	}{
+		{"без фильтров", DivisionQuery{}, volost, true},
+		{"вид: населённый пункт проходит", DivisionQuery{Kind: DivisionKindSettlement}, selo, true},
+		{"вид: волость не проходит", DivisionQuery{Kind: DivisionKindSettlement}, volost, false},
+		{"тип совпал", DivisionQuery{Type: AdminDivisionVolost}, volost, true},
+		{"тип не совпал", DivisionQuery{Type: AdminDivisionVolost}, selo, false},
+		{"вид и тип пересекаются", DivisionQuery{Kind: DivisionKindSettlement, Type: AdminDivisionVolost}, volost, false},
+	}
+
+	for _, c := range cases {
+		if got := c.q.Matches(c.d); got != c.want {
+			t.Errorf("%s: Matches = %v, ожидалось %v", c.name, got, c.want)
+		}
 	}
 }
