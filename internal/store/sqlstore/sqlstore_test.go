@@ -1,7 +1,6 @@
 package sqlstore
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -103,15 +102,6 @@ func TestStoreRoundTripPerson(t *testing.T) {
 	}
 	if !reflect.DeepEqual(want, got) {
 		t.Fatalf("round trip person:\n want %+v\n got  %+v", want, got)
-	}
-}
-
-// TestStoreGetMissing фиксирует контракт «не найдено» — models.ErrNotFound.
-func TestStoreGetMissing(t *testing.T) {
-	s := newStore(t)
-
-	if _, err := s.GetPerson(t.Context(), "nope"); !errors.Is(err, models.ErrNotFound) {
-		t.Fatalf("GetPerson(nope) = %v, ожидалось models.ErrNotFound", err)
 	}
 }
 

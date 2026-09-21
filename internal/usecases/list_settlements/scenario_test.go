@@ -48,3 +48,16 @@ func TestScenarioPropagatesRepoError(t *testing.T) {
 		t.Errorf("err=%v, want %v", err, wantErr)
 	}
 }
+
+func TestScenarioPassesContextToRepo(t *testing.T) {
+	repo := &fakeRepo{}
+	ctx := context.WithValue(context.Background(), ctxKey{}, "marker")
+
+	if _, err := New(repo).ListSettlements(ctx); err != nil {
+		t.Fatalf("ListSettlements: %v", err)
+	}
+
+	if repo.gotCtx == nil || repo.gotCtx.Value(ctxKey{}) != "marker" {
+		t.Fatalf("репозиторий получил контекст %v, ожидался переданный сценарию", repo.gotCtx)
+	}
+}
