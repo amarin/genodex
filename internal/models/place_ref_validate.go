@@ -1,5 +1,7 @@
 package models
 
+import "strings"
+
 // placeTypes — типы сущностей, на которые может указывать PlaceRef.
 var placeTypes = [...]Type{TypeAdministrativeDivision, TypeChurch, TypeParish}
 
@@ -24,5 +26,10 @@ func (p PlaceRef) validate() *ValidationError {
 		}
 	}
 
-	return fieldErr("type", "место может ссылаться только на administrative_division, church или parish, получено %s", r.Type)
+	names := make([]string, len(placeTypes))
+	for i, t := range placeTypes {
+		names[i] = string(t)
+	}
+
+	return fieldErr("type", "место может ссылаться только на %s, получено %s", strings.Join(names, ", "), r.Type)
 }

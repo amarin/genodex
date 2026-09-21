@@ -16,11 +16,14 @@ func (a *Archive) validate() *ValidationError {
 	}
 
 	if a.System != nil {
-		if a.System.Ref != "" || a.System.Type != "" {
+		switch {
+		case a.System.Ref != "":
 			return fieldErr("system.ref", "система иерархии задаётся именем, ссылка на сущность не допускается")
+		case a.System.Type != "":
+			return fieldErr("system.type", "система иерархии — только текст, тип цели не задаётся")
 		}
-		if e := requireText("system.text", a.System.Text); e != nil {
-			return e
+		if e := requireText("text", a.System.Text); e != nil {
+			return e.within("system")
 		}
 	}
 

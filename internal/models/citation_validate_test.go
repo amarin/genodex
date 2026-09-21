@@ -13,6 +13,8 @@ func TestValidateAnchor(t *testing.T) {
 		"файл с меткой": &FileAnchor{AttachmentID: testID(TypeAttachment), Timecode: "00:12:30"},
 		"url":           &URLAnchor{URL: "https://example.org/page?a=1#x"},
 		"http":          &URLAnchor{URL: "http://example.org"},
+		"url верхний регистр схемы": &URLAnchor{URL: "HTTP://EXAMPLE.ORG"},
+		"url ipv6": &URLAnchor{URL: "http://[::1]/"},
 	}
 	for name, a := range valid {
 		if e := validateAnchor(a); e != nil {
@@ -43,6 +45,7 @@ func TestValidateAnchor(t *testing.T) {
 		{"url без схемы", &URLAnchor{URL: "example.org/page"}, "url"},
 		{"url ftp", &URLAnchor{URL: "ftp://example.org/file"}, "url"},
 		{"url без хоста", &URLAnchor{URL: "https:///path"}, "url"},
+		{"url только порт", &URLAnchor{URL: "http://:80/"}, "url"},
 		{"url мусор", &URLAnchor{URL: "http://exa mple.org"}, "url"},
 	}
 	for _, tt := range invalid {

@@ -25,7 +25,7 @@ func (a *Attachment) validate() *ValidationError {
 
 	if a.MIME != "" {
 		mediaType, _, err := mime.ParseMediaType(a.MIME)
-		if err != nil || !strings.Contains(mediaType, "/") {
+		if err != nil || a.MIME != strings.TrimSpace(a.MIME) || !strings.Contains(mediaType, "/") {
 			return fieldErr("mime", "недопустимый MIME-тип %q: ожидается тип/подтип", a.MIME)
 		}
 	}

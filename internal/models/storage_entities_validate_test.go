@@ -138,6 +138,8 @@ func TestArchiveValidate(t *testing.T) {
 		{"система со ссылкой", func(a *Archive) {
 			a.System = &TextRef{Text: "Фонды/Описи/Дела", Ref: testID(TypeArchive), Type: TypeArchive}
 		}, "system.ref"},
+		{"система: только тип", func(a *Archive) { a.System = &TextRef{Text: "x", Type: TypeArchive} }, "system.type"},
+		{"система: только ссылка", func(a *Archive) { a.System = &TextRef{Text: "x", Ref: testID(TypeArchive)} }, "system.ref"},
 		{"хранилище — не хранилище", func(a *Archive) { a.RepositoryID = testID(TypeSource) }, "repository_id"},
 		{"пустая заметка", func(a *Archive) { a.Notes[0] = TextRef{} }, "notes[0].text"},
 		{"плохая цитата", func(a *Archive) { a.Sources[0].CitationID = "c" }, "sources[0].citation_id"},

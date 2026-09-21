@@ -159,6 +159,12 @@ func TestAttachmentValidate(t *testing.T) {
 		t.Errorf("MIME с параметрами: %v", err)
 	}
 
+	upper := validAttachment()
+	upper.MIME = "IMAGE/JPEG"
+	if err := upper.Validate(); err != nil {
+		t.Errorf("MIME в верхнем регистре: %v", err)
+	}
+
 	tests := []struct {
 		name   string
 		mutate func(*Attachment)
@@ -171,6 +177,11 @@ func TestAttachmentValidate(t *testing.T) {
 		{"uri и filename из пробелов", func(a *Attachment) { a.URI, a.Filename = " ", " " }, "uri"},
 		{"MIME без слэша", func(a *Attachment) { a.MIME = "image" }, "mime"},
 		{"MIME с пробелом", func(a *Attachment) { a.MIME = "image /jpeg" }, "mime"},
+		{"MIME с пробелом в начале", func(a *Attachment) { a.MIME = " image/jpeg" }, "mime"},
+		{"MIME с пробелом в конце", func(a *Attachment) { a.MIME = "image/jpeg " }, "mime"},
+		{"MIME без подтипа", func(a *Attachment) { a.MIME = "image/" }, "mime"},
+		{"MIME без типа", func(a *Attachment) { a.MIME = "/jpeg" }, "mime"},
+		{"MIME с двумя слэшами", func(a *Attachment) { a.MIME = "image//jpeg" }, "mime"},
 		{"отрицательная страница", func(a *Attachment) { a.Page = -1 }, "page"},
 		{"пустой node_id", func(a *Attachment) { a.NodeID = "" }, "node_id"},
 		{"node_id — не узел", func(a *Attachment) { a.NodeID = testID(TypeArchive) }, "node_id"},

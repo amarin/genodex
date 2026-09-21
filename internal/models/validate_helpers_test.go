@@ -128,6 +128,7 @@ func TestNamedPeriodValidate(t *testing.T) {
 		{"мусор в начале", NamedPeriod{Text: "x", Since: "когда-то"}, "since"},
 		{"мусор в конце", NamedPeriod{Text: "x", Until: "1914-13"}, "until"},
 		{"31 апреля", NamedPeriod{Text: "x", Since: "1914-04-31"}, "since.day"},
+		{"31 апреля в конце", NamedPeriod{Text: "x", Until: "1914-04-31"}, "until.day"},
 		{"начало позже конца", NamedPeriod{Text: "x", Since: "1924", Until: "1914"}, "since"},
 	}
 	for _, tt := range invalid {
@@ -136,6 +137,7 @@ func TestNamedPeriodValidate(t *testing.T) {
 
 	renames := []NamedPeriod{{Text: "Петроград", Since: "1914"}, {Text: "", Since: "1924"}}
 	wantInvalid(t, "список переименований", finish("", validateRenames("renames", renames)), "", "renames[1].text")
+	wantInvalid(t, "плохая дата в переименовании", finish("", validateRenames("renames", []NamedPeriod{{Text: "x", Since: "1914-04-31"}})), "", "renames[0].since.day")
 	if e := validateRenames("renames", renames[:1]); e != nil {
 		t.Errorf("корректный список: %v", e)
 	}

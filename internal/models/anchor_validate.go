@@ -36,7 +36,7 @@ func validateAnchor(a Anchor) *ValidationError {
 			return fieldErr("", "пустой якорь (nil-указатель)")
 		}
 		u, err := url.Parse(v.URL)
-		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
 			return fieldErr("url", "нужен абсолютный http(s)-адрес с хостом: %q", v.URL)
 		}
 
