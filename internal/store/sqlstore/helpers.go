@@ -441,16 +441,6 @@ func replaceRenames(tx runner, table, ownerCol, ownerID string, rns []models.Nam
 	return nil
 }
 
-// loadRenames читает переименования в порядке position.
-func loadRenames(q queryer, table, ownerCol, ownerID string) ([]models.NamedPeriod, error) {
-	return scanRows(q, func(r *sql.Rows) (models.NamedPeriod, error) {
-		var rn models.NamedPeriod
-		err := r.Scan(&rn.Text, &rn.Since, &rn.Until)
-
-		return rn, err
-	}, `SELECT text, since, until FROM `+table+` WHERE `+ownerCol+` = ? ORDER BY position`, ownerID)
-}
-
 // --- поисковый индекс -----------------------------------------------------
 
 // replaceSearchIndex переписывает поисковые термины сущности. Термины

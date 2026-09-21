@@ -80,66 +80,120 @@ func (s *Store) SaveAdministrativeDivision(ctx context.Context, a *models.Admini
 
 // GetAdministrativeDivision читает единицу деления по id; нет — models.ErrNotFound.
 func (s *Store) GetAdministrativeDivision(ctx context.Context, id models.ID) (*models.AdministrativeDivision, error) {
-	var (
-		a                models.AdministrativeDivision
-		rawID, divType   string
-		parentID         sql.NullString
-		sinceID, untilID sql.NullInt64
-	)
-
-	err := s.run(ctx).QueryRow(
-		`SELECT id, name, type, parent_id, since_id, until_id
-		 FROM administrative_divisions WHERE id = ?`, string(id),
-	).Scan(&rawID, &a.Name, &divType, &parentID, &sinceID, &untilID)
-	if notFound(err) {
-		return nil, models.ErrNotFound
-	}
-
+	divisions, err := s.getDivisions(ctx, []models.ID{id})
 	if err != nil {
 		return nil, err
 	}
 
-	a.ID, a.Type = models.ID(rawID), models.AdminDivisionType(divType)
-	a.ParentID = idPtrFrom(parentID)
-
-	if a.Since, err = loadDate(s.run(ctx), int64From(sinceID)); err != nil {
-		return nil, err
+	if len(divisions) == 0 {
+		return nil, models.ErrNotFound
 	}
 
-	if a.Until, err = loadDate(s.run(ctx), int64From(untilID)); err != nil {
-		return nil, err
-	}
-
-	if a.Items, err = loadTextRefList(s.run(ctx), "ad_items", "ad_id", string(id)); err != nil {
-		return nil, err
-	}
-
-	if a.Variants, err = loadStringList(s.run(ctx), "ad_variants", "ad_id", string(id)); err != nil {
-		return nil, err
-	}
-
-	if a.Renames, err = loadRenames(s.run(ctx), "ad_renames", "ad_id", string(id)); err != nil {
-		return nil, err
-	}
-
-	if a.Successors, err = loadTextRefList(s.run(ctx), "ad_successors", "ad_id", string(id)); err != nil {
-		return nil, err
-	}
-
-	if a.Notes, err = loadTextRefList(s.run(ctx), "ad_notes", "ad_id", string(id)); err != nil {
-		return nil, err
-	}
-
-	if a.Sources, err = loadSourceLinks(s.run(ctx), models.TypeAdministrativeDivision, id); err != nil {
-		return nil, err
-	}
-
-	return &a, nil
+	return divisions[0], nil
 }
 
-// ListAdministrativeDivisions возвращает все единицы деления.
+// divisionRow — главная строка единицы деления до разрешения value-ссылок.
+type divisionRow struct {
+	div              models.AdministrativeDivision
+	sinceID, untilID sql.NullInt64
+}
+
+// getDivisions читает единицы деления пачкой (см. getPeople): по одному
+// запросу на таблицу, результат — найденные в порядке ids.
+func (s *Store) getDivisions(ctx context.Context, ids []models.ID) ([]*models.AdministrativeDivision, error) {
+	q := s.run(ctx)
+	owners := idStrings(ids)
+
+	main, err := queryGrouped(q, owners, nil, func(in string) string {
+		return `SELECT id, name, type, parent_id, since_id, until_id
+		        FROM administrative_divisions WHERE id IN (` + in + `)`
+	}, func(r *sql.Rows) (string, divisionRow, error) {
+		var (
+			row         divisionRow
+			id, divType string
+			parentID    sql.NullString
+		)
+
+		err := r.Scan(&id, &row.div.Name, &divType, &parentID, &row.sinceID, &row.untilID)
+		row.div.ID, row.div.Type = models.ID(id), models.AdminDivisionType(divType)
+		row.div.ParentID = idPtrFrom(parentID)
+
+		return id, row, err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var dateIDs []int64
+
+	for _, rows := range main {
+		dateIDs = append(dateIDs, int64From(rows[0].sinceID), int64From(rows[0].untilID))
+	}
+
+	dates, err := loadDatesByID(q, dateIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	textLists := []struct {
+		table string
+		set   func(*models.AdministrativeDivision, []models.TextRef)
+	}{
+		{"ad_items", func(a *models.AdministrativeDivision, v []models.TextRef) { a.Items = v }},
+		{"ad_successors", func(a *models.AdministrativeDivision, v []models.TextRef) { a.Successors = v }},
+		{"ad_notes", func(a *models.AdministrativeDivision, v []models.TextRef) { a.Notes = v }},
+	}
+	lists := make([]map[string][]models.TextRef, len(textLists))
+
+	for i, l := range textLists {
+		if lists[i], err = loadTextRefListsBatch(q, l.table, "ad_id", owners); err != nil {
+			return nil, err
+		}
+	}
+
+	variants, err := loadStringListsBatch(q, "ad_variants", "ad_id", owners)
+	if err != nil {
+		return nil, err
+	}
+
+	renames, err := loadRenamesBatch(q, "ad_renames", "ad_id", owners)
+	if err != nil {
+		return nil, err
+	}
+
+	sources, err := loadSourceLinksBatch(q, models.TypeAdministrativeDivision, owners)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*models.AdministrativeDivision, 0, len(ids))
+
+	for _, id := range ids {
+		found := main[string(id)]
+		if len(found) == 0 {
+			continue
+		}
+
+		row := found[0]
+		a := row.div
+		a.Since, a.Until = dates[int64From(row.sinceID)], dates[int64From(row.untilID)]
+
+		for i, l := range textLists {
+			l.set(&a, lists[i][string(id)])
+		}
+
+		a.Variants = variants[string(id)]
+		a.Renames = renames[string(id)]
+		a.Sources = sources[string(id)]
+		out = append(out, &a)
+	}
+
+	return out, nil
+}
+
+// ListAdministrativeDivisions возвращает окно списка единиц деления.
 func (s *Store) ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
-	return listEntities(ctx, s, "administrative_divisions", access, page, s.GetAdministrativeDivision)
+	return listByIDs(ctx, s, "administrative_divisions", access, page, s.getDivisions)
 }
 
 // --- Church ---------------------------------------------------------------

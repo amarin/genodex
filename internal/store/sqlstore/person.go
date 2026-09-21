@@ -122,95 +122,129 @@ type personNameRow struct {
 
 // GetPerson читает персону по id; не найдена — models.ErrNotFound.
 func (s *Store) GetPerson(ctx context.Context, id models.ID) (*models.Person, error) {
-	var (
-		p      models.Person
-		rawID  string
-		gender string
-	)
+	people, err := s.getPeople(ctx, []models.ID{id})
+	if err != nil {
+		return nil, err
+	}
 
-	err := s.run(ctx).QueryRow(`SELECT id, gender, private FROM persons WHERE id = ?`, string(id)).
-		Scan(&rawID, &gender, &p.Private)
-	if notFound(err) {
+	if len(people) == 0 {
 		return nil, models.ErrNotFound
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	p.ID, p.Gender = models.ID(rawID), models.PersonGender(gender)
-
-	nameRows, err := scanRows(s.run(ctx), func(r *sql.Rows) (personNameRow, error) {
-		var nr personNameRow
-		err := r.Scan(&nr.typ, &nr.surID, &nr.givID, &nr.patID,
-			&nr.prefix, &nr.suffix, &nr.sinceID, &nr.untilID)
-
-		return nr, err
-	},
-		`SELECT type, surname_id, given_id, patronymic_id, prefix, suffix, since_id, until_id
-		 FROM person_names WHERE person_id = ? ORDER BY id`, string(id))
-	if err != nil {
-		return nil, err
-	}
-
-	for _, nr := range nameRows {
-		n, err := loadPersonName(s.run(ctx), nr)
-		if err != nil {
-			return nil, err
-		}
-
-		p.Names = append(p.Names, n)
-	}
-
-	for _, l := range personTextRefLists {
-		items, err := loadTextRefList(s.run(ctx), l.table, "person_id", string(id))
-		if err != nil {
-			return nil, err
-		}
-
-		l.set(&p, items)
-	}
-
-	if p.Sources, err = loadSourceLinks(s.run(ctx), models.TypePerson, id); err != nil {
-		return nil, err
-	}
-
-	return &p, nil
+	return people[0], nil
 }
 
-// loadPersonName разрешает value-ссылки сырой строки person_names.
-func loadPersonName(q queryer, nr personNameRow) (models.PersonName, error) {
-	n := models.PersonName{
-		Type:   models.PersonNameType(nr.typ),
-		Prefix: nr.prefix,
-		Suffix: nr.suffix,
+// getPeople читает персон пачкой — по одному запросу на таблицу, а не на
+// персону. Результат — найденные персоны в порядке ids; отсутствующие
+// пропускаются. Одиночный GetPerson идёт тем же путём, поэтому список и Get
+// не могут разойтись.
+func (s *Store) getPeople(ctx context.Context, ids []models.ID) ([]*models.Person, error) {
+	q := s.run(ctx)
+	owners := idStrings(ids)
+
+	main, err := queryGrouped(q, owners, nil, func(in string) string {
+		return `SELECT id, gender, private FROM persons WHERE id IN (` + in + `)`
+	}, func(r *sql.Rows) (string, *models.Person, error) {
+		var (
+			p      models.Person
+			id     string
+			gender string
+		)
+
+		err := r.Scan(&id, &gender, &p.Private)
+		p.ID, p.Gender = models.ID(id), models.PersonGender(gender)
+
+		return id, &p, err
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	var err error
-	if n.Surname, err = loadTextRef(q, nr.surID); err != nil {
-		return n, err
+	names, err := queryGrouped(q, owners, nil, func(in string) string {
+		return `SELECT person_id, type, surname_id, given_id, patronymic_id, prefix, suffix, since_id, until_id
+		        FROM person_names WHERE person_id IN (` + in + `) ORDER BY id`
+	}, func(r *sql.Rows) (string, personNameRow, error) {
+		var (
+			owner string
+			nr    personNameRow
+		)
+
+		err := r.Scan(&owner, &nr.typ, &nr.surID, &nr.givID, &nr.patID,
+			&nr.prefix, &nr.suffix, &nr.sinceID, &nr.untilID)
+
+		return owner, nr, err
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	if n.Given, err = loadTextRef(q, nr.givID); err != nil {
-		return n, err
+	var textIDs, dateIDs []int64
+
+	for _, rows := range names {
+		for _, nr := range rows {
+			textIDs = append(textIDs, nr.surID, nr.givID, nr.patID)
+			dateIDs = append(dateIDs, int64From(nr.sinceID), int64From(nr.untilID))
+		}
 	}
 
-	if n.Patronymic, err = loadTextRef(q, nr.patID); err != nil {
-		return n, err
+	texts, err := loadTextRefsByID(q, textIDs)
+	if err != nil {
+		return nil, err
 	}
 
-	if n.Since, err = loadDate(q, int64From(nr.sinceID)); err != nil {
-		return n, err
+	dates, err := loadDatesByID(q, dateIDs)
+	if err != nil {
+		return nil, err
 	}
 
-	if n.Until, err = loadDate(q, int64From(nr.untilID)); err != nil {
-		return n, err
+	sources, err := loadSourceLinksBatch(q, models.TypePerson, owners)
+	if err != nil {
+		return nil, err
 	}
 
-	return n, nil
+	lists := make([]map[string][]models.TextRef, len(personTextRefLists))
+
+	for i, l := range personTextRefLists {
+		if lists[i], err = loadTextRefListsBatch(q, l.table, "person_id", owners); err != nil {
+			return nil, err
+		}
+	}
+
+	out := make([]*models.Person, 0, len(ids))
+
+	for _, id := range ids {
+		found := main[string(id)]
+		if len(found) == 0 {
+			continue
+		}
+
+		p := found[0]
+
+		for _, nr := range names[string(id)] {
+			p.Names = append(p.Names, models.PersonName{
+				Type:       models.PersonNameType(nr.typ),
+				Surname:    texts[nr.surID],
+				Given:      texts[nr.givID],
+				Patronymic: texts[nr.patID],
+				Prefix:     nr.prefix,
+				Suffix:     nr.suffix,
+				Since:      dates[int64From(nr.sinceID)],
+				Until:      dates[int64From(nr.untilID)],
+			})
+		}
+
+		for i, l := range personTextRefLists {
+			l.set(p, lists[i][string(id)])
+		}
+
+		p.Sources = sources[string(id)]
+		out = append(out, p)
+	}
+
+	return out, nil
 }
 
 // ListPeople возвращает всех персон в порядке вставки.
 func (s *Store) ListPeople(ctx context.Context, access models.Access, page models.Page) ([]*models.Person, error) {
-	return listEntities(ctx, s, "persons", access, page, s.GetPerson)
+	return listByIDs(ctx, s, "persons", access, page, s.getPeople)
 }

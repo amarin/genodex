@@ -274,12 +274,13 @@ func listIDs(q queryer, table string, publicOnly bool, page models.Page) ([]mode
 	}, `SELECT id FROM `+table+where+` ORDER BY rowid LIMIT ? OFFSET ?`, page.Limit, page.Offset)
 }
 
-// listEntities читает окно списка сущностей таблицы: сначала id страницы
-// (курсор закрыт), затем Get по каждому. Любой режим, кроме AccessFull,
-// скрывает приватные строки таблиц, у которых есть колонка private.
-func listEntities[T any](
+// listByIDs читает окно списка сущностей таблицы: сначала id окна (курсор
+// закрыт), затем getMany по всем id сразу. Любой режим, кроме AccessFull,
+// скрывает приватные строки таблиц, у которых есть колонка private. getMany
+// возвращает найденные сущности в порядке ids (отсутствующие пропускает).
+func listByIDs[T any](
 	ctx context.Context, s *Store, table string, access models.Access, page models.Page,
-	get func(context.Context, models.ID) (*T, error),
+	getMany func(context.Context, []models.ID) ([]*T, error),
 ) ([]*T, error) {
 	g, err := s.graph(ctx)
 	if err != nil {
@@ -291,20 +292,30 @@ func listEntities[T any](
 		return nil, err
 	}
 
-	out := make([]*T, 0, len(ids))
+	return getMany(ctx, ids)
+}
 
-	for _, id := range ids {
-		v, err := get(ctx, id)
-		if errors.Is(err, models.ErrNotFound) {
-			continue // строку удалили между чтением id и Get
+// listEntities — listByIDs для сущностей, читаемых по одной (Get на каждый id).
+func listEntities[T any](
+	ctx context.Context, s *Store, table string, access models.Access, page models.Page,
+	get func(context.Context, models.ID) (*T, error),
+) ([]*T, error) {
+	return listByIDs(ctx, s, table, access, page, func(ctx context.Context, ids []models.ID) ([]*T, error) {
+		out := make([]*T, 0, len(ids))
+
+		for _, id := range ids {
+			v, err := get(ctx, id)
+			if errors.Is(err, models.ErrNotFound) {
+				continue // строку удалили между чтением id и Get
+			}
+
+			if err != nil {
+				return nil, err
+			}
+
+			out = append(out, v)
 		}
 
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, v)
-	}
-
-	return out, nil
+		return out, nil
+	})
 }
