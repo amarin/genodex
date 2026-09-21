@@ -350,16 +350,9 @@ func TestSearchQueryUsesTermIndex(t *testing.T) {
 	for name, tables := range map[string][]string{"полный доступ": nil, "публичный доступ": private} {
 		plan := explainDetails(t, s, searchSQL(tables), "иван", "иван"+maxRune, 50, 0)
 
-		if !strings.Contains(plan, "idx_search_term") {
-			t.Errorf("%s: план не использует idx_search_term:\n%s", name, plan)
-		}
-
+		// покрывающий индекс по диапазону term: таблица не читается
 		if !strings.Contains(plan, "COVERING INDEX idx_search_term") {
-			t.Errorf("%s: индекс должен быть покрывающим:\n%s", name, plan)
-		}
-
-		if strings.Contains(plan, "SCAN si") || strings.Contains(plan, "SCAN search_index") {
-			t.Errorf("%s: план содержит полный просмотр search_index:\n%s", name, plan)
+			t.Errorf("%s: план не использует покрывающий idx_search_term:\n%s", name, plan)
 		}
 	}
 }

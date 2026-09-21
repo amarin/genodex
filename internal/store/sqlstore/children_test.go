@@ -11,8 +11,10 @@ import (
 	"github.com/amarin/genodex/internal/store"
 )
 
-// seedTree сохраняет дерево делений: корень ad-root с детьми ad-1..ad-3 и внуком
-// ad-11 у ad-1 (полностью заполненные единицы — сверка с эталоном).
+// seedTree сохраняет дерево делений: корень ad-root с детьми ad-0003, ad-0001,
+// ad-0002 (именно в таком порядке — порядок сохранения не совпадает с порядком
+// id) и внуком ad-0011 у ad-0001. Единицы полностью заполнены (сверка с
+// эталоном), поэтому им нужна цитата cit-1 (seedSource + SaveCitation).
 func seedTree(t *testing.T, s *Store) {
 	t.Helper()
 
@@ -26,7 +28,7 @@ func seedTree(t *testing.T, s *Store) {
 		ID: root, Name: "Московская", Type: models.AdminDivisionGovernorate,
 	}))
 
-	for _, i := range []int{1, 2, 3} {
+	for _, i := range []int{3, 1, 2} {
 		mustDo(t, "child", s.SaveAdministrativeDivision(t.Context(), batchDivision(i, true, &root)))
 	}
 
@@ -61,7 +63,7 @@ func TestChildrenOfDivision(t *testing.T) {
 		parent models.ID
 		want   []models.ID
 	}{
-		{"ad-root", []models.ID{"ad-0001", "ad-0002", "ad-0003"}},
+		{"ad-root", []models.ID{"ad-0003", "ad-0001", "ad-0002"}},
 		{"ad-0001", []models.ID{"ad-0011"}},
 		{"ad-0011", []models.ID{}},
 		{"ad-0002", []models.ID{}},
@@ -153,7 +155,7 @@ func TestChildrenOfDivisionInTxAndCanceled(t *testing.T) {
 func TestChildrenQueryUsesParentIndex(t *testing.T) {
 	s := newStore(t)
 
-	plan := explainDetails(t, s, pagedIDsSQL("administrative_divisions", "parent_id = ?"), "ad-root", 50, 0)
+	plan := explainDetails(t, s, pagedIDsSQL("administrative_divisions", childrenWhere), "ad-root", 50, 0)
 
 	if !strings.Contains(plan, "idx_administrative_divisions_parent_id") {
 		t.Errorf("план не использует индекс по parent_id:\n%s", plan)

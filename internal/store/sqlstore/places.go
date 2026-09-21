@@ -191,6 +191,9 @@ func (s *Store) getDivisions(ctx context.Context, ids []models.ID) ([]*models.Ad
 	return out, nil
 }
 
+// childrenWhere — условие выборки прямых детей деления (отдельно — для теста плана).
+const childrenWhere = "parent_id = ?"
+
 // ChildrenOfDivision возвращает прямые дочерние единицы деления parent в порядке
 // сохранения; нет такого деления — models.ErrNotFound.
 func (s *Store) ChildrenOfDivision(
@@ -208,7 +211,7 @@ func (s *Store) ChildrenOfDivision(
 	}
 
 	// у делений нет колонки private — access на выборку не влияет
-	ids, err := pagedIDs(q, "administrative_divisions", "parent_id = ?", []any{string(parent)}, page)
+	ids, err := pagedIDs(q, "administrative_divisions", childrenWhere, []any{string(parent)}, page)
 	if err != nil {
 		return nil, err
 	}
