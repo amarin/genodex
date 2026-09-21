@@ -15,3 +15,13 @@ func TestNormalizeLowercase(t *testing.T) {
 		t.Fatalf("Normalize(uppercase) = %q", got)
 	}
 }
+
+func TestNormalizeTrimsEdgeSpaces(t *testing.T) {
+	if got := Normalize("  Давыдово \t"); got != "давыдово" {
+		t.Fatalf("Normalize с пробелами по краям = %q, want %q", got, "давыдово")
+	}
+
+	if got := Normalize("Иван Иванов"); got != "иван иванов" {
+		t.Fatalf("Normalize не должен трогать внутренние пробелы: %q", got)
+	}
+}

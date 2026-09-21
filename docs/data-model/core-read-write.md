@@ -164,7 +164,8 @@
     `place_id`, `source_id`, `archive_id`, `node_id` и т. д.). Список
     генерируется из `PRAGMA foreign_key_list` при каждом открытии БД
     (`createFKIndexes`, `storage/indexes.go`), а не перечисляется вручную;
-  - `search_index(term)` — для поиска по префиксу диапазоном
+  - `idx_search_term (term, entity_table, entity_id, field)` — покрывающий, для
+    поиска по префиксу диапазоном
     `term >= ? AND term < ?` (оператор `LIKE` с `COLLATE BINARY` индекс не
     использует).
 - **Чистка при удалении**: `search_index` и `source_links` — полиморфные, FK на

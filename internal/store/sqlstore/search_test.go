@@ -204,7 +204,7 @@ func TestSearchAccessHidesPrivateEntities(t *testing.T) {
 }
 
 // TestSearchOrderAndPagesAreStable: одна запись на сущность (два совпавших
-// термина не дублируют), порядок — по виду и id, окна не пересекаются.
+// термина не дублируют), порядок — по таблице сущности и id, окна не пересекаются.
 func TestSearchOrderAndPagesAreStable(t *testing.T) {
 	s := newStore(t)
 	ctx := t.Context()
@@ -364,4 +364,19 @@ func scanExplain(r *sql.Rows) (string, error) {
 	err := r.Scan(&id, &parent, &unused, &detail)
 
 	return detail, err
+}
+
+// TestSearchFindsTermWithEdgeSpaces: имя с пробелами по краям находится по
+// собственному тексту — термин и запрос нормализуются одинаково.
+func TestSearchFindsTermWithEdgeSpaces(t *testing.T) {
+	s := newStore(t)
+
+	mustDo(t, "division", s.SaveAdministrativeDivision(t.Context(), &models.AdministrativeDivision{
+		ID: "ad-1", Name: "  Давыдово ", Type: models.AdminDivisionDerevnya}))
+
+	for _, q := range []string{"давыд", " давыд", "  Давыдово ", "Давыдово"} {
+		if hits := searchAll(t, s, q, models.AccessFull, models.Page{}); len(hits) != 1 || hits[0].ID != "ad-1" {
+			t.Errorf("Search %q = %+v, ожидалась одна запись ad-1", q, hits)
+		}
+	}
 }

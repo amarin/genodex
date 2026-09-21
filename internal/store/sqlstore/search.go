@@ -34,14 +34,16 @@ var hitLabelExprs = map[string]string{
 	"repositories":             "name",
 }
 
-// maxRune — верхняя граница диапазона префиксного поиска: любая строка,
-// начинающаяся с префикса, меньше prefix+maxRune.
+// maxRune — верхняя граница диапазона префиксного поиска: строка, начинающаяся
+// с префикса, меньше prefix+maxRune. Исключение — термин, у которого сразу за
+// префиксом идёт U+10FFFF (несимвол Unicode, в тексте не встречается).
 const maxRune = "\U0010FFFF"
 
 // searchSQL строит запрос Search: диапазон по term (использует idx_search_term),
 // одна строка на сущность, для публичного доступа — исключение приватных строк
-// таблиц privateTables (имена берутся из схемы и заключаются в кавычки,
-// значения — параметрами). Порядок — по таблице сущности и id.
+// таблиц privateTables (имена берутся из схемы и заключаются в кавычки; они же
+// подставляются литералами в сравнение entity_table; значения запроса — только
+// параметрами). Порядок — по таблице сущности и id.
 func searchSQL(privateTables []string) string {
 	var b strings.Builder
 
@@ -64,7 +66,7 @@ func searchSQL(privateTables []string) string {
 
 // Search ищет сущности по префиксу термина; см. store.Store.Search.
 func (s *Store) Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error) {
-	prefix := storage.Normalize(strings.TrimSpace(query))
+	prefix := storage.Normalize(query)
 	if prefix == "" {
 		return []models.Hit{}, nil
 	}
