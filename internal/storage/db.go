@@ -116,14 +116,14 @@ func ctxCause(ctx context.Context, err error) error {
 	return err
 }
 
-// Tx выполняет fn в транзакции; при ошибке — откат.
+// Tx выполняет fn в транзакции; откат — на любом выходе из fn, кроме успеха.
 func (d *DB) Tx(fn func(tx *sql.Tx) error) error {
 	tx, err := d.d.Begin()
 	if err != nil {
 		return err
 	}
+	defer func() { _ = tx.Rollback() }() // после Commit — sql.ErrTxDone, безвредно
 	if err := fn(tx); err != nil {
-		_ = tx.Rollback()
 		return err
 	}
 	return tx.Commit()

@@ -47,7 +47,8 @@ type Store interface {
 	// нельзя). Внутри fn пользоваться нужно только переданным Store, не
 	// внешним: соединение одно, и внешний Store ждёт его до отмены ctx.
 	// Переданный Store нельзя сохранять и использовать после возврата из InTx
-	// (методы вернут sql.ErrTxDone).
+	// (его запросы вернут sql.ErrTxDone; вложенный InTx на нём этого не
+	// проверяет).
 	InTx(ctx context.Context, fn func(Store) error) error
 
 	// Person
