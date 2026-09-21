@@ -2,9 +2,11 @@
 
 ## Note
 
-`id`, `kind` (`note`/`article`/`book`/`chapter` + открытый), `title?`, `text` (markdown),
+`id`, `kind` (`note`/`article`/`book`/`chapter` + открытый), `title?`, `text?` (markdown),
 `parent_id?` (строгая), `sources []SourceLink`, `private`.
 
+- Нужен заголовок или текст: книга-контейнер может иметь только заголовок,
+  заметка — только текст.
 - Слой произвольных текстов: заметка, статья, глава книги, целая книга, выписка из
   парсинга сайта. Текст — markdown.
 - `kind=book` + дочерние `kind=chapter` через `parent_id` (строгая ссылка на Note):

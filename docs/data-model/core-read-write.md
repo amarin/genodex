@@ -84,12 +84,13 @@
 
 - **Идентификаторы:** `ID.Validate(Type)`; строгие ссылки — формат и префикс
   ожидаемого типа (`person_id` → `I`, `place_id` → `AD` и т. д.).
-- **Закрытые enum'ы** (принимают только константы): `PersonGender`, `NameGender`,
-  `PersonNameType`, `RelationKind`, `SourceKind`, `AttachmentKind`, `Reliability`,
-  `AnchorKind`, `FactPrecision`, `FactModifier`, `FactCalendar`, `AdminDivisionType`.
-- **Открытые enum'ы** (константы — подсказка): `EventType`, `RelationType`,
-  `NoteKind`, `RepositoryType`; допускается непустое значение формата
-  `[a-z][a-z0-9_-]*`.
+- **Enum'ы.** Открытые (константы — подсказка; допускается непустое значение
+  формата `[a-z][a-z0-9_-]*`): `EventType`, `NoteKind`, `RepositoryType`,
+  `RelationType`, `ArchiveNodeType` (уровни систем иерархии архивов задаются данными;
+  соответствие уровня системе архива проверяют сценарии). Закрытые (принимают
+  только константы): `PersonGender`, `NameGender`, `PersonNameType`, `RelationKind`,
+  `SourceKind`, `AttachmentKind`, `Reliability`, `AnchorKind`, `FactPrecision`,
+  `FactModifier`, `FactCalendar`, `AdminDivisionType`.
 - **Сущностные правила:**
   - `Relation`: при `kind=associate` обязателен `RelType`, при остальных `kind`
     `RelType` пуст; `PersonA != PersonB`.
@@ -118,10 +119,6 @@
     и не заканчивается раньше начала нижней.
   - `Family.Name` и `canonical` словарей обязательны (непустые после обрезки
     пробелов).
-  - Открытые enum'ы: `EventType`, `NoteKind`, `RepositoryType`, `RelationType` и
-    `ArchiveNodeType` (уровни систем иерархии архивов задаются данными, а не кодом;
-    соответствие уровня системе архива проверяют сценарии). Закрытые:
-    `AdminDivisionType`, `SourceKind`, `Reliability`, `AttachmentKind`.
   - Ожидаемые типы ссылок: `Settlements`, `Items`, `Successors` — на
     `administrative_division`; `Church.Parish`, `ArchiveNode.Parish`,
     `ArchiveDocument.Parish` — на `parish`; `Parish.Church` — на `church`;
@@ -142,10 +139,17 @@
     `rect` и `timecode` — свободные строки.
   - `Event`: вид обязателен, у участника обязательны персона и роль. `Source`: вид,
     название и достоверность обязательны. `Note`: нужен заголовок или текст.
-    `Attachment`: нужен `uri` или имя файла, MIME — «тип/подтип», страница не
-    отрицательна (0 — не указана). Названия и шифры (`Name`, `Title`, `Label`)
-    обязательны там, где это указано в `docs/models/*` (не пусты после обрезки
-    пробелов).
+    `Attachment`: нужен `uri` или имя файла, MIME — «тип/подтип» без пробелов по
+    краям, страница не отрицательна (0 — не указана).
+  - Обязательные поля (непустые после обрезки пробелов). Текст: `Name` — у
+    `AdministrativeDivision`, `Church`, `Parish`, `Repository`, `Archive`, `Family`;
+    `Title` — у `Source`, `ArchiveDocument`; `Label` — у `ArchiveNode`; `canonical` —
+    у словарей. Enum: `Repository.Type`, `Event.Type`, `Note.Kind`,
+    `ArchiveNode.Type`, `AdministrativeDivision.Type`, `Source.Kind`,
+    `Source.Reliability`, `Attachment.Kind`, `Relation.Kind`. Ссылки:
+    `Attachment.NodeID`, `ArchiveNode.ArchiveID`, `ArchiveDocument.UnitID`,
+    `Citation.SourceID`, `Residence.PersonID`/`PlaceID`, `Relation.PersonA`/`PersonB`.
+    `Archive.System` (если задана) — непустой текст.
 - `Validate()` вызывается на непустом указателе; nil-получатель не поддерживается
   (паника).
 - **Проверки с обращением к хранилищу** (существование ссылок, циклы по
