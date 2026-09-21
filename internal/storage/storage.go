@@ -6,8 +6,8 @@ import (
 )
 
 // Storage — точка входа: SQLite-хранилище с WAL и колоночной схемой.
-// Доступ к данным — через Storage.DB() (Exec/Query/QueryRow/Tx), которым
-// пользуется internal/store/sqlstore. Само хранилище о модели не знает.
+// Доступ к данным — через Storage.DB() (Exec/Query/QueryRow и их *Context-
+// варианты, TxContext), которым пользуется internal/store/sqlstore. Само хранилище о модели не знает.
 type Storage struct {
 	dir string
 	db  *DB

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -22,27 +23,26 @@ type DB struct {
 	d *sql.DB
 }
 
+// dsn строит строку подключения: путь как file:-URI (спецсимволы пути
+// экранируются) и прагмы, которые драйвер применяет к КАЖДОМУ новому
+// соединению. PRAGMA foreign_keys действует на соединение, а не на базу:
+// пересозданное пулом соединение без DSN-прагм потеряло бы внешние ключи.
+func dsn(path string) string {
+	u := url.URL{Path: path}
+
+	return "file:" + u.EscapedPath() +
+		"?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"
+}
+
 // OpenDB открывает БД, включает WAL и foreign keys и создаёт схему целиком.
 func OpenDB(path string) (*DB, error) {
-	d, err := sql.Open("sqlite", path)
+	d, err := sql.Open("sqlite", dsn(path))
 	if err != nil {
 		return nil, err
 	}
-	// одно соединение: PRAGMA-настройки (в т.ч. foreign_keys) действуют
-	// на каждое соединение отдельно, единственное соединение гарантирует,
-	// что включённые здесь прагмы действуют для всех запросов
+	// одно соединение: вложенный запрос при открытом курсоре встаёт в дедлок
+	// (см. sqlstore); прагмы соединения заданы в DSN и не зависят от пула
 	d.SetMaxOpenConns(1)
-
-	for _, p := range []string{
-		"PRAGMA journal_mode=WAL",
-		"PRAGMA foreign_keys=ON",
-		"PRAGMA busy_timeout=5000",
-	} {
-		if _, err := d.Exec(p); err != nil {
-			d.Close()
-			return nil, fmt.Errorf("open: %w", err)
-		}
-	}
 
 	ddl := append(
 		[]string{`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`},
@@ -114,19 +114,6 @@ func ctxCause(ctx context.Context, err error) error {
 		return ctx.Err()
 	}
 	return err
-}
-
-// Tx выполняет fn в транзакции; откат — на любом выходе из fn, кроме успеха.
-func (d *DB) Tx(fn func(tx *sql.Tx) error) error {
-	tx, err := d.d.Begin()
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }() // после Commit — sql.ErrTxDone, безвредно
-	if err := fn(tx); err != nil {
-		return err
-	}
-	return tx.Commit()
 }
 
 // Count считает строки таблицы из реестра (валидация имени защищает от

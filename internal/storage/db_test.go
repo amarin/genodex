@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 )
@@ -130,35 +132,6 @@ func TestForeignKeysEnabled(t *testing.T) {
 	}
 	if on != 1 {
 		t.Fatalf("PRAGMA foreign_keys = %d, want 1", on)
-	}
-}
-
-func TestTxRollback(t *testing.T) {
-	db := openTestDB(t)
-	err := db.Tx(func(tx *sql.Tx) error {
-		if _, err := tx.Exec("INSERT INTO persons(id) VALUES ('p-1')"); err != nil {
-			return err
-		}
-		return fmt.Errorf("boom")
-	})
-	if err == nil {
-		t.Fatal("expected error")
-	}
-	if n, _ := db.Count("persons"); n != 0 {
-		t.Fatalf("Count persons=%d после отката, want 0", n)
-	}
-}
-
-func TestTxCommit(t *testing.T) {
-	db := openTestDB(t)
-	if err := db.Tx(func(tx *sql.Tx) error {
-		_, err := tx.Exec("INSERT INTO persons(id) VALUES ('p-1')")
-		return err
-	}); err != nil {
-		t.Fatal(err)
-	}
-	if n, _ := db.Count("persons"); n != 1 {
-		t.Fatalf("Count persons=%d после коммита, want 1", n)
 	}
 }
 
@@ -471,5 +444,69 @@ func TestTxContextPanicRollsBack(t *testing.T) {
 
 	if n != 0 {
 		t.Fatalf("Count persons=%d после паники, want 0", n)
+	}
+}
+
+// TestPragmasApplyToEveryConnection: прагмы заданы в DSN и действуют на любое
+// новое соединение пула, а не только на первое (без этого пересозданное
+// соединение работало бы без внешних ключей).
+func TestPragmasApplyToEveryConnection(t *testing.T) {
+	db := openTestDB(t)
+	db.d.SetMaxIdleConns(0) // каждый запрос — новое соединение
+
+	for i := 0; i < 3; i++ {
+		var fk, busy int
+		var journal string
+
+		if err := db.QueryRow("PRAGMA foreign_keys").Scan(&fk); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := db.QueryRow("PRAGMA busy_timeout").Scan(&busy); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := db.QueryRow("PRAGMA journal_mode").Scan(&journal); err != nil {
+			t.Fatal(err)
+		}
+
+		if fk != 1 || busy != 5000 || journal != "wal" {
+			t.Fatalf("соединение %d: foreign_keys=%d busy_timeout=%d journal_mode=%s, want 1/5000/wal", i, fk, busy, journal)
+		}
+	}
+}
+
+// TestOpenDBPathWithSpecialCharacters: путь с пробелом и символами, значимыми
+// для URI (?, #, %), открывается ровно по этому пути.
+func TestOpenDBPathWithSpecialCharacters(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "a b#c?d%e")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join(dir, "genealogy.db")
+
+	db, err := OpenDB(path)
+	if err != nil {
+		t.Fatalf("OpenDB(%q): %v", path, err)
+	}
+
+	if _, err := db.Exec("INSERT INTO persons(id) VALUES ('p-1')"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("файл БД не по запрошенному пути: %v", err)
+	}
+
+	entries, _ := os.ReadDir(dir)
+	for _, e := range entries {
+		if !strings.HasPrefix(e.Name(), "genealogy.db") {
+			t.Errorf("лишний файл рядом с БД: %s", e.Name())
+		}
 	}
 }
