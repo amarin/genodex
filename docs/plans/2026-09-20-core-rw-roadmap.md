@@ -160,14 +160,17 @@
 
 ### S11. `Search` и `ChildrenOfDivision`
 - **Файлы:** `models/query.go` (`Hit`), `store/deps.go`, `sqlstore/search.go`,
-  `storage/schema.go` (`idx_search_term`), тесты.
+  `sqlstore/places.go` (`ChildrenOfDivision`), `storage/schema.go`
+  (`idx_search_term`), тесты (`search_test.go`, `children_test.go`,
+  `storage/indexes_test.go`); план — `2026-09-21-core-rw-s11-search.md`.
 - **Интерфейсы:** `Search(ctx, query, Access, Page) ([]Hit, error)`;
   `ChildrenOfDivision(ctx, parent, Access, Page)`.
 - **Приёмка:** префиксный поиск нечувствителен к регистру и `ё/е`; использует
   индекс (`EXPLAIN`); `Hit.Label` и `Field` осмысленны; порядок стабилен.
-- **Предпосылка из S9:** в `search_index` нет колонки `private`, поэтому
-  `Access` в `Search` нельзя решить через `schemaGraph.hasPrivate` — нужен
-  join на таблицу сущности по `entity_table` (или колонка в индексе).
+- **Предпосылка из S9 (закрыта):** приватность в `Search` решается по таблице
+  сущности — для `AccessPublic` в запрос добавляются условия
+  `NOT (entity_table = '<t>' AND EXISTS (… private = 1))` по таблицам с колонкой
+  `private` (набор берётся из графа схемы).
 
 ## Часть E — мелочи
 
