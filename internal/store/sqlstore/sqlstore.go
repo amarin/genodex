@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sync"
+	"sync/atomic"
 
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/storage"
@@ -33,9 +33,11 @@ type Store struct {
 }
 
 // schemaCache — граф внешних ключей схемы, строится при первом удалении.
+// Без мьютекса: загрузка требует единственного соединения, и держать замок
+// на её время нельзя (другая горутина в InTx держит соединение и ждёт замок).
+// Схема неизменна, поэтому параллельная повторная загрузка безвредна.
 type schemaCache struct {
-	mu sync.Mutex
-	g  *schemaGraph
+	g atomic.Pointer[schemaGraph]
 }
 
 var _ store.Store = (*Store)(nil)

@@ -83,11 +83,8 @@ func loadSchemaGraph(ctx context.Context, s *Store) (*schemaGraph, error) {
 // контекст не должен «отравить» хранилище). Внутри InTx запрос идёт в той же
 // транзакции, поэтому не блокируется на единственном соединении.
 func (s *Store) graph(ctx context.Context) (*schemaGraph, error) {
-	s.cache.mu.Lock()
-	defer s.cache.mu.Unlock()
-
-	if s.cache.g != nil {
-		return s.cache.g, nil
+	if g := s.cache.g.Load(); g != nil {
+		return g, nil
 	}
 
 	g, err := loadSchemaGraph(ctx, s)
@@ -95,7 +92,10 @@ func (s *Store) graph(ctx context.Context) (*schemaGraph, error) {
 		return nil, err
 	}
 
-	s.cache.g = g
+	// параллельная загрузка даёт тот же граф: побеждает первый записанный
+	if !s.cache.g.CompareAndSwap(nil, g) {
+		g = s.cache.g.Load()
+	}
 
 	return g, nil
 }

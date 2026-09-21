@@ -12,6 +12,10 @@ import (
 // методы, включая вложенный InTx, работают в ней.
 func (s *Store) InTx(ctx context.Context, fn func(store.Store) error) error {
 	if s.scoped {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
 		return fn(s)
 	}
 
