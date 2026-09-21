@@ -1,14 +1,21 @@
 package store
 
-import "github.com/amarin/genodex/internal/models"
+import (
+	"context"
+
+	"github.com/amarin/genodex/internal/models"
+)
 
 // Store — порт хранилища сущностей генеалогии.
 // Реализация: internal/store/sqlstore (адаптер поверх internal/storage).
 // MCP/API никогда не работают с портом напрямую — только через usecases.
 //
 // Контракт порта:
-//   - Get* возвращает (nil, nil), если сущности с таким id нет; ошибка — только
-//     при сбое хранилища.
+//   - Все методы принимают ctx первым аргументом: отмена или истечение срока
+//     прерывают запрос и возвращают ошибку контекста (запись при этом не
+//     применяется).
+//   - Get* возвращает models.ErrNotFound (проверять через errors.Is), если
+//     сущности с таким id нет; остальные ошибки — сбой хранилища.
 //   - Save* — upsert: сохраняет сущность целиком и заменяет её дочерние строки
 //     (имена, списки TextRef, доказательства и т. п.), а не дополняет их.
 //   - Внешние ключи проверяются хранилищем: SourceLink.CitationID должен
@@ -22,107 +29,107 @@ import "github.com/amarin/genodex/internal/models"
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type Store interface {
 	// Person
-	GetPerson(id models.ID) (*models.Person, error)
-	SavePerson(p *models.Person) error
-	ListPeople() ([]*models.Person, error)
+	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
+	SavePerson(ctx context.Context, p *models.Person) error
+	ListPeople(ctx context.Context) ([]*models.Person, error)
 
 	// Relation
-	GetRelation(id models.ID) (*models.Relation, error)
-	SaveRelation(r *models.Relation) error
-	ListRelations() ([]*models.Relation, error)
+	GetRelation(ctx context.Context, id models.ID) (*models.Relation, error)
+	SaveRelation(ctx context.Context, r *models.Relation) error
+	ListRelations(ctx context.Context) ([]*models.Relation, error)
 
 	// Residence
-	GetResidence(id models.ID) (*models.Residence, error)
-	SaveResidence(r *models.Residence) error
-	ListResidences() ([]*models.Residence, error)
+	GetResidence(ctx context.Context, id models.ID) (*models.Residence, error)
+	SaveResidence(ctx context.Context, r *models.Residence) error
+	ListResidences(ctx context.Context) ([]*models.Residence, error)
 
 	// Family
-	GetFamily(id models.ID) (*models.Family, error)
-	SaveFamily(f *models.Family) error
-	ListFamilies() ([]*models.Family, error)
+	GetFamily(ctx context.Context, id models.ID) (*models.Family, error)
+	SaveFamily(ctx context.Context, f *models.Family) error
+	ListFamilies(ctx context.Context) ([]*models.Family, error)
 
 	// Surname
-	GetSurname(id models.ID) (*models.Surname, error)
-	SaveSurname(s *models.Surname) error
-	ListSurnames() ([]*models.Surname, error)
+	GetSurname(ctx context.Context, id models.ID) (*models.Surname, error)
+	SaveSurname(ctx context.Context, s *models.Surname) error
+	ListSurnames(ctx context.Context) ([]*models.Surname, error)
 
 	// GivenName
-	GetGivenName(id models.ID) (*models.GivenName, error)
-	SaveGivenName(g *models.GivenName) error
-	ListGivenNames() ([]*models.GivenName, error)
+	GetGivenName(ctx context.Context, id models.ID) (*models.GivenName, error)
+	SaveGivenName(ctx context.Context, g *models.GivenName) error
+	ListGivenNames(ctx context.Context) ([]*models.GivenName, error)
 
 	// Patronymic
-	GetPatronymic(id models.ID) (*models.Patronymic, error)
-	SavePatronymic(p *models.Patronymic) error
-	ListPatronymics() ([]*models.Patronymic, error)
+	GetPatronymic(ctx context.Context, id models.ID) (*models.Patronymic, error)
+	SavePatronymic(ctx context.Context, p *models.Patronymic) error
+	ListPatronymics(ctx context.Context) ([]*models.Patronymic, error)
 
 	// Estate
-	GetEstate(id models.ID) (*models.Estate, error)
-	SaveEstate(e *models.Estate) error
-	ListEstates() ([]*models.Estate, error)
+	GetEstate(ctx context.Context, id models.ID) (*models.Estate, error)
+	SaveEstate(ctx context.Context, e *models.Estate) error
+	ListEstates(ctx context.Context) ([]*models.Estate, error)
 
 	// Title
-	GetTitle(id models.ID) (*models.Title, error)
-	SaveTitle(t *models.Title) error
-	ListTitles() ([]*models.Title, error)
+	GetTitle(ctx context.Context, id models.ID) (*models.Title, error)
+	SaveTitle(ctx context.Context, t *models.Title) error
+	ListTitles(ctx context.Context) ([]*models.Title, error)
 
 	// AdministrativeDivision
-	GetAdministrativeDivision(id models.ID) (*models.AdministrativeDivision, error)
-	SaveAdministrativeDivision(a *models.AdministrativeDivision) error
-	ListAdministrativeDivisions() ([]*models.AdministrativeDivision, error)
+	GetAdministrativeDivision(ctx context.Context, id models.ID) (*models.AdministrativeDivision, error)
+	SaveAdministrativeDivision(ctx context.Context, a *models.AdministrativeDivision) error
+	ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error)
 
 	// Church
-	GetChurch(id models.ID) (*models.Church, error)
-	SaveChurch(c *models.Church) error
-	ListChurches() ([]*models.Church, error)
+	GetChurch(ctx context.Context, id models.ID) (*models.Church, error)
+	SaveChurch(ctx context.Context, c *models.Church) error
+	ListChurches(ctx context.Context) ([]*models.Church, error)
 
 	// Parish
-	GetParish(id models.ID) (*models.Parish, error)
-	SaveParish(p *models.Parish) error
-	ListParishes() ([]*models.Parish, error)
+	GetParish(ctx context.Context, id models.ID) (*models.Parish, error)
+	SaveParish(ctx context.Context, p *models.Parish) error
+	ListParishes(ctx context.Context) ([]*models.Parish, error)
 
 	// Event
-	GetEvent(id models.ID) (*models.Event, error)
-	SaveEvent(e *models.Event) error
-	ListEvents() ([]*models.Event, error)
+	GetEvent(ctx context.Context, id models.ID) (*models.Event, error)
+	SaveEvent(ctx context.Context, e *models.Event) error
+	ListEvents(ctx context.Context) ([]*models.Event, error)
 
 	// Source
-	GetSource(id models.ID) (*models.Source, error)
-	SaveSource(s *models.Source) error
-	ListSources() ([]*models.Source, error)
+	GetSource(ctx context.Context, id models.ID) (*models.Source, error)
+	SaveSource(ctx context.Context, s *models.Source) error
+	ListSources(ctx context.Context) ([]*models.Source, error)
 
 	// Archive
-	GetArchive(id models.ID) (*models.Archive, error)
-	SaveArchive(a *models.Archive) error
-	ListArchives() ([]*models.Archive, error)
+	GetArchive(ctx context.Context, id models.ID) (*models.Archive, error)
+	SaveArchive(ctx context.Context, a *models.Archive) error
+	ListArchives(ctx context.Context) ([]*models.Archive, error)
 
 	// ArchiveNode
-	GetArchiveNode(id models.ID) (*models.ArchiveNode, error)
-	SaveArchiveNode(n *models.ArchiveNode) error
-	ListArchiveNodes() ([]*models.ArchiveNode, error)
+	GetArchiveNode(ctx context.Context, id models.ID) (*models.ArchiveNode, error)
+	SaveArchiveNode(ctx context.Context, n *models.ArchiveNode) error
+	ListArchiveNodes(ctx context.Context) ([]*models.ArchiveNode, error)
 
 	// ArchiveDocument
-	GetArchiveDocument(id models.ID) (*models.ArchiveDocument, error)
-	SaveArchiveDocument(d *models.ArchiveDocument) error
-	ListArchiveDocuments() ([]*models.ArchiveDocument, error)
+	GetArchiveDocument(ctx context.Context, id models.ID) (*models.ArchiveDocument, error)
+	SaveArchiveDocument(ctx context.Context, d *models.ArchiveDocument) error
+	ListArchiveDocuments(ctx context.Context) ([]*models.ArchiveDocument, error)
 
 	// Attachment
-	GetAttachment(id models.ID) (*models.Attachment, error)
-	SaveAttachment(a *models.Attachment) error
-	ListAttachments() ([]*models.Attachment, error)
+	GetAttachment(ctx context.Context, id models.ID) (*models.Attachment, error)
+	SaveAttachment(ctx context.Context, a *models.Attachment) error
+	ListAttachments(ctx context.Context) ([]*models.Attachment, error)
 
 	// Citation
-	GetCitation(id models.ID) (*models.Citation, error)
-	SaveCitation(c *models.Citation) error
-	ListCitations() ([]*models.Citation, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
+	SaveCitation(ctx context.Context, c *models.Citation) error
+	ListCitations(ctx context.Context) ([]*models.Citation, error)
 
 	// Note
-	GetNote(id models.ID) (*models.Note, error)
-	SaveNote(n *models.Note) error
-	ListNotes() ([]*models.Note, error)
+	GetNote(ctx context.Context, id models.ID) (*models.Note, error)
+	SaveNote(ctx context.Context, n *models.Note) error
+	ListNotes(ctx context.Context) ([]*models.Note, error)
 
 	// Repository
-	GetRepository(id models.ID) (*models.Repository, error)
-	SaveRepository(r *models.Repository) error
-	ListRepositories() ([]*models.Repository, error)
+	GetRepository(ctx context.Context, id models.ID) (*models.Repository, error)
+	SaveRepository(ctx context.Context, r *models.Repository) error
+	ListRepositories(ctx context.Context) ([]*models.Repository, error)
 }

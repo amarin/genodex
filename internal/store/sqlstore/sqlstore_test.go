@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -39,12 +40,12 @@ func countRows(t *testing.T, s *Store, table string) int {
 func seedCitation(t *testing.T, s *Store) models.ID {
 	t.Helper()
 
-	if err := s.SaveSource(&models.Source{
+	if err := s.SaveSource(t.Context(), &models.Source{
 		ID: "src-1", Kind: models.SourceKindArchivalScan, Title: "МК Давыдово 1881",
 	}); err != nil {
 		t.Fatalf("save source: %v", err)
 	}
-	if err := s.SaveCitation(&models.Citation{ID: "cit-1", SourceID: "src-1", Text: "л. 12 об."}); err != nil {
+	if err := s.SaveCitation(t.Context(), &models.Citation{ID: "cit-1", SourceID: "src-1", Text: "л. 12 об."}); err != nil {
 		t.Fatalf("save citation: %v", err)
 	}
 
@@ -92,11 +93,11 @@ func TestStoreRoundTripPerson(t *testing.T) {
 		Private: true,
 	}
 
-	if err := s.SavePerson(want); err != nil {
+	if err := s.SavePerson(t.Context(), want); err != nil {
 		t.Fatalf("save person: %v", err)
 	}
 
-	got, err := s.GetPerson("p-1")
+	got, err := s.GetPerson(t.Context(), "p-1")
 	if err != nil {
 		t.Fatalf("get person: %v", err)
 	}
@@ -105,16 +106,12 @@ func TestStoreRoundTripPerson(t *testing.T) {
 	}
 }
 
-// TestStoreGetMissing фиксирует контракт «не найдено» — (nil, nil).
+// TestStoreGetMissing фиксирует контракт «не найдено» — models.ErrNotFound.
 func TestStoreGetMissing(t *testing.T) {
 	s := newStore(t)
 
-	got, err := s.GetPerson("nope")
-	if err != nil {
-		t.Fatalf("get person: %v", err)
-	}
-	if got != nil {
-		t.Fatalf("ожидался nil для отсутствующей персоны, получено %+v", got)
+	if _, err := s.GetPerson(t.Context(), "nope"); !errors.Is(err, models.ErrNotFound) {
+		t.Fatalf("GetPerson(nope) = %v, ожидалось models.ErrNotFound", err)
 	}
 }
 
@@ -127,7 +124,7 @@ func TestStoreRoundTripDivision(t *testing.T) {
 	parent := &models.AdministrativeDivision{
 		ID: "ad-parent", Name: "Московская", Type: models.AdminDivisionGovernorate,
 	}
-	if err := s.SaveAdministrativeDivision(parent); err != nil {
+	if err := s.SaveAdministrativeDivision(t.Context(), parent); err != nil {
 		t.Fatalf("save parent: %v", err)
 	}
 
@@ -154,11 +151,11 @@ func TestStoreRoundTripDivision(t *testing.T) {
 		}},
 	}
 
-	if err := s.SaveAdministrativeDivision(want); err != nil {
+	if err := s.SaveAdministrativeDivision(t.Context(), want); err != nil {
 		t.Fatalf("save division: %v", err)
 	}
 
-	got, err := s.GetAdministrativeDivision("ad-1")
+	got, err := s.GetAdministrativeDivision(t.Context(), "ad-1")
 	if err != nil {
 		t.Fatalf("get division: %v", err)
 	}
@@ -171,7 +168,7 @@ func TestStoreRoundTripDivision(t *testing.T) {
 func TestStoreRoundTripCitation(t *testing.T) {
 	s := newStore(t)
 
-	if err := s.SaveSource(&models.Source{ID: "src-1", Kind: models.SourceKindArchivalScan, Title: "МК"}); err != nil {
+	if err := s.SaveSource(t.Context(), &models.Source{ID: "src-1", Kind: models.SourceKindArchivalScan, Title: "МК"}); err != nil {
 		t.Fatalf("save source: %v", err)
 	}
 
@@ -198,11 +195,11 @@ func TestStoreRoundTripCitation(t *testing.T) {
 	}
 
 	for _, want := range cases {
-		if err := s.SaveCitation(want); err != nil {
+		if err := s.SaveCitation(t.Context(), want); err != nil {
 			t.Fatalf("save citation %s: %v", want.ID, err)
 		}
 
-		got, err := s.GetCitation(want.ID)
+		got, err := s.GetCitation(t.Context(), want.ID)
 		if err != nil {
 			t.Fatalf("get citation %s: %v", want.ID, err)
 		}
@@ -218,7 +215,7 @@ func TestStoreRoundTripEvent(t *testing.T) {
 	citID := seedCitation(t, s)
 
 	for _, id := range []models.ID{"p-1", "p-2"} {
-		if err := s.SavePerson(&models.Person{ID: id, Gender: models.Male}); err != nil {
+		if err := s.SavePerson(t.Context(), &models.Person{ID: id, Gender: models.Male}); err != nil {
 			t.Fatalf("save person %s: %v", id, err)
 		}
 	}
@@ -242,11 +239,11 @@ func TestStoreRoundTripEvent(t *testing.T) {
 		Private: true,
 	}
 
-	if err := s.SaveEvent(want); err != nil {
+	if err := s.SaveEvent(t.Context(), want); err != nil {
 		t.Fatalf("save event: %v", err)
 	}
 
-	got, err := s.GetEvent("ev-1")
+	got, err := s.GetEvent(t.Context(), "ev-1")
 	if err != nil {
 		t.Fatalf("get event: %v", err)
 	}
@@ -261,7 +258,7 @@ func TestStoreRoundTripNote(t *testing.T) {
 	citID := seedCitation(t, s)
 
 	book := &models.Note{ID: "note-book", Kind: models.NoteKindBook, Title: "Род Ивановых", Text: "# Род"}
-	if err := s.SaveNote(book); err != nil {
+	if err := s.SaveNote(t.Context(), book); err != nil {
 		t.Fatalf("save book: %v", err)
 	}
 
@@ -280,11 +277,11 @@ func TestStoreRoundTripNote(t *testing.T) {
 		Private: true,
 	}
 
-	if err := s.SaveNote(want); err != nil {
+	if err := s.SaveNote(t.Context(), want); err != nil {
 		t.Fatalf("save note: %v", err)
 	}
 
-	got, err := s.GetNote("note-ch1")
+	got, err := s.GetNote(t.Context(), "note-ch1")
 	if err != nil {
 		t.Fatalf("get note: %v", err)
 	}
@@ -292,7 +289,7 @@ func TestStoreRoundTripNote(t *testing.T) {
 		t.Fatalf("round trip note:\n want %+v\n got  %+v", want, got)
 	}
 
-	list, err := s.ListNotes()
+	list, err := s.ListNotes(t.Context())
 	if err != nil {
 		t.Fatalf("list notes: %v", err)
 	}
@@ -315,11 +312,11 @@ func TestStoreRoundTripRepository(t *testing.T) {
 		Private: false,
 	}
 
-	if err := s.SaveRepository(want); err != nil {
+	if err := s.SaveRepository(t.Context(), want); err != nil {
 		t.Fatalf("save repository: %v", err)
 	}
 
-	got, err := s.GetRepository("rep-1")
+	got, err := s.GetRepository(t.Context(), "rep-1")
 	if err != nil {
 		t.Fatalf("get repository: %v", err)
 	}
@@ -333,7 +330,7 @@ func TestStoreRoundTripRepository(t *testing.T) {
 func TestStoreRoundTripSource(t *testing.T) {
 	s := newStore(t)
 
-	if err := s.SaveRepository(&models.Repository{ID: "rep-1", Name: "ЦГА Москвы"}); err != nil {
+	if err := s.SaveRepository(t.Context(), &models.Repository{ID: "rep-1", Name: "ЦГА Москвы"}); err != nil {
 		t.Fatalf("save repository: %v", err)
 	}
 
@@ -352,11 +349,11 @@ func TestStoreRoundTripSource(t *testing.T) {
 	}
 
 	for _, want := range cases {
-		if err := s.SaveSource(want); err != nil {
+		if err := s.SaveSource(t.Context(), want); err != nil {
 			t.Fatalf("save source %s: %v", want.ID, err)
 		}
 
-		got, err := s.GetSource(want.ID)
+		got, err := s.GetSource(t.Context(), want.ID)
 		if err != nil {
 			t.Fatalf("get source %s: %v", want.ID, err)
 		}
@@ -380,12 +377,12 @@ func TestStoreListPeople(t *testing.T) {
 
 	ids := []models.ID{"p-c", "p-a", "p-b"}
 	for _, id := range ids {
-		if err := s.SavePerson(&models.Person{ID: id, Gender: models.Unknown}); err != nil {
+		if err := s.SavePerson(t.Context(), &models.Person{ID: id, Gender: models.Unknown}); err != nil {
 			t.Fatalf("save %s: %v", id, err)
 		}
 	}
 
-	list, err := s.ListPeople()
+	list, err := s.ListPeople(t.Context())
 	if err != nil {
 		t.Fatalf("list people: %v", err)
 	}
@@ -404,7 +401,7 @@ func TestStoreListPeople(t *testing.T) {
 func TestStoreSearchIndex(t *testing.T) {
 	s := newStore(t)
 
-	if err := s.SavePerson(&models.Person{
+	if err := s.SavePerson(t.Context(), &models.Person{
 		ID: "p-1",
 		Names: []models.PersonName{{
 			Surname: models.TextRef{Text: "Иванов"},
@@ -439,7 +436,7 @@ func TestStoreSearchIndex(t *testing.T) {
 	}
 
 	for _, query := range []string{"ИВАНОВ", "иванов", "Иван", "ПЕТР"} {
-		found, err := s.searchIDs("persons", query)
+		found, err := s.searchIDs(t.Context(), "persons", query)
 		if err != nil {
 			t.Fatalf("searchIDs %q: %v", query, err)
 		}
@@ -455,11 +452,11 @@ func TestStoreFKRestrict(t *testing.T) {
 	s := newStore(t)
 
 	for _, id := range []models.ID{"p-1", "p-2"} {
-		if err := s.SavePerson(&models.Person{ID: id}); err != nil {
+		if err := s.SavePerson(t.Context(), &models.Person{ID: id}); err != nil {
 			t.Fatalf("save %s: %v", id, err)
 		}
 	}
-	if err := s.SaveRelation(&models.Relation{
+	if err := s.SaveRelation(t.Context(), &models.Relation{
 		ID: "rel-1", Kind: models.RelationKindMarriage, PersonA: "p-1", PersonB: "p-2",
 		Notes: []models.TextRef{{Text: "венчание"}},
 	}); err != nil {
@@ -488,7 +485,7 @@ func TestStoreFKRestrict(t *testing.T) {
 func TestStoreCascadeDelete(t *testing.T) {
 	s := newStore(t)
 
-	if err := s.SavePerson(&models.Person{
+	if err := s.SavePerson(t.Context(), &models.Person{
 		ID:    "p-1",
 		Names: []models.PersonName{{Surname: models.TextRef{Text: "Иванов"}, Given: models.TextRef{Text: "Пётр"}}},
 		Notes: []models.TextRef{{Text: "заметка"}},
@@ -520,12 +517,12 @@ func TestStoreCount(t *testing.T) {
 	s := newStore(t)
 
 	for _, id := range []models.ID{"p-1", "p-2", "p-3"} {
-		if err := s.SavePerson(&models.Person{ID: id}); err != nil {
+		if err := s.SavePerson(t.Context(), &models.Person{ID: id}); err != nil {
 			t.Fatalf("save %s: %v", id, err)
 		}
 	}
 	// повторное сохранение — upsert, не новая строка.
-	if err := s.SavePerson(&models.Person{ID: "p-1", Gender: models.Female}); err != nil {
+	if err := s.SavePerson(t.Context(), &models.Person{ID: "p-1", Gender: models.Female}); err != nil {
 		t.Fatalf("resave: %v", err)
 	}
 
@@ -554,7 +551,7 @@ func TestStoreOrphanCleanup(t *testing.T) {
 		}},
 		Notes: []models.TextRef{{Text: "a"}, {Text: "b"}, {Text: "c"}},
 	}
-	if err := s.SavePerson(person); err != nil {
+	if err := s.SavePerson(t.Context(), person); err != nil {
 		t.Fatalf("save person: %v", err)
 	}
 
@@ -563,7 +560,7 @@ func TestStoreOrphanCleanup(t *testing.T) {
 
 	for i := 0; i < 5; i++ {
 		person.Notes = []models.TextRef{{Text: "x"}, {Text: "y"}, {Text: "z"}}
-		if err := s.SavePerson(person); err != nil {
+		if err := s.SavePerson(t.Context(), person); err != nil {
 			t.Fatalf("resave %d: %v", i, err)
 		}
 	}
@@ -578,7 +575,7 @@ func TestStoreOrphanCleanup(t *testing.T) {
 	// укорачивание списков тоже не оставляет сирот.
 	person.Notes = nil
 	person.Names = nil
-	if err := s.SavePerson(person); err != nil {
+	if err := s.SavePerson(t.Context(), person); err != nil {
 		t.Fatalf("resave empty: %v", err)
 	}
 	if got := countRows(t, s, "text_refs"); got != 0 {
@@ -591,11 +588,11 @@ func TestStoreOrphanCleanup(t *testing.T) {
 	// то же для скалярных value-колонок главной строки (events.date_id/place_id).
 	event := &models.Event{ID: "ev-1", Type: models.EventTypeBirth, Date: &since,
 		Place: &models.PlaceRef{Text: "Давыдово"}}
-	if err := s.SaveEvent(event); err != nil {
+	if err := s.SaveEvent(t.Context(), event); err != nil {
 		t.Fatalf("save event: %v", err)
 	}
 	for i := 0; i < 5; i++ {
-		if err := s.SaveEvent(event); err != nil {
+		if err := s.SaveEvent(t.Context(), event); err != nil {
 			t.Fatalf("resave event %d: %v", i, err)
 		}
 	}
@@ -611,7 +608,7 @@ func TestStoreOrphanCleanup(t *testing.T) {
 func TestStoreRoundTripArchiveChain(t *testing.T) {
 	s := newStore(t)
 
-	if err := s.SaveRepository(&models.Repository{ID: "rep-1", Name: "ЦГА Москвы"}); err != nil {
+	if err := s.SaveRepository(t.Context(), &models.Repository{ID: "rep-1", Name: "ЦГА Москвы"}); err != nil {
 		t.Fatalf("save repository: %v", err)
 	}
 
@@ -622,10 +619,10 @@ func TestStoreRoundTripArchiveChain(t *testing.T) {
 		RepositoryID: "rep-1",
 		Notes:        []models.TextRef{{Text: "оцифрован"}},
 	}
-	if err := s.SaveArchive(archive); err != nil {
+	if err := s.SaveArchive(t.Context(), archive); err != nil {
 		t.Fatalf("save archive: %v", err)
 	}
-	gotArchive, err := s.GetArchive("arc-1")
+	gotArchive, err := s.GetArchive(t.Context(), "arc-1")
 	if err != nil {
 		t.Fatalf("get archive: %v", err)
 	}
@@ -640,10 +637,10 @@ func TestStoreRoundTripArchiveChain(t *testing.T) {
 		Settlements: []models.TextRef{{Text: "Давыдово"}},
 		Notes:       []models.TextRef{{Text: "частично утрачен"}},
 	}
-	if err := s.SaveArchiveNode(node); err != nil {
+	if err := s.SaveArchiveNode(t.Context(), node); err != nil {
 		t.Fatalf("save node: %v", err)
 	}
-	gotNode, err := s.GetArchiveNode("node-1")
+	gotNode, err := s.GetArchiveNode(t.Context(), "node-1")
 	if err != nil {
 		t.Fatalf("get node: %v", err)
 	}
@@ -655,10 +652,10 @@ func TestStoreRoundTripArchiveChain(t *testing.T) {
 		ID: "doc-1", UnitID: "node-1", Title: "МК 1881", Kind: "метрическая книга",
 		Since: &since, Settlements: []models.TextRef{{Text: "Давыдово"}},
 	}
-	if err := s.SaveArchiveDocument(doc); err != nil {
+	if err := s.SaveArchiveDocument(t.Context(), doc); err != nil {
 		t.Fatalf("save doc: %v", err)
 	}
-	gotDoc, err := s.GetArchiveDocument("doc-1")
+	gotDoc, err := s.GetArchiveDocument(t.Context(), "doc-1")
 	if err != nil {
 		t.Fatalf("get doc: %v", err)
 	}
@@ -673,10 +670,10 @@ func TestStoreRoundTripArchiveChain(t *testing.T) {
 		{ID: "att-2", Kind: models.AttachmentKindPhoto, URI: "file://2.jpg", NodeID: "node-1"},
 	}
 	for _, want := range attachments {
-		if err := s.SaveAttachment(want); err != nil {
+		if err := s.SaveAttachment(t.Context(), want); err != nil {
 			t.Fatalf("save attachment %s: %v", want.ID, err)
 		}
-		got, err := s.GetAttachment(want.ID)
+		got, err := s.GetAttachment(t.Context(), want.ID)
 		if err != nil {
 			t.Fatalf("get attachment %s: %v", want.ID, err)
 		}
@@ -698,13 +695,13 @@ func TestStoreRoundTripArchiveChain(t *testing.T) {
 func TestStoreRoundTripRest(t *testing.T) {
 	s := newStore(t)
 
-	if err := s.SavePerson(&models.Person{ID: "p-1"}); err != nil {
+	if err := s.SavePerson(t.Context(), &models.Person{ID: "p-1"}); err != nil {
 		t.Fatalf("save person: %v", err)
 	}
-	if err := s.SavePerson(&models.Person{ID: "p-2"}); err != nil {
+	if err := s.SavePerson(t.Context(), &models.Person{ID: "p-2"}); err != nil {
 		t.Fatalf("save person: %v", err)
 	}
-	if err := s.SaveAdministrativeDivision(&models.AdministrativeDivision{
+	if err := s.SaveAdministrativeDivision(t.Context(), &models.AdministrativeDivision{
 		ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionDerevnya,
 	}); err != nil {
 		t.Fatalf("save division: %v", err)
@@ -717,20 +714,20 @@ func TestStoreRoundTripRest(t *testing.T) {
 		PersonA: "p-1", PersonB: "p-2", Since: &since,
 		Notes: []models.TextRef{{Text: "кум"}}, Private: true,
 	}
-	if err := s.SaveRelation(relation); err != nil {
+	if err := s.SaveRelation(t.Context(), relation); err != nil {
 		t.Fatalf("save relation: %v", err)
 	}
-	if got, err := s.GetRelation("rel-1"); err != nil || !reflect.DeepEqual(relation, got) {
+	if got, err := s.GetRelation(t.Context(), "rel-1"); err != nil || !reflect.DeepEqual(relation, got) {
 		t.Fatalf("round trip relation: err=%v\n want %+v\n got  %+v", err, relation, got)
 	}
 
 	residence := &models.Residence{
 		ID: "res-1", PersonID: "p-1", PlaceID: "ad-1", Since: &since, Note: "по ревизии",
 	}
-	if err := s.SaveResidence(residence); err != nil {
+	if err := s.SaveResidence(t.Context(), residence); err != nil {
 		t.Fatalf("save residence: %v", err)
 	}
-	if got, err := s.GetResidence("res-1"); err != nil || !reflect.DeepEqual(residence, got) {
+	if got, err := s.GetResidence(t.Context(), "res-1"); err != nil || !reflect.DeepEqual(residence, got) {
 		t.Fatalf("round trip residence: err=%v\n want %+v\n got  %+v", err, residence, got)
 	}
 
@@ -739,10 +736,10 @@ func TestStoreRoundTripRest(t *testing.T) {
 		Members: []models.TextRef{{Text: "Иванов Пётр", Ref: "p-1", Type: models.TypePerson}},
 		Notes:   []models.TextRef{{Text: "линия по отцу"}},
 	}
-	if err := s.SaveFamily(family); err != nil {
+	if err := s.SaveFamily(t.Context(), family); err != nil {
 		t.Fatalf("save family: %v", err)
 	}
-	if got, err := s.GetFamily("fam-1"); err != nil || !reflect.DeepEqual(family, got) {
+	if got, err := s.GetFamily(t.Context(), "fam-1"); err != nil || !reflect.DeepEqual(family, got) {
 		t.Fatalf("round trip family: err=%v\n want %+v\n got  %+v", err, family, got)
 	}
 
@@ -752,10 +749,10 @@ func TestStoreRoundTripRest(t *testing.T) {
 		Items:    []models.TextRef{{Text: "Иванов Пётр", Ref: "p-1", Type: models.TypePerson}},
 		Notes:    []models.TextRef{{Text: "частая фамилия"}},
 	}
-	if err := s.SaveSurname(surname); err != nil {
+	if err := s.SaveSurname(t.Context(), surname); err != nil {
 		t.Fatalf("save surname: %v", err)
 	}
-	if got, err := s.GetSurname("sur-1"); err != nil || !reflect.DeepEqual(surname, got) {
+	if got, err := s.GetSurname(t.Context(), "sur-1"); err != nil || !reflect.DeepEqual(surname, got) {
 		t.Fatalf("round trip surname: err=%v\n want %+v\n got  %+v", err, surname, got)
 	}
 
@@ -763,35 +760,35 @@ func TestStoreRoundTripRest(t *testing.T) {
 		ID: "giv-1", Canonical: "Пётр", Gender: models.MaleName,
 		Variants: []models.TextRef{{Text: "Петр"}},
 	}
-	if err := s.SaveGivenName(given); err != nil {
+	if err := s.SaveGivenName(t.Context(), given); err != nil {
 		t.Fatalf("save given name: %v", err)
 	}
-	if got, err := s.GetGivenName("giv-1"); err != nil || !reflect.DeepEqual(given, got) {
+	if got, err := s.GetGivenName(t.Context(), "giv-1"); err != nil || !reflect.DeepEqual(given, got) {
 		t.Fatalf("round trip given name: err=%v\n want %+v\n got  %+v", err, given, got)
 	}
 
 	patronymic := &models.Patronymic{ID: "pat-1", Canonical: "Сергеевич"}
-	if err := s.SavePatronymic(patronymic); err != nil {
+	if err := s.SavePatronymic(t.Context(), patronymic); err != nil {
 		t.Fatalf("save patronymic: %v", err)
 	}
-	if got, err := s.GetPatronymic("pat-1"); err != nil || !reflect.DeepEqual(patronymic, got) {
+	if got, err := s.GetPatronymic(t.Context(), "pat-1"); err != nil || !reflect.DeepEqual(patronymic, got) {
 		t.Fatalf("round trip patronymic: err=%v\n want %+v\n got  %+v", err, patronymic, got)
 	}
 
 	estate := &models.Estate{ID: "est-1", Canonical: "крестьянин",
 		Variants: []models.TextRef{{Text: "крестьяне"}}}
-	if err := s.SaveEstate(estate); err != nil {
+	if err := s.SaveEstate(t.Context(), estate); err != nil {
 		t.Fatalf("save estate: %v", err)
 	}
-	if got, err := s.GetEstate("est-1"); err != nil || !reflect.DeepEqual(estate, got) {
+	if got, err := s.GetEstate(t.Context(), "est-1"); err != nil || !reflect.DeepEqual(estate, got) {
 		t.Fatalf("round trip estate: err=%v\n want %+v\n got  %+v", err, estate, got)
 	}
 
 	title := &models.Title{ID: "tit-1", Canonical: "унтер-офицер"}
-	if err := s.SaveTitle(title); err != nil {
+	if err := s.SaveTitle(t.Context(), title); err != nil {
 		t.Fatalf("save title: %v", err)
 	}
-	if got, err := s.GetTitle("tit-1"); err != nil || !reflect.DeepEqual(title, got) {
+	if got, err := s.GetTitle(t.Context(), "tit-1"); err != nil || !reflect.DeepEqual(title, got) {
 		t.Fatalf("round trip title: err=%v\n want %+v\n got  %+v", err, title, got)
 	}
 
@@ -802,10 +799,10 @@ func TestStoreRoundTripRest(t *testing.T) {
 		Variants:    []string{"Николая Чудотворца"},
 		Notes:       []models.TextRef{{Text: "деревянная"}},
 	}
-	if err := s.SaveChurch(church); err != nil {
+	if err := s.SaveChurch(t.Context(), church); err != nil {
 		t.Fatalf("save church: %v", err)
 	}
-	if got, err := s.GetChurch("chu-1"); err != nil || !reflect.DeepEqual(church, got) {
+	if got, err := s.GetChurch(t.Context(), "chu-1"); err != nil || !reflect.DeepEqual(church, got) {
 		t.Fatalf("round trip church: err=%v\n want %+v\n got  %+v", err, church, got)
 	}
 
@@ -815,45 +812,45 @@ func TestStoreRoundTripRest(t *testing.T) {
 		Settlements: []models.TextRef{{Text: "Давыдово"}},
 		Since:       &since,
 	}
-	if err := s.SaveParish(parish); err != nil {
+	if err := s.SaveParish(t.Context(), parish); err != nil {
 		t.Fatalf("save parish: %v", err)
 	}
-	if got, err := s.GetParish("par-1"); err != nil || !reflect.DeepEqual(parish, got) {
+	if got, err := s.GetParish(t.Context(), "par-1"); err != nil || !reflect.DeepEqual(parish, got) {
 		t.Fatalf("round trip parish: err=%v\n want %+v\n got  %+v", err, parish, got)
 	}
 
 	// списки не падают и возвращают сохранённое.
-	if list, err := s.ListRelations(); err != nil || len(list) != 1 {
+	if list, err := s.ListRelations(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListRelations: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListResidences(); err != nil || len(list) != 1 {
+	if list, err := s.ListResidences(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListResidences: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListFamilies(); err != nil || len(list) != 1 {
+	if list, err := s.ListFamilies(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListFamilies: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListSurnames(); err != nil || len(list) != 1 {
+	if list, err := s.ListSurnames(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListSurnames: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListGivenNames(); err != nil || len(list) != 1 {
+	if list, err := s.ListGivenNames(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListGivenNames: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListPatronymics(); err != nil || len(list) != 1 {
+	if list, err := s.ListPatronymics(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListPatronymics: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListEstates(); err != nil || len(list) != 1 {
+	if list, err := s.ListEstates(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListEstates: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListTitles(); err != nil || len(list) != 1 {
+	if list, err := s.ListTitles(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListTitles: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListChurches(); err != nil || len(list) != 1 {
+	if list, err := s.ListChurches(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListChurches: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListParishes(); err != nil || len(list) != 1 {
+	if list, err := s.ListParishes(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListParishes: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListAdministrativeDivisions(); err != nil || len(list) != 1 {
+	if list, err := s.ListAdministrativeDivisions(t.Context()); err != nil || len(list) != 1 {
 		t.Fatalf("ListAdministrativeDivisions: err=%v len=%d", err, len(list))
 	}
 }
@@ -862,7 +859,7 @@ func TestStoreRoundTripRest(t *testing.T) {
 func TestSaveErrorNamesEntityAndID(t *testing.T) {
 	s := newStore(t)
 
-	err := s.SaveRelation(&models.Relation{
+	err := s.SaveRelation(t.Context(), &models.Relation{
 		ID: "rel-x", Kind: models.RelationKindMarriage, PersonA: "нет-1", PersonB: "нет-2",
 	})
 	if err == nil {
@@ -897,11 +894,11 @@ func TestStoreDateCalendarRoundTrip(t *testing.T) {
 			Precision: models.PrecisionDay, Modifier: models.ModifierExact,
 			Calendar: tt.calendar,
 		}
-		if err := s.SaveEvent(&models.Event{ID: tt.id, Type: models.EventTypeBirth, Date: &date}); err != nil {
+		if err := s.SaveEvent(t.Context(), &models.Event{ID: tt.id, Type: models.EventTypeBirth, Date: &date}); err != nil {
 			t.Fatalf("save event %s: %v", tt.id, err)
 		}
 
-		got, err := s.GetEvent(tt.id)
+		got, err := s.GetEvent(t.Context(), tt.id)
 		if err != nil {
 			t.Fatalf("get event %s: %v", tt.id, err)
 		}

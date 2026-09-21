@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/amarin/genodex/internal/models"
@@ -10,10 +11,10 @@ import (
 
 // SaveArchive сохраняет архив. RepositoryID — необязательная строгая ссылка:
 // пустой ID пишется как SQL NULL.
-func (s *Store) SaveArchive(a *models.Archive) (err error) {
+func (s *Store) SaveArchive(ctx context.Context, a *models.Archive) (err error) {
 	defer wrapSave(&err, "archive", a.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "archives", string(a.ID), nil, []string{"system_id"}, nil)
 		if err != nil {
 			return err
@@ -49,8 +50,8 @@ func (s *Store) SaveArchive(a *models.Archive) (err error) {
 	})
 }
 
-// GetArchive читает архив по id; не найден — (nil, nil).
-func (s *Store) GetArchive(id models.ID) (*models.Archive, error) {
+// GetArchive читает архив по id; не найден — models.ErrNotFound.
+func (s *Store) GetArchive(ctx context.Context, id models.ID) (*models.Archive, error) {
 	var (
 		a            models.Archive
 		rawID        string
@@ -58,11 +59,11 @@ func (s *Store) GetArchive(id models.ID) (*models.Archive, error) {
 		repositoryID sql.NullString
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, name, system_id, repository_id, private FROM archives WHERE id = ?`, string(id),
 	).Scan(&rawID, &a.Name, &systemID, &repositoryID, &a.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -71,15 +72,15 @@ func (s *Store) GetArchive(id models.ID) (*models.Archive, error) {
 
 	a.ID, a.RepositoryID = models.ID(rawID), idFrom(repositoryID)
 
-	if a.System, err = loadTextRefPtr(s.db, int64From(systemID)); err != nil {
+	if a.System, err = loadTextRefPtr(s.run(ctx), int64From(systemID)); err != nil {
 		return nil, err
 	}
 
-	if a.Notes, err = loadTextRefList(s.db, "archive_notes", "archive_id", string(id)); err != nil {
+	if a.Notes, err = loadTextRefList(s.run(ctx), "archive_notes", "archive_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if a.Sources, err = loadSourceLinks(s.db, models.TypeArchive, id); err != nil {
+	if a.Sources, err = loadSourceLinks(s.run(ctx), models.TypeArchive, id); err != nil {
 		return nil, err
 	}
 
@@ -87,17 +88,17 @@ func (s *Store) GetArchive(id models.ID) (*models.Archive, error) {
 }
 
 // ListArchives возвращает все архивы в порядке вставки.
-func (s *Store) ListArchives() ([]*models.Archive, error) {
-	return listEntities(s, "archives", s.GetArchive)
+func (s *Store) ListArchives(ctx context.Context) ([]*models.Archive, error) {
+	return listEntities(ctx, s, "archives", s.GetArchive)
 }
 
 // --- ArchiveNode ----------------------------------------------------------
 
 // SaveArchiveNode сохраняет узел цепочки хранения.
-func (s *Store) SaveArchiveNode(n *models.ArchiveNode) (err error) {
+func (s *Store) SaveArchiveNode(ctx context.Context, n *models.ArchiveNode) (err error) {
 	defer wrapSave(&err, "archive node", n.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "archive_nodes", string(n.ID),
 			[]string{"since_id", "until_id"}, []string{"parish_id"}, nil)
 		if err != nil {
@@ -155,8 +156,8 @@ func (s *Store) SaveArchiveNode(n *models.ArchiveNode) (err error) {
 	})
 }
 
-// GetArchiveNode читает узел по id; не найден — (nil, nil).
-func (s *Store) GetArchiveNode(id models.ID) (*models.ArchiveNode, error) {
+// GetArchiveNode читает узел по id; не найден — models.ErrNotFound.
+func (s *Store) GetArchiveNode(ctx context.Context, id models.ID) (*models.ArchiveNode, error) {
 	var (
 		n                          models.ArchiveNode
 		rawID, nodeType, archiveID string
@@ -164,13 +165,13 @@ func (s *Store) GetArchiveNode(id models.ID) (*models.ArchiveNode, error) {
 		sinceID, untilID, parishID sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, type, archive_id, parent_id, label, name, since_id, until_id, parish_id, private
 		 FROM archive_nodes WHERE id = ?`, string(id),
 	).Scan(&rawID, &nodeType, &archiveID, &parentID, &n.Label, &n.Name,
 		&sinceID, &untilID, &parishID, &n.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -180,27 +181,27 @@ func (s *Store) GetArchiveNode(id models.ID) (*models.ArchiveNode, error) {
 	n.ID, n.Type = models.ID(rawID), models.ArchiveNodeType(nodeType)
 	n.ArchiveID, n.ParentID = models.ID(archiveID), idPtrFrom(parentID)
 
-	if n.Since, err = loadDate(s.db, int64From(sinceID)); err != nil {
+	if n.Since, err = loadDate(s.run(ctx), int64From(sinceID)); err != nil {
 		return nil, err
 	}
 
-	if n.Until, err = loadDate(s.db, int64From(untilID)); err != nil {
+	if n.Until, err = loadDate(s.run(ctx), int64From(untilID)); err != nil {
 		return nil, err
 	}
 
-	if n.Parish, err = loadTextRefPtr(s.db, int64From(parishID)); err != nil {
+	if n.Parish, err = loadTextRefPtr(s.run(ctx), int64From(parishID)); err != nil {
 		return nil, err
 	}
 
-	if n.Settlements, err = loadTextRefList(s.db, "node_settlements", "node_id", string(id)); err != nil {
+	if n.Settlements, err = loadTextRefList(s.run(ctx), "node_settlements", "node_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if n.Notes, err = loadTextRefList(s.db, "node_notes", "node_id", string(id)); err != nil {
+	if n.Notes, err = loadTextRefList(s.run(ctx), "node_notes", "node_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if n.Sources, err = loadSourceLinks(s.db, models.TypeArchiveNode, id); err != nil {
+	if n.Sources, err = loadSourceLinks(s.run(ctx), models.TypeArchiveNode, id); err != nil {
 		return nil, err
 	}
 
@@ -208,17 +209,17 @@ func (s *Store) GetArchiveNode(id models.ID) (*models.ArchiveNode, error) {
 }
 
 // ListArchiveNodes возвращает все узлы в порядке вставки.
-func (s *Store) ListArchiveNodes() ([]*models.ArchiveNode, error) {
-	return listEntities(s, "archive_nodes", s.GetArchiveNode)
+func (s *Store) ListArchiveNodes(ctx context.Context) ([]*models.ArchiveNode, error) {
+	return listEntities(ctx, s, "archive_nodes", s.GetArchiveNode)
 }
 
 // --- ArchiveDocument ------------------------------------------------------
 
 // SaveArchiveDocument сохраняет документ внутри единицы учёта.
-func (s *Store) SaveArchiveDocument(d *models.ArchiveDocument) (err error) {
+func (s *Store) SaveArchiveDocument(ctx context.Context, d *models.ArchiveDocument) (err error) {
 	defer wrapSave(&err, "archive document", d.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "archive_documents", string(d.ID),
 			[]string{"since_id", "until_id"}, []string{"parish_id"}, nil)
 		if err != nil {
@@ -273,20 +274,20 @@ func (s *Store) SaveArchiveDocument(d *models.ArchiveDocument) (err error) {
 	})
 }
 
-// GetArchiveDocument читает документ по id; не найден — (nil, nil).
-func (s *Store) GetArchiveDocument(id models.ID) (*models.ArchiveDocument, error) {
+// GetArchiveDocument читает документ по id; не найден — models.ErrNotFound.
+func (s *Store) GetArchiveDocument(ctx context.Context, id models.ID) (*models.ArchiveDocument, error) {
 	var (
 		d                          models.ArchiveDocument
 		rawID, unitID              string
 		sinceID, untilID, parishID sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, unit_id, title, kind, since_id, until_id, parish_id, private
 		 FROM archive_documents WHERE id = ?`, string(id),
 	).Scan(&rawID, &unitID, &d.Title, &d.Kind, &sinceID, &untilID, &parishID, &d.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -295,27 +296,27 @@ func (s *Store) GetArchiveDocument(id models.ID) (*models.ArchiveDocument, error
 
 	d.ID, d.UnitID = models.ID(rawID), models.ID(unitID)
 
-	if d.Since, err = loadDate(s.db, int64From(sinceID)); err != nil {
+	if d.Since, err = loadDate(s.run(ctx), int64From(sinceID)); err != nil {
 		return nil, err
 	}
 
-	if d.Until, err = loadDate(s.db, int64From(untilID)); err != nil {
+	if d.Until, err = loadDate(s.run(ctx), int64From(untilID)); err != nil {
 		return nil, err
 	}
 
-	if d.Parish, err = loadTextRefPtr(s.db, int64From(parishID)); err != nil {
+	if d.Parish, err = loadTextRefPtr(s.run(ctx), int64From(parishID)); err != nil {
 		return nil, err
 	}
 
-	if d.Settlements, err = loadTextRefList(s.db, "doc_settlements", "document_id", string(id)); err != nil {
+	if d.Settlements, err = loadTextRefList(s.run(ctx), "doc_settlements", "document_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if d.Notes, err = loadTextRefList(s.db, "doc_notes", "document_id", string(id)); err != nil {
+	if d.Notes, err = loadTextRefList(s.run(ctx), "doc_notes", "document_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if d.Sources, err = loadSourceLinks(s.db, models.TypeArchiveDocument, id); err != nil {
+	if d.Sources, err = loadSourceLinks(s.run(ctx), models.TypeArchiveDocument, id); err != nil {
 		return nil, err
 	}
 
@@ -323,18 +324,18 @@ func (s *Store) GetArchiveDocument(id models.ID) (*models.ArchiveDocument, error
 }
 
 // ListArchiveDocuments возвращает все документы в порядке вставки.
-func (s *Store) ListArchiveDocuments() ([]*models.ArchiveDocument, error) {
-	return listEntities(s, "archive_documents", s.GetArchiveDocument)
+func (s *Store) ListArchiveDocuments(ctx context.Context) ([]*models.ArchiveDocument, error) {
+	return listEntities(ctx, s, "archive_documents", s.GetArchiveDocument)
 }
 
 // --- Attachment -----------------------------------------------------------
 
 // SaveAttachment сохраняет файловое вложение. DocumentID — необязательная
 // ссылка: nil/пусто пишется как SQL NULL.
-func (s *Store) SaveAttachment(a *models.Attachment) (err error) {
+func (s *Store) SaveAttachment(ctx context.Context, a *models.Attachment) (err error) {
 	defer wrapSave(&err, "attachment", a.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		if _, err := tx.Exec(
 			`INSERT INTO attachments(id, kind, uri, filename, mime, page, node_id, document_id, note, private)
 			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -355,8 +356,8 @@ func (s *Store) SaveAttachment(a *models.Attachment) (err error) {
 	})
 }
 
-// GetAttachment читает вложение по id; не найдено — (nil, nil).
-func (s *Store) GetAttachment(id models.ID) (*models.Attachment, error) {
+// GetAttachment читает вложение по id; не найдено — models.ErrNotFound.
+func (s *Store) GetAttachment(ctx context.Context, id models.ID) (*models.Attachment, error) {
 	var (
 		a           models.Attachment
 		rawID, kind string
@@ -364,13 +365,13 @@ func (s *Store) GetAttachment(id models.ID) (*models.Attachment, error) {
 		documentID  sql.NullString
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, kind, uri, filename, mime, page, node_id, document_id, note, private
 		 FROM attachments WHERE id = ?`, string(id),
 	).Scan(&rawID, &kind, &a.URI, &a.Filename, &a.MIME, &a.Page,
 		&nodeID, &documentID, &a.Note, &a.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -384,6 +385,6 @@ func (s *Store) GetAttachment(id models.ID) (*models.Attachment, error) {
 }
 
 // ListAttachments возвращает все вложения в порядке вставки.
-func (s *Store) ListAttachments() ([]*models.Attachment, error) {
-	return listEntities(s, "attachments", s.GetAttachment)
+func (s *Store) ListAttachments(ctx context.Context) ([]*models.Attachment, error) {
+	return listEntities(ctx, s, "attachments", s.GetAttachment)
 }

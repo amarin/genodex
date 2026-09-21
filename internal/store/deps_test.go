@@ -10,6 +10,7 @@
 package store
 
 import (
+	context "context"
 	reflect "reflect"
 
 	models "github.com/amarin/genodex/internal/models"
@@ -41,925 +42,925 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // GetAdministrativeDivision mocks base method.
-func (m *MockStore) GetAdministrativeDivision(id models.ID) (*models.AdministrativeDivision, error) {
+func (m *MockStore) GetAdministrativeDivision(ctx context.Context, id models.ID) (*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAdministrativeDivision", id)
+	ret := m.ctrl.Call(m, "GetAdministrativeDivision", ctx, id)
 	ret0, _ := ret[0].(*models.AdministrativeDivision)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAdministrativeDivision indicates an expected call of GetAdministrativeDivision.
-func (mr *MockStoreMockRecorder) GetAdministrativeDivision(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetAdministrativeDivision(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdministrativeDivision", reflect.TypeOf((*MockStore)(nil).GetAdministrativeDivision), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdministrativeDivision", reflect.TypeOf((*MockStore)(nil).GetAdministrativeDivision), ctx, id)
 }
 
 // GetArchive mocks base method.
-func (m *MockStore) GetArchive(id models.ID) (*models.Archive, error) {
+func (m *MockStore) GetArchive(ctx context.Context, id models.ID) (*models.Archive, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetArchive", id)
+	ret := m.ctrl.Call(m, "GetArchive", ctx, id)
 	ret0, _ := ret[0].(*models.Archive)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetArchive indicates an expected call of GetArchive.
-func (mr *MockStoreMockRecorder) GetArchive(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetArchive(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetArchive", reflect.TypeOf((*MockStore)(nil).GetArchive), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetArchive", reflect.TypeOf((*MockStore)(nil).GetArchive), ctx, id)
 }
 
 // GetArchiveDocument mocks base method.
-func (m *MockStore) GetArchiveDocument(id models.ID) (*models.ArchiveDocument, error) {
+func (m *MockStore) GetArchiveDocument(ctx context.Context, id models.ID) (*models.ArchiveDocument, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetArchiveDocument", id)
+	ret := m.ctrl.Call(m, "GetArchiveDocument", ctx, id)
 	ret0, _ := ret[0].(*models.ArchiveDocument)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetArchiveDocument indicates an expected call of GetArchiveDocument.
-func (mr *MockStoreMockRecorder) GetArchiveDocument(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetArchiveDocument(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetArchiveDocument", reflect.TypeOf((*MockStore)(nil).GetArchiveDocument), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetArchiveDocument", reflect.TypeOf((*MockStore)(nil).GetArchiveDocument), ctx, id)
 }
 
 // GetArchiveNode mocks base method.
-func (m *MockStore) GetArchiveNode(id models.ID) (*models.ArchiveNode, error) {
+func (m *MockStore) GetArchiveNode(ctx context.Context, id models.ID) (*models.ArchiveNode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetArchiveNode", id)
+	ret := m.ctrl.Call(m, "GetArchiveNode", ctx, id)
 	ret0, _ := ret[0].(*models.ArchiveNode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetArchiveNode indicates an expected call of GetArchiveNode.
-func (mr *MockStoreMockRecorder) GetArchiveNode(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetArchiveNode(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetArchiveNode", reflect.TypeOf((*MockStore)(nil).GetArchiveNode), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetArchiveNode", reflect.TypeOf((*MockStore)(nil).GetArchiveNode), ctx, id)
 }
 
 // GetAttachment mocks base method.
-func (m *MockStore) GetAttachment(id models.ID) (*models.Attachment, error) {
+func (m *MockStore) GetAttachment(ctx context.Context, id models.ID) (*models.Attachment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAttachment", id)
+	ret := m.ctrl.Call(m, "GetAttachment", ctx, id)
 	ret0, _ := ret[0].(*models.Attachment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetAttachment indicates an expected call of GetAttachment.
-func (mr *MockStoreMockRecorder) GetAttachment(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetAttachment(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttachment", reflect.TypeOf((*MockStore)(nil).GetAttachment), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAttachment", reflect.TypeOf((*MockStore)(nil).GetAttachment), ctx, id)
 }
 
 // GetChurch mocks base method.
-func (m *MockStore) GetChurch(id models.ID) (*models.Church, error) {
+func (m *MockStore) GetChurch(ctx context.Context, id models.ID) (*models.Church, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetChurch", id)
+	ret := m.ctrl.Call(m, "GetChurch", ctx, id)
 	ret0, _ := ret[0].(*models.Church)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetChurch indicates an expected call of GetChurch.
-func (mr *MockStoreMockRecorder) GetChurch(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetChurch(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChurch", reflect.TypeOf((*MockStore)(nil).GetChurch), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChurch", reflect.TypeOf((*MockStore)(nil).GetChurch), ctx, id)
 }
 
 // GetCitation mocks base method.
-func (m *MockStore) GetCitation(id models.ID) (*models.Citation, error) {
+func (m *MockStore) GetCitation(ctx context.Context, id models.ID) (*models.Citation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCitation", id)
+	ret := m.ctrl.Call(m, "GetCitation", ctx, id)
 	ret0, _ := ret[0].(*models.Citation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCitation indicates an expected call of GetCitation.
-func (mr *MockStoreMockRecorder) GetCitation(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetCitation(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCitation", reflect.TypeOf((*MockStore)(nil).GetCitation), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCitation", reflect.TypeOf((*MockStore)(nil).GetCitation), ctx, id)
 }
 
 // GetEstate mocks base method.
-func (m *MockStore) GetEstate(id models.ID) (*models.Estate, error) {
+func (m *MockStore) GetEstate(ctx context.Context, id models.ID) (*models.Estate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEstate", id)
+	ret := m.ctrl.Call(m, "GetEstate", ctx, id)
 	ret0, _ := ret[0].(*models.Estate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetEstate indicates an expected call of GetEstate.
-func (mr *MockStoreMockRecorder) GetEstate(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetEstate(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEstate", reflect.TypeOf((*MockStore)(nil).GetEstate), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEstate", reflect.TypeOf((*MockStore)(nil).GetEstate), ctx, id)
 }
 
 // GetEvent mocks base method.
-func (m *MockStore) GetEvent(id models.ID) (*models.Event, error) {
+func (m *MockStore) GetEvent(ctx context.Context, id models.ID) (*models.Event, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetEvent", id)
+	ret := m.ctrl.Call(m, "GetEvent", ctx, id)
 	ret0, _ := ret[0].(*models.Event)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetEvent indicates an expected call of GetEvent.
-func (mr *MockStoreMockRecorder) GetEvent(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetEvent(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvent", reflect.TypeOf((*MockStore)(nil).GetEvent), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEvent", reflect.TypeOf((*MockStore)(nil).GetEvent), ctx, id)
 }
 
 // GetFamily mocks base method.
-func (m *MockStore) GetFamily(id models.ID) (*models.Family, error) {
+func (m *MockStore) GetFamily(ctx context.Context, id models.ID) (*models.Family, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetFamily", id)
+	ret := m.ctrl.Call(m, "GetFamily", ctx, id)
 	ret0, _ := ret[0].(*models.Family)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetFamily indicates an expected call of GetFamily.
-func (mr *MockStoreMockRecorder) GetFamily(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetFamily(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFamily", reflect.TypeOf((*MockStore)(nil).GetFamily), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFamily", reflect.TypeOf((*MockStore)(nil).GetFamily), ctx, id)
 }
 
 // GetGivenName mocks base method.
-func (m *MockStore) GetGivenName(id models.ID) (*models.GivenName, error) {
+func (m *MockStore) GetGivenName(ctx context.Context, id models.ID) (*models.GivenName, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGivenName", id)
+	ret := m.ctrl.Call(m, "GetGivenName", ctx, id)
 	ret0, _ := ret[0].(*models.GivenName)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetGivenName indicates an expected call of GetGivenName.
-func (mr *MockStoreMockRecorder) GetGivenName(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetGivenName(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGivenName", reflect.TypeOf((*MockStore)(nil).GetGivenName), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGivenName", reflect.TypeOf((*MockStore)(nil).GetGivenName), ctx, id)
 }
 
 // GetNote mocks base method.
-func (m *MockStore) GetNote(id models.ID) (*models.Note, error) {
+func (m *MockStore) GetNote(ctx context.Context, id models.ID) (*models.Note, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetNote", id)
+	ret := m.ctrl.Call(m, "GetNote", ctx, id)
 	ret0, _ := ret[0].(*models.Note)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetNote indicates an expected call of GetNote.
-func (mr *MockStoreMockRecorder) GetNote(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetNote(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNote", reflect.TypeOf((*MockStore)(nil).GetNote), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNote", reflect.TypeOf((*MockStore)(nil).GetNote), ctx, id)
 }
 
 // GetParish mocks base method.
-func (m *MockStore) GetParish(id models.ID) (*models.Parish, error) {
+func (m *MockStore) GetParish(ctx context.Context, id models.ID) (*models.Parish, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetParish", id)
+	ret := m.ctrl.Call(m, "GetParish", ctx, id)
 	ret0, _ := ret[0].(*models.Parish)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetParish indicates an expected call of GetParish.
-func (mr *MockStoreMockRecorder) GetParish(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetParish(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetParish", reflect.TypeOf((*MockStore)(nil).GetParish), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetParish", reflect.TypeOf((*MockStore)(nil).GetParish), ctx, id)
 }
 
 // GetPatronymic mocks base method.
-func (m *MockStore) GetPatronymic(id models.ID) (*models.Patronymic, error) {
+func (m *MockStore) GetPatronymic(ctx context.Context, id models.ID) (*models.Patronymic, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPatronymic", id)
+	ret := m.ctrl.Call(m, "GetPatronymic", ctx, id)
 	ret0, _ := ret[0].(*models.Patronymic)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPatronymic indicates an expected call of GetPatronymic.
-func (mr *MockStoreMockRecorder) GetPatronymic(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetPatronymic(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPatronymic", reflect.TypeOf((*MockStore)(nil).GetPatronymic), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPatronymic", reflect.TypeOf((*MockStore)(nil).GetPatronymic), ctx, id)
 }
 
 // GetPerson mocks base method.
-func (m *MockStore) GetPerson(id models.ID) (*models.Person, error) {
+func (m *MockStore) GetPerson(ctx context.Context, id models.ID) (*models.Person, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPerson", id)
+	ret := m.ctrl.Call(m, "GetPerson", ctx, id)
 	ret0, _ := ret[0].(*models.Person)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetPerson indicates an expected call of GetPerson.
-func (mr *MockStoreMockRecorder) GetPerson(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetPerson(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerson", reflect.TypeOf((*MockStore)(nil).GetPerson), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPerson", reflect.TypeOf((*MockStore)(nil).GetPerson), ctx, id)
 }
 
 // GetRelation mocks base method.
-func (m *MockStore) GetRelation(id models.ID) (*models.Relation, error) {
+func (m *MockStore) GetRelation(ctx context.Context, id models.ID) (*models.Relation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRelation", id)
+	ret := m.ctrl.Call(m, "GetRelation", ctx, id)
 	ret0, _ := ret[0].(*models.Relation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRelation indicates an expected call of GetRelation.
-func (mr *MockStoreMockRecorder) GetRelation(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetRelation(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelation", reflect.TypeOf((*MockStore)(nil).GetRelation), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRelation", reflect.TypeOf((*MockStore)(nil).GetRelation), ctx, id)
 }
 
 // GetRepository mocks base method.
-func (m *MockStore) GetRepository(id models.ID) (*models.Repository, error) {
+func (m *MockStore) GetRepository(ctx context.Context, id models.ID) (*models.Repository, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetRepository", id)
+	ret := m.ctrl.Call(m, "GetRepository", ctx, id)
 	ret0, _ := ret[0].(*models.Repository)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetRepository indicates an expected call of GetRepository.
-func (mr *MockStoreMockRecorder) GetRepository(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetRepository(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepository", reflect.TypeOf((*MockStore)(nil).GetRepository), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRepository", reflect.TypeOf((*MockStore)(nil).GetRepository), ctx, id)
 }
 
 // GetResidence mocks base method.
-func (m *MockStore) GetResidence(id models.ID) (*models.Residence, error) {
+func (m *MockStore) GetResidence(ctx context.Context, id models.ID) (*models.Residence, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResidence", id)
+	ret := m.ctrl.Call(m, "GetResidence", ctx, id)
 	ret0, _ := ret[0].(*models.Residence)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetResidence indicates an expected call of GetResidence.
-func (mr *MockStoreMockRecorder) GetResidence(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetResidence(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResidence", reflect.TypeOf((*MockStore)(nil).GetResidence), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResidence", reflect.TypeOf((*MockStore)(nil).GetResidence), ctx, id)
 }
 
 // GetSource mocks base method.
-func (m *MockStore) GetSource(id models.ID) (*models.Source, error) {
+func (m *MockStore) GetSource(ctx context.Context, id models.ID) (*models.Source, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSource", id)
+	ret := m.ctrl.Call(m, "GetSource", ctx, id)
 	ret0, _ := ret[0].(*models.Source)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSource indicates an expected call of GetSource.
-func (mr *MockStoreMockRecorder) GetSource(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetSource(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSource", reflect.TypeOf((*MockStore)(nil).GetSource), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSource", reflect.TypeOf((*MockStore)(nil).GetSource), ctx, id)
 }
 
 // GetSurname mocks base method.
-func (m *MockStore) GetSurname(id models.ID) (*models.Surname, error) {
+func (m *MockStore) GetSurname(ctx context.Context, id models.ID) (*models.Surname, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSurname", id)
+	ret := m.ctrl.Call(m, "GetSurname", ctx, id)
 	ret0, _ := ret[0].(*models.Surname)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSurname indicates an expected call of GetSurname.
-func (mr *MockStoreMockRecorder) GetSurname(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetSurname(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSurname", reflect.TypeOf((*MockStore)(nil).GetSurname), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSurname", reflect.TypeOf((*MockStore)(nil).GetSurname), ctx, id)
 }
 
 // GetTitle mocks base method.
-func (m *MockStore) GetTitle(id models.ID) (*models.Title, error) {
+func (m *MockStore) GetTitle(ctx context.Context, id models.ID) (*models.Title, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTitle", id)
+	ret := m.ctrl.Call(m, "GetTitle", ctx, id)
 	ret0, _ := ret[0].(*models.Title)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTitle indicates an expected call of GetTitle.
-func (mr *MockStoreMockRecorder) GetTitle(id any) *gomock.Call {
+func (mr *MockStoreMockRecorder) GetTitle(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTitle", reflect.TypeOf((*MockStore)(nil).GetTitle), id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTitle", reflect.TypeOf((*MockStore)(nil).GetTitle), ctx, id)
 }
 
 // ListAdministrativeDivisions mocks base method.
-func (m *MockStore) ListAdministrativeDivisions() ([]*models.AdministrativeDivision, error) {
+func (m *MockStore) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAdministrativeDivisions")
+	ret := m.ctrl.Call(m, "ListAdministrativeDivisions", ctx)
 	ret0, _ := ret[0].([]*models.AdministrativeDivision)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAdministrativeDivisions indicates an expected call of ListAdministrativeDivisions.
-func (mr *MockStoreMockRecorder) ListAdministrativeDivisions() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListAdministrativeDivisions(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockStore)(nil).ListAdministrativeDivisions))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockStore)(nil).ListAdministrativeDivisions), ctx)
 }
 
 // ListArchiveDocuments mocks base method.
-func (m *MockStore) ListArchiveDocuments() ([]*models.ArchiveDocument, error) {
+func (m *MockStore) ListArchiveDocuments(ctx context.Context) ([]*models.ArchiveDocument, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListArchiveDocuments")
+	ret := m.ctrl.Call(m, "ListArchiveDocuments", ctx)
 	ret0, _ := ret[0].([]*models.ArchiveDocument)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListArchiveDocuments indicates an expected call of ListArchiveDocuments.
-func (mr *MockStoreMockRecorder) ListArchiveDocuments() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListArchiveDocuments(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveDocuments", reflect.TypeOf((*MockStore)(nil).ListArchiveDocuments))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveDocuments", reflect.TypeOf((*MockStore)(nil).ListArchiveDocuments), ctx)
 }
 
 // ListArchiveNodes mocks base method.
-func (m *MockStore) ListArchiveNodes() ([]*models.ArchiveNode, error) {
+func (m *MockStore) ListArchiveNodes(ctx context.Context) ([]*models.ArchiveNode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListArchiveNodes")
+	ret := m.ctrl.Call(m, "ListArchiveNodes", ctx)
 	ret0, _ := ret[0].([]*models.ArchiveNode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListArchiveNodes indicates an expected call of ListArchiveNodes.
-func (mr *MockStoreMockRecorder) ListArchiveNodes() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListArchiveNodes(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveNodes", reflect.TypeOf((*MockStore)(nil).ListArchiveNodes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveNodes", reflect.TypeOf((*MockStore)(nil).ListArchiveNodes), ctx)
 }
 
 // ListArchives mocks base method.
-func (m *MockStore) ListArchives() ([]*models.Archive, error) {
+func (m *MockStore) ListArchives(ctx context.Context) ([]*models.Archive, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListArchives")
+	ret := m.ctrl.Call(m, "ListArchives", ctx)
 	ret0, _ := ret[0].([]*models.Archive)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListArchives indicates an expected call of ListArchives.
-func (mr *MockStoreMockRecorder) ListArchives() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListArchives(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchives", reflect.TypeOf((*MockStore)(nil).ListArchives))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchives", reflect.TypeOf((*MockStore)(nil).ListArchives), ctx)
 }
 
 // ListAttachments mocks base method.
-func (m *MockStore) ListAttachments() ([]*models.Attachment, error) {
+func (m *MockStore) ListAttachments(ctx context.Context) ([]*models.Attachment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAttachments")
+	ret := m.ctrl.Call(m, "ListAttachments", ctx)
 	ret0, _ := ret[0].([]*models.Attachment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAttachments indicates an expected call of ListAttachments.
-func (mr *MockStoreMockRecorder) ListAttachments() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListAttachments(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAttachments", reflect.TypeOf((*MockStore)(nil).ListAttachments))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAttachments", reflect.TypeOf((*MockStore)(nil).ListAttachments), ctx)
 }
 
 // ListChurches mocks base method.
-func (m *MockStore) ListChurches() ([]*models.Church, error) {
+func (m *MockStore) ListChurches(ctx context.Context) ([]*models.Church, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListChurches")
+	ret := m.ctrl.Call(m, "ListChurches", ctx)
 	ret0, _ := ret[0].([]*models.Church)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListChurches indicates an expected call of ListChurches.
-func (mr *MockStoreMockRecorder) ListChurches() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListChurches(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListChurches", reflect.TypeOf((*MockStore)(nil).ListChurches))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListChurches", reflect.TypeOf((*MockStore)(nil).ListChurches), ctx)
 }
 
 // ListCitations mocks base method.
-func (m *MockStore) ListCitations() ([]*models.Citation, error) {
+func (m *MockStore) ListCitations(ctx context.Context) ([]*models.Citation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListCitations")
+	ret := m.ctrl.Call(m, "ListCitations", ctx)
 	ret0, _ := ret[0].([]*models.Citation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListCitations indicates an expected call of ListCitations.
-func (mr *MockStoreMockRecorder) ListCitations() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListCitations(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCitations", reflect.TypeOf((*MockStore)(nil).ListCitations))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCitations", reflect.TypeOf((*MockStore)(nil).ListCitations), ctx)
 }
 
 // ListEstates mocks base method.
-func (m *MockStore) ListEstates() ([]*models.Estate, error) {
+func (m *MockStore) ListEstates(ctx context.Context) ([]*models.Estate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEstates")
+	ret := m.ctrl.Call(m, "ListEstates", ctx)
 	ret0, _ := ret[0].([]*models.Estate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEstates indicates an expected call of ListEstates.
-func (mr *MockStoreMockRecorder) ListEstates() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListEstates(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEstates", reflect.TypeOf((*MockStore)(nil).ListEstates))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEstates", reflect.TypeOf((*MockStore)(nil).ListEstates), ctx)
 }
 
 // ListEvents mocks base method.
-func (m *MockStore) ListEvents() ([]*models.Event, error) {
+func (m *MockStore) ListEvents(ctx context.Context) ([]*models.Event, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEvents")
+	ret := m.ctrl.Call(m, "ListEvents", ctx)
 	ret0, _ := ret[0].([]*models.Event)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEvents indicates an expected call of ListEvents.
-func (mr *MockStoreMockRecorder) ListEvents() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListEvents(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEvents", reflect.TypeOf((*MockStore)(nil).ListEvents))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEvents", reflect.TypeOf((*MockStore)(nil).ListEvents), ctx)
 }
 
 // ListFamilies mocks base method.
-func (m *MockStore) ListFamilies() ([]*models.Family, error) {
+func (m *MockStore) ListFamilies(ctx context.Context) ([]*models.Family, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListFamilies")
+	ret := m.ctrl.Call(m, "ListFamilies", ctx)
 	ret0, _ := ret[0].([]*models.Family)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListFamilies indicates an expected call of ListFamilies.
-func (mr *MockStoreMockRecorder) ListFamilies() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListFamilies(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFamilies", reflect.TypeOf((*MockStore)(nil).ListFamilies))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFamilies", reflect.TypeOf((*MockStore)(nil).ListFamilies), ctx)
 }
 
 // ListGivenNames mocks base method.
-func (m *MockStore) ListGivenNames() ([]*models.GivenName, error) {
+func (m *MockStore) ListGivenNames(ctx context.Context) ([]*models.GivenName, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListGivenNames")
+	ret := m.ctrl.Call(m, "ListGivenNames", ctx)
 	ret0, _ := ret[0].([]*models.GivenName)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListGivenNames indicates an expected call of ListGivenNames.
-func (mr *MockStoreMockRecorder) ListGivenNames() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListGivenNames(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListGivenNames", reflect.TypeOf((*MockStore)(nil).ListGivenNames))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListGivenNames", reflect.TypeOf((*MockStore)(nil).ListGivenNames), ctx)
 }
 
 // ListNotes mocks base method.
-func (m *MockStore) ListNotes() ([]*models.Note, error) {
+func (m *MockStore) ListNotes(ctx context.Context) ([]*models.Note, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListNotes")
+	ret := m.ctrl.Call(m, "ListNotes", ctx)
 	ret0, _ := ret[0].([]*models.Note)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListNotes indicates an expected call of ListNotes.
-func (mr *MockStoreMockRecorder) ListNotes() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListNotes(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotes", reflect.TypeOf((*MockStore)(nil).ListNotes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotes", reflect.TypeOf((*MockStore)(nil).ListNotes), ctx)
 }
 
 // ListParishes mocks base method.
-func (m *MockStore) ListParishes() ([]*models.Parish, error) {
+func (m *MockStore) ListParishes(ctx context.Context) ([]*models.Parish, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListParishes")
+	ret := m.ctrl.Call(m, "ListParishes", ctx)
 	ret0, _ := ret[0].([]*models.Parish)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListParishes indicates an expected call of ListParishes.
-func (mr *MockStoreMockRecorder) ListParishes() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListParishes(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListParishes", reflect.TypeOf((*MockStore)(nil).ListParishes))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListParishes", reflect.TypeOf((*MockStore)(nil).ListParishes), ctx)
 }
 
 // ListPatronymics mocks base method.
-func (m *MockStore) ListPatronymics() ([]*models.Patronymic, error) {
+func (m *MockStore) ListPatronymics(ctx context.Context) ([]*models.Patronymic, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListPatronymics")
+	ret := m.ctrl.Call(m, "ListPatronymics", ctx)
 	ret0, _ := ret[0].([]*models.Patronymic)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListPatronymics indicates an expected call of ListPatronymics.
-func (mr *MockStoreMockRecorder) ListPatronymics() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListPatronymics(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPatronymics", reflect.TypeOf((*MockStore)(nil).ListPatronymics))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPatronymics", reflect.TypeOf((*MockStore)(nil).ListPatronymics), ctx)
 }
 
 // ListPeople mocks base method.
-func (m *MockStore) ListPeople() ([]*models.Person, error) {
+func (m *MockStore) ListPeople(ctx context.Context) ([]*models.Person, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListPeople")
+	ret := m.ctrl.Call(m, "ListPeople", ctx)
 	ret0, _ := ret[0].([]*models.Person)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListPeople indicates an expected call of ListPeople.
-func (mr *MockStoreMockRecorder) ListPeople() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListPeople(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPeople", reflect.TypeOf((*MockStore)(nil).ListPeople))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPeople", reflect.TypeOf((*MockStore)(nil).ListPeople), ctx)
 }
 
 // ListRelations mocks base method.
-func (m *MockStore) ListRelations() ([]*models.Relation, error) {
+func (m *MockStore) ListRelations(ctx context.Context) ([]*models.Relation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRelations")
+	ret := m.ctrl.Call(m, "ListRelations", ctx)
 	ret0, _ := ret[0].([]*models.Relation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRelations indicates an expected call of ListRelations.
-func (mr *MockStoreMockRecorder) ListRelations() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListRelations(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelations", reflect.TypeOf((*MockStore)(nil).ListRelations))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelations", reflect.TypeOf((*MockStore)(nil).ListRelations), ctx)
 }
 
 // ListRepositories mocks base method.
-func (m *MockStore) ListRepositories() ([]*models.Repository, error) {
+func (m *MockStore) ListRepositories(ctx context.Context) ([]*models.Repository, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRepositories")
+	ret := m.ctrl.Call(m, "ListRepositories", ctx)
 	ret0, _ := ret[0].([]*models.Repository)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRepositories indicates an expected call of ListRepositories.
-func (mr *MockStoreMockRecorder) ListRepositories() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListRepositories(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRepositories", reflect.TypeOf((*MockStore)(nil).ListRepositories))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRepositories", reflect.TypeOf((*MockStore)(nil).ListRepositories), ctx)
 }
 
 // ListResidences mocks base method.
-func (m *MockStore) ListResidences() ([]*models.Residence, error) {
+func (m *MockStore) ListResidences(ctx context.Context) ([]*models.Residence, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResidences")
+	ret := m.ctrl.Call(m, "ListResidences", ctx)
 	ret0, _ := ret[0].([]*models.Residence)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResidences indicates an expected call of ListResidences.
-func (mr *MockStoreMockRecorder) ListResidences() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListResidences(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResidences", reflect.TypeOf((*MockStore)(nil).ListResidences))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResidences", reflect.TypeOf((*MockStore)(nil).ListResidences), ctx)
 }
 
 // ListSources mocks base method.
-func (m *MockStore) ListSources() ([]*models.Source, error) {
+func (m *MockStore) ListSources(ctx context.Context) ([]*models.Source, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSources")
+	ret := m.ctrl.Call(m, "ListSources", ctx)
 	ret0, _ := ret[0].([]*models.Source)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSources indicates an expected call of ListSources.
-func (mr *MockStoreMockRecorder) ListSources() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListSources(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSources", reflect.TypeOf((*MockStore)(nil).ListSources))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSources", reflect.TypeOf((*MockStore)(nil).ListSources), ctx)
 }
 
 // ListSurnames mocks base method.
-func (m *MockStore) ListSurnames() ([]*models.Surname, error) {
+func (m *MockStore) ListSurnames(ctx context.Context) ([]*models.Surname, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSurnames")
+	ret := m.ctrl.Call(m, "ListSurnames", ctx)
 	ret0, _ := ret[0].([]*models.Surname)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSurnames indicates an expected call of ListSurnames.
-func (mr *MockStoreMockRecorder) ListSurnames() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListSurnames(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSurnames", reflect.TypeOf((*MockStore)(nil).ListSurnames))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSurnames", reflect.TypeOf((*MockStore)(nil).ListSurnames), ctx)
 }
 
 // ListTitles mocks base method.
-func (m *MockStore) ListTitles() ([]*models.Title, error) {
+func (m *MockStore) ListTitles(ctx context.Context) ([]*models.Title, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTitles")
+	ret := m.ctrl.Call(m, "ListTitles", ctx)
 	ret0, _ := ret[0].([]*models.Title)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListTitles indicates an expected call of ListTitles.
-func (mr *MockStoreMockRecorder) ListTitles() *gomock.Call {
+func (mr *MockStoreMockRecorder) ListTitles(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitles", reflect.TypeOf((*MockStore)(nil).ListTitles))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitles", reflect.TypeOf((*MockStore)(nil).ListTitles), ctx)
 }
 
 // SaveAdministrativeDivision mocks base method.
-func (m *MockStore) SaveAdministrativeDivision(a *models.AdministrativeDivision) error {
+func (m *MockStore) SaveAdministrativeDivision(ctx context.Context, a *models.AdministrativeDivision) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveAdministrativeDivision", a)
+	ret := m.ctrl.Call(m, "SaveAdministrativeDivision", ctx, a)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveAdministrativeDivision indicates an expected call of SaveAdministrativeDivision.
-func (mr *MockStoreMockRecorder) SaveAdministrativeDivision(a any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveAdministrativeDivision(ctx, a any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAdministrativeDivision", reflect.TypeOf((*MockStore)(nil).SaveAdministrativeDivision), a)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAdministrativeDivision", reflect.TypeOf((*MockStore)(nil).SaveAdministrativeDivision), ctx, a)
 }
 
 // SaveArchive mocks base method.
-func (m *MockStore) SaveArchive(a *models.Archive) error {
+func (m *MockStore) SaveArchive(ctx context.Context, a *models.Archive) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveArchive", a)
+	ret := m.ctrl.Call(m, "SaveArchive", ctx, a)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveArchive indicates an expected call of SaveArchive.
-func (mr *MockStoreMockRecorder) SaveArchive(a any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveArchive(ctx, a any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveArchive", reflect.TypeOf((*MockStore)(nil).SaveArchive), a)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveArchive", reflect.TypeOf((*MockStore)(nil).SaveArchive), ctx, a)
 }
 
 // SaveArchiveDocument mocks base method.
-func (m *MockStore) SaveArchiveDocument(d *models.ArchiveDocument) error {
+func (m *MockStore) SaveArchiveDocument(ctx context.Context, d *models.ArchiveDocument) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveArchiveDocument", d)
+	ret := m.ctrl.Call(m, "SaveArchiveDocument", ctx, d)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveArchiveDocument indicates an expected call of SaveArchiveDocument.
-func (mr *MockStoreMockRecorder) SaveArchiveDocument(d any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveArchiveDocument(ctx, d any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveArchiveDocument", reflect.TypeOf((*MockStore)(nil).SaveArchiveDocument), d)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveArchiveDocument", reflect.TypeOf((*MockStore)(nil).SaveArchiveDocument), ctx, d)
 }
 
 // SaveArchiveNode mocks base method.
-func (m *MockStore) SaveArchiveNode(n *models.ArchiveNode) error {
+func (m *MockStore) SaveArchiveNode(ctx context.Context, n *models.ArchiveNode) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveArchiveNode", n)
+	ret := m.ctrl.Call(m, "SaveArchiveNode", ctx, n)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveArchiveNode indicates an expected call of SaveArchiveNode.
-func (mr *MockStoreMockRecorder) SaveArchiveNode(n any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveArchiveNode(ctx, n any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveArchiveNode", reflect.TypeOf((*MockStore)(nil).SaveArchiveNode), n)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveArchiveNode", reflect.TypeOf((*MockStore)(nil).SaveArchiveNode), ctx, n)
 }
 
 // SaveAttachment mocks base method.
-func (m *MockStore) SaveAttachment(a *models.Attachment) error {
+func (m *MockStore) SaveAttachment(ctx context.Context, a *models.Attachment) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveAttachment", a)
+	ret := m.ctrl.Call(m, "SaveAttachment", ctx, a)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveAttachment indicates an expected call of SaveAttachment.
-func (mr *MockStoreMockRecorder) SaveAttachment(a any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveAttachment(ctx, a any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAttachment", reflect.TypeOf((*MockStore)(nil).SaveAttachment), a)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveAttachment", reflect.TypeOf((*MockStore)(nil).SaveAttachment), ctx, a)
 }
 
 // SaveChurch mocks base method.
-func (m *MockStore) SaveChurch(c *models.Church) error {
+func (m *MockStore) SaveChurch(ctx context.Context, c *models.Church) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveChurch", c)
+	ret := m.ctrl.Call(m, "SaveChurch", ctx, c)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveChurch indicates an expected call of SaveChurch.
-func (mr *MockStoreMockRecorder) SaveChurch(c any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveChurch(ctx, c any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveChurch", reflect.TypeOf((*MockStore)(nil).SaveChurch), c)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveChurch", reflect.TypeOf((*MockStore)(nil).SaveChurch), ctx, c)
 }
 
 // SaveCitation mocks base method.
-func (m *MockStore) SaveCitation(c *models.Citation) error {
+func (m *MockStore) SaveCitation(ctx context.Context, c *models.Citation) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveCitation", c)
+	ret := m.ctrl.Call(m, "SaveCitation", ctx, c)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveCitation indicates an expected call of SaveCitation.
-func (mr *MockStoreMockRecorder) SaveCitation(c any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveCitation(ctx, c any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveCitation", reflect.TypeOf((*MockStore)(nil).SaveCitation), c)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveCitation", reflect.TypeOf((*MockStore)(nil).SaveCitation), ctx, c)
 }
 
 // SaveEstate mocks base method.
-func (m *MockStore) SaveEstate(e *models.Estate) error {
+func (m *MockStore) SaveEstate(ctx context.Context, e *models.Estate) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveEstate", e)
+	ret := m.ctrl.Call(m, "SaveEstate", ctx, e)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveEstate indicates an expected call of SaveEstate.
-func (mr *MockStoreMockRecorder) SaveEstate(e any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveEstate(ctx, e any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveEstate", reflect.TypeOf((*MockStore)(nil).SaveEstate), e)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveEstate", reflect.TypeOf((*MockStore)(nil).SaveEstate), ctx, e)
 }
 
 // SaveEvent mocks base method.
-func (m *MockStore) SaveEvent(e *models.Event) error {
+func (m *MockStore) SaveEvent(ctx context.Context, e *models.Event) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveEvent", e)
+	ret := m.ctrl.Call(m, "SaveEvent", ctx, e)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveEvent indicates an expected call of SaveEvent.
-func (mr *MockStoreMockRecorder) SaveEvent(e any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveEvent(ctx, e any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveEvent", reflect.TypeOf((*MockStore)(nil).SaveEvent), e)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveEvent", reflect.TypeOf((*MockStore)(nil).SaveEvent), ctx, e)
 }
 
 // SaveFamily mocks base method.
-func (m *MockStore) SaveFamily(f *models.Family) error {
+func (m *MockStore) SaveFamily(ctx context.Context, f *models.Family) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveFamily", f)
+	ret := m.ctrl.Call(m, "SaveFamily", ctx, f)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveFamily indicates an expected call of SaveFamily.
-func (mr *MockStoreMockRecorder) SaveFamily(f any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveFamily(ctx, f any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveFamily", reflect.TypeOf((*MockStore)(nil).SaveFamily), f)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveFamily", reflect.TypeOf((*MockStore)(nil).SaveFamily), ctx, f)
 }
 
 // SaveGivenName mocks base method.
-func (m *MockStore) SaveGivenName(g *models.GivenName) error {
+func (m *MockStore) SaveGivenName(ctx context.Context, g *models.GivenName) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveGivenName", g)
+	ret := m.ctrl.Call(m, "SaveGivenName", ctx, g)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveGivenName indicates an expected call of SaveGivenName.
-func (mr *MockStoreMockRecorder) SaveGivenName(g any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveGivenName(ctx, g any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGivenName", reflect.TypeOf((*MockStore)(nil).SaveGivenName), g)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveGivenName", reflect.TypeOf((*MockStore)(nil).SaveGivenName), ctx, g)
 }
 
 // SaveNote mocks base method.
-func (m *MockStore) SaveNote(n *models.Note) error {
+func (m *MockStore) SaveNote(ctx context.Context, n *models.Note) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveNote", n)
+	ret := m.ctrl.Call(m, "SaveNote", ctx, n)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveNote indicates an expected call of SaveNote.
-func (mr *MockStoreMockRecorder) SaveNote(n any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveNote(ctx, n any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveNote", reflect.TypeOf((*MockStore)(nil).SaveNote), n)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveNote", reflect.TypeOf((*MockStore)(nil).SaveNote), ctx, n)
 }
 
 // SaveParish mocks base method.
-func (m *MockStore) SaveParish(p *models.Parish) error {
+func (m *MockStore) SaveParish(ctx context.Context, p *models.Parish) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveParish", p)
+	ret := m.ctrl.Call(m, "SaveParish", ctx, p)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveParish indicates an expected call of SaveParish.
-func (mr *MockStoreMockRecorder) SaveParish(p any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveParish(ctx, p any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveParish", reflect.TypeOf((*MockStore)(nil).SaveParish), p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveParish", reflect.TypeOf((*MockStore)(nil).SaveParish), ctx, p)
 }
 
 // SavePatronymic mocks base method.
-func (m *MockStore) SavePatronymic(p *models.Patronymic) error {
+func (m *MockStore) SavePatronymic(ctx context.Context, p *models.Patronymic) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SavePatronymic", p)
+	ret := m.ctrl.Call(m, "SavePatronymic", ctx, p)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SavePatronymic indicates an expected call of SavePatronymic.
-func (mr *MockStoreMockRecorder) SavePatronymic(p any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SavePatronymic(ctx, p any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePatronymic", reflect.TypeOf((*MockStore)(nil).SavePatronymic), p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePatronymic", reflect.TypeOf((*MockStore)(nil).SavePatronymic), ctx, p)
 }
 
 // SavePerson mocks base method.
-func (m *MockStore) SavePerson(p *models.Person) error {
+func (m *MockStore) SavePerson(ctx context.Context, p *models.Person) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SavePerson", p)
+	ret := m.ctrl.Call(m, "SavePerson", ctx, p)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SavePerson indicates an expected call of SavePerson.
-func (mr *MockStoreMockRecorder) SavePerson(p any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SavePerson(ctx, p any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePerson", reflect.TypeOf((*MockStore)(nil).SavePerson), p)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePerson", reflect.TypeOf((*MockStore)(nil).SavePerson), ctx, p)
 }
 
 // SaveRelation mocks base method.
-func (m *MockStore) SaveRelation(r *models.Relation) error {
+func (m *MockStore) SaveRelation(ctx context.Context, r *models.Relation) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveRelation", r)
+	ret := m.ctrl.Call(m, "SaveRelation", ctx, r)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveRelation indicates an expected call of SaveRelation.
-func (mr *MockStoreMockRecorder) SaveRelation(r any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveRelation(ctx, r any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveRelation", reflect.TypeOf((*MockStore)(nil).SaveRelation), r)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveRelation", reflect.TypeOf((*MockStore)(nil).SaveRelation), ctx, r)
 }
 
 // SaveRepository mocks base method.
-func (m *MockStore) SaveRepository(r *models.Repository) error {
+func (m *MockStore) SaveRepository(ctx context.Context, r *models.Repository) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveRepository", r)
+	ret := m.ctrl.Call(m, "SaveRepository", ctx, r)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveRepository indicates an expected call of SaveRepository.
-func (mr *MockStoreMockRecorder) SaveRepository(r any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveRepository(ctx, r any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveRepository", reflect.TypeOf((*MockStore)(nil).SaveRepository), r)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveRepository", reflect.TypeOf((*MockStore)(nil).SaveRepository), ctx, r)
 }
 
 // SaveResidence mocks base method.
-func (m *MockStore) SaveResidence(r *models.Residence) error {
+func (m *MockStore) SaveResidence(ctx context.Context, r *models.Residence) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveResidence", r)
+	ret := m.ctrl.Call(m, "SaveResidence", ctx, r)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveResidence indicates an expected call of SaveResidence.
-func (mr *MockStoreMockRecorder) SaveResidence(r any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveResidence(ctx, r any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveResidence", reflect.TypeOf((*MockStore)(nil).SaveResidence), r)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveResidence", reflect.TypeOf((*MockStore)(nil).SaveResidence), ctx, r)
 }
 
 // SaveSource mocks base method.
-func (m *MockStore) SaveSource(s *models.Source) error {
+func (m *MockStore) SaveSource(ctx context.Context, s *models.Source) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveSource", s)
+	ret := m.ctrl.Call(m, "SaveSource", ctx, s)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveSource indicates an expected call of SaveSource.
-func (mr *MockStoreMockRecorder) SaveSource(s any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveSource(ctx, s any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveSource", reflect.TypeOf((*MockStore)(nil).SaveSource), s)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveSource", reflect.TypeOf((*MockStore)(nil).SaveSource), ctx, s)
 }
 
 // SaveSurname mocks base method.
-func (m *MockStore) SaveSurname(s *models.Surname) error {
+func (m *MockStore) SaveSurname(ctx context.Context, s *models.Surname) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveSurname", s)
+	ret := m.ctrl.Call(m, "SaveSurname", ctx, s)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveSurname indicates an expected call of SaveSurname.
-func (mr *MockStoreMockRecorder) SaveSurname(s any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveSurname(ctx, s any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveSurname", reflect.TypeOf((*MockStore)(nil).SaveSurname), s)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveSurname", reflect.TypeOf((*MockStore)(nil).SaveSurname), ctx, s)
 }
 
 // SaveTitle mocks base method.
-func (m *MockStore) SaveTitle(t *models.Title) error {
+func (m *MockStore) SaveTitle(ctx context.Context, t *models.Title) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SaveTitle", t)
+	ret := m.ctrl.Call(m, "SaveTitle", ctx, t)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // SaveTitle indicates an expected call of SaveTitle.
-func (mr *MockStoreMockRecorder) SaveTitle(t any) *gomock.Call {
+func (mr *MockStoreMockRecorder) SaveTitle(ctx, t any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveTitle", reflect.TypeOf((*MockStore)(nil).SaveTitle), t)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveTitle", reflect.TypeOf((*MockStore)(nil).SaveTitle), ctx, t)
 }

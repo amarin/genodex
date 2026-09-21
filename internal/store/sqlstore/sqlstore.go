@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -45,14 +46,50 @@ func (s *Store) Close() error {
 	return s.st.Close()
 }
 
-// queryer — общий интерфейс чтения для *storage.DB и *sql.Tx.
+// queryer — общий интерфейс чтения для runner.
 type queryer interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args ...any) *sql.Row
 }
 
-// notFound сообщает, что строки нет. Контракт Get по всему порту: сущность
-// не найдена — (nil, nil), ошибки хранилища возвращаются как есть.
+// sqlExecutor — то, что умеют и соединение (*storage.DB), и транзакция (*sql.Tx).
+type sqlExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+// runner выполняет запросы с привязанным контекстом: помощники вызывают
+// Exec/Query/QueryRow, а отмена ctx доходит до драйвера.
+type runner struct {
+	ctx context.Context
+	x   sqlExecutor
+}
+
+func (r runner) Exec(query string, args ...any) (sql.Result, error) {
+	return r.x.ExecContext(r.ctx, query, args...)
+}
+
+func (r runner) Query(query string, args ...any) (*sql.Rows, error) {
+	return r.x.QueryContext(r.ctx, query, args...)
+}
+
+func (r runner) QueryRow(query string, args ...any) *sql.Row {
+	return r.x.QueryRowContext(r.ctx, query, args...)
+}
+
+// run возвращает runner поверх соединения без транзакции.
+func (s *Store) run(ctx context.Context) runner { return runner{ctx: ctx, x: s.db} }
+
+// inTx выполняет fn в транзакции с привязанным контекстом; ошибка — откат.
+func (s *Store) inTx(ctx context.Context, fn func(tx runner) error) error {
+	return s.db.TxContext(ctx, func(tx *sql.Tx) error {
+		return fn(runner{ctx: ctx, x: tx})
+	})
+}
+
+// notFound сообщает, что строки нет: Get превращает это в models.ErrNotFound,
+// остальные ошибки хранилища возвращаются как есть.
 func notFound(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }
@@ -204,8 +241,8 @@ func listIDs(q queryer, table string) ([]models.ID, error) {
 
 // listEntities читает список сущностей таблицы: сначала все id (курсор
 // закрыт), затем Get по каждому. Масштаб личной генеалогии это позволяет.
-func listEntities[T any](s *Store, table string, get func(models.ID) (*T, error)) ([]*T, error) {
-	ids, err := listIDs(s.db, table)
+func listEntities[T any](ctx context.Context, s *Store, table string, get func(context.Context, models.ID) (*T, error)) ([]*T, error) {
+	ids, err := listIDs(s.run(ctx), table)
 	if err != nil {
 		return nil, err
 	}
@@ -213,13 +250,13 @@ func listEntities[T any](s *Store, table string, get func(models.ID) (*T, error)
 	out := make([]*T, 0, len(ids))
 
 	for _, id := range ids {
-		v, err := get(id)
-		if err != nil {
-			return nil, err
+		v, err := get(ctx, id)
+		if errors.Is(err, models.ErrNotFound) {
+			continue // строку удалили между чтением id и Get
 		}
 
-		if v == nil {
-			continue
+		if err != nil {
+			return nil, err
 		}
 
 		out = append(out, v)

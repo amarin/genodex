@@ -18,7 +18,7 @@ func New(adminDivisions AdminDivisionRepo) *Scenario {
 
 // ListSettlements возвращает населённые пункты (единицы деления вида нас. пункта).
 func (s *Scenario) ListSettlements(ctx context.Context) ([]models.AdministrativeDivision, error) {
-	divisions, err := s.adminDivisions.ListAdministrativeDivisions()
+	divisions, err := s.adminDivisions.ListAdministrativeDivisions(ctx)
 	if err != nil {
 		return nil, err
 	}

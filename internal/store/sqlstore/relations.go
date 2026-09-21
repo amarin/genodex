@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/amarin/genodex/internal/models"
@@ -9,10 +10,10 @@ import (
 // --- Relation -------------------------------------------------------------
 
 // SaveRelation сохраняет ребро графа родства.
-func (s *Store) SaveRelation(r *models.Relation) (err error) {
+func (s *Store) SaveRelation(ctx context.Context, r *models.Relation) (err error) {
 	defer wrapSave(&err, "relation", r.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "relations", string(r.ID),
 			[]string{"since_id", "until_id"}, nil, nil)
 		if err != nil {
@@ -60,8 +61,8 @@ func (s *Store) SaveRelation(r *models.Relation) (err error) {
 	})
 }
 
-// GetRelation читает связь по id; не найдена — (nil, nil).
-func (s *Store) GetRelation(id models.ID) (*models.Relation, error) {
+// GetRelation читает связь по id; не найдена — models.ErrNotFound.
+func (s *Store) GetRelation(ctx context.Context, id models.ID) (*models.Relation, error) {
 	var (
 		r                    models.Relation
 		rawID, kind, relType string
@@ -69,12 +70,12 @@ func (s *Store) GetRelation(id models.ID) (*models.Relation, error) {
 		sinceID, untilID     sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, kind, rel_type, person_a, person_b, since_id, until_id, private
 		 FROM relations WHERE id = ?`, string(id),
 	).Scan(&rawID, &kind, &relType, &personA, &personB, &sinceID, &untilID, &r.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -85,19 +86,19 @@ func (s *Store) GetRelation(id models.ID) (*models.Relation, error) {
 	r.Kind, r.RelType = models.RelationKind(kind), models.RelationType(relType)
 	r.PersonA, r.PersonB = models.ID(personA), models.ID(personB)
 
-	if r.Since, err = loadDate(s.db, int64From(sinceID)); err != nil {
+	if r.Since, err = loadDate(s.run(ctx), int64From(sinceID)); err != nil {
 		return nil, err
 	}
 
-	if r.Until, err = loadDate(s.db, int64From(untilID)); err != nil {
+	if r.Until, err = loadDate(s.run(ctx), int64From(untilID)); err != nil {
 		return nil, err
 	}
 
-	if r.Notes, err = loadTextRefList(s.db, "relation_notes", "relation_id", string(id)); err != nil {
+	if r.Notes, err = loadTextRefList(s.run(ctx), "relation_notes", "relation_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if r.Sources, err = loadSourceLinks(s.db, models.TypeRelation, id); err != nil {
+	if r.Sources, err = loadSourceLinks(s.run(ctx), models.TypeRelation, id); err != nil {
 		return nil, err
 	}
 
@@ -105,17 +106,17 @@ func (s *Store) GetRelation(id models.ID) (*models.Relation, error) {
 }
 
 // ListRelations возвращает все связи в порядке вставки.
-func (s *Store) ListRelations() ([]*models.Relation, error) {
-	return listEntities(s, "relations", s.GetRelation)
+func (s *Store) ListRelations(ctx context.Context) ([]*models.Relation, error) {
+	return listEntities(ctx, s, "relations", s.GetRelation)
 }
 
 // --- Residence ------------------------------------------------------------
 
 // SaveResidence сохраняет проживание персоны в месте.
-func (s *Store) SaveResidence(r *models.Residence) (err error) {
+func (s *Store) SaveResidence(ctx context.Context, r *models.Residence) (err error) {
 	defer wrapSave(&err, "residence", r.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "residences", string(r.ID),
 			[]string{"since_id", "until_id"}, nil, nil)
 		if err != nil {
@@ -156,20 +157,20 @@ func (s *Store) SaveResidence(r *models.Residence) (err error) {
 	})
 }
 
-// GetResidence читает проживание по id; не найдено — (nil, nil).
-func (s *Store) GetResidence(id models.ID) (*models.Residence, error) {
+// GetResidence читает проживание по id; не найдено — models.ErrNotFound.
+func (s *Store) GetResidence(ctx context.Context, id models.ID) (*models.Residence, error) {
 	var (
 		r                        models.Residence
 		rawID, personID, placeID string
 		sinceID, untilID         sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, person_id, place_id, since_id, until_id, note, private
 		 FROM residences WHERE id = ?`, string(id),
 	).Scan(&rawID, &personID, &placeID, &sinceID, &untilID, &r.Note, &r.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -178,15 +179,15 @@ func (s *Store) GetResidence(id models.ID) (*models.Residence, error) {
 
 	r.ID, r.PersonID, r.PlaceID = models.ID(rawID), models.ID(personID), models.ID(placeID)
 
-	if r.Since, err = loadDate(s.db, int64From(sinceID)); err != nil {
+	if r.Since, err = loadDate(s.run(ctx), int64From(sinceID)); err != nil {
 		return nil, err
 	}
 
-	if r.Until, err = loadDate(s.db, int64From(untilID)); err != nil {
+	if r.Until, err = loadDate(s.run(ctx), int64From(untilID)); err != nil {
 		return nil, err
 	}
 
-	if r.Sources, err = loadSourceLinks(s.db, models.TypeResidence, id); err != nil {
+	if r.Sources, err = loadSourceLinks(s.run(ctx), models.TypeResidence, id); err != nil {
 		return nil, err
 	}
 
@@ -194,17 +195,17 @@ func (s *Store) GetResidence(id models.ID) (*models.Residence, error) {
 }
 
 // ListResidences возвращает все проживания в порядке вставки.
-func (s *Store) ListResidences() ([]*models.Residence, error) {
-	return listEntities(s, "residences", s.GetResidence)
+func (s *Store) ListResidences(ctx context.Context) ([]*models.Residence, error) {
+	return listEntities(ctx, s, "residences", s.GetResidence)
 }
 
 // --- Family ---------------------------------------------------------------
 
 // SaveFamily сохраняет род/линию.
-func (s *Store) SaveFamily(f *models.Family) (err error) {
+func (s *Store) SaveFamily(ctx context.Context, f *models.Family) (err error) {
 	defer wrapSave(&err, "family", f.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		if _, err := tx.Exec(
 			`INSERT INTO families(id, name, private) VALUES (?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET name = excluded.name, private = excluded.private`,
@@ -229,17 +230,17 @@ func (s *Store) SaveFamily(f *models.Family) (err error) {
 	})
 }
 
-// GetFamily читает род по id; не найден — (nil, nil).
-func (s *Store) GetFamily(id models.ID) (*models.Family, error) {
+// GetFamily читает род по id; не найден — models.ErrNotFound.
+func (s *Store) GetFamily(ctx context.Context, id models.ID) (*models.Family, error) {
 	var (
 		f     models.Family
 		rawID string
 	)
 
-	err := s.db.QueryRow(`SELECT id, name, private FROM families WHERE id = ?`, string(id)).
+	err := s.run(ctx).QueryRow(`SELECT id, name, private FROM families WHERE id = ?`, string(id)).
 		Scan(&rawID, &f.Name, &f.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -248,15 +249,15 @@ func (s *Store) GetFamily(id models.ID) (*models.Family, error) {
 
 	f.ID = models.ID(rawID)
 
-	if f.Members, err = loadTextRefList(s.db, "family_members", "family_id", string(id)); err != nil {
+	if f.Members, err = loadTextRefList(s.run(ctx), "family_members", "family_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if f.Notes, err = loadTextRefList(s.db, "family_notes", "family_id", string(id)); err != nil {
+	if f.Notes, err = loadTextRefList(s.run(ctx), "family_notes", "family_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if f.Sources, err = loadSourceLinks(s.db, models.TypeFamily, id); err != nil {
+	if f.Sources, err = loadSourceLinks(s.run(ctx), models.TypeFamily, id); err != nil {
 		return nil, err
 	}
 
@@ -264,6 +265,6 @@ func (s *Store) GetFamily(id models.ID) (*models.Family, error) {
 }
 
 // ListFamilies возвращает все роды в порядке вставки.
-func (s *Store) ListFamilies() ([]*models.Family, error) {
-	return listEntities(s, "families", s.GetFamily)
+func (s *Store) ListFamilies(ctx context.Context) ([]*models.Family, error) {
+	return listEntities(ctx, s, "families", s.GetFamily)
 }

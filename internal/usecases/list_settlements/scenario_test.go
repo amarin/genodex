@@ -8,12 +8,17 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
+type ctxKey struct{}
+
 type fakeRepo struct {
-	list []*models.AdministrativeDivision
-	err  error
+	list   []*models.AdministrativeDivision
+	err    error
+	gotCtx context.Context
 }
 
-func (f *fakeRepo) ListAdministrativeDivisions() ([]*models.AdministrativeDivision, error) {
+func (f *fakeRepo) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
+	f.gotCtx = ctx
+
 	return f.list, f.err
 }
 

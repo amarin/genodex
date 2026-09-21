@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/amarin/genodex/internal/models"
@@ -24,10 +25,10 @@ var personTextRefLists = []struct {
 
 // SavePerson сохраняет персону: главная строка (upsert) + перезапись имён,
 // списков TextRef, доказательств и поискового индекса.
-func (s *Store) SavePerson(p *models.Person) (err error) {
+func (s *Store) SavePerson(ctx context.Context, p *models.Person) (err error) {
 	defer wrapSave(&err, "person", p.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		if _, err := tx.Exec(
 			`INSERT INTO persons(id, gender, private) VALUES (?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET gender = excluded.gender, private = excluded.private`,
@@ -65,7 +66,7 @@ func (s *Store) SavePerson(p *models.Person) (err error) {
 
 // insertPersonName пишет одно имя персоны: три TextRef (колонки NOT NULL,
 // поэтому строка text_refs создаётся даже для пустого значения) и период.
-func insertPersonName(tx *sql.Tx, personID models.ID, n models.PersonName) error {
+func insertPersonName(tx runner, personID models.ID, n models.PersonName) error {
 	surID, err := insertTextRefRow(tx, n.Surname)
 	if err != nil {
 		return err
@@ -119,18 +120,18 @@ type personNameRow struct {
 	sinceID, untilID    sql.NullInt64
 }
 
-// GetPerson читает персону по id; не найдена — (nil, nil).
-func (s *Store) GetPerson(id models.ID) (*models.Person, error) {
+// GetPerson читает персону по id; не найдена — models.ErrNotFound.
+func (s *Store) GetPerson(ctx context.Context, id models.ID) (*models.Person, error) {
 	var (
 		p      models.Person
 		rawID  string
 		gender string
 	)
 
-	err := s.db.QueryRow(`SELECT id, gender, private FROM persons WHERE id = ?`, string(id)).
+	err := s.run(ctx).QueryRow(`SELECT id, gender, private FROM persons WHERE id = ?`, string(id)).
 		Scan(&rawID, &gender, &p.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -139,7 +140,7 @@ func (s *Store) GetPerson(id models.ID) (*models.Person, error) {
 
 	p.ID, p.Gender = models.ID(rawID), models.PersonGender(gender)
 
-	nameRows, err := scanRows(s.db, func(r *sql.Rows) (personNameRow, error) {
+	nameRows, err := scanRows(s.run(ctx), func(r *sql.Rows) (personNameRow, error) {
 		var nr personNameRow
 		err := r.Scan(&nr.typ, &nr.surID, &nr.givID, &nr.patID,
 			&nr.prefix, &nr.suffix, &nr.sinceID, &nr.untilID)
@@ -153,7 +154,7 @@ func (s *Store) GetPerson(id models.ID) (*models.Person, error) {
 	}
 
 	for _, nr := range nameRows {
-		n, err := loadPersonName(s.db, nr)
+		n, err := loadPersonName(s.run(ctx), nr)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +163,7 @@ func (s *Store) GetPerson(id models.ID) (*models.Person, error) {
 	}
 
 	for _, l := range personTextRefLists {
-		items, err := loadTextRefList(s.db, l.table, "person_id", string(id))
+		items, err := loadTextRefList(s.run(ctx), l.table, "person_id", string(id))
 		if err != nil {
 			return nil, err
 		}
@@ -170,7 +171,7 @@ func (s *Store) GetPerson(id models.ID) (*models.Person, error) {
 		l.set(&p, items)
 	}
 
-	if p.Sources, err = loadSourceLinks(s.db, models.TypePerson, id); err != nil {
+	if p.Sources, err = loadSourceLinks(s.run(ctx), models.TypePerson, id); err != nil {
 		return nil, err
 	}
 
@@ -210,6 +211,6 @@ func loadPersonName(q queryer, nr personNameRow) (models.PersonName, error) {
 }
 
 // ListPeople возвращает всех персон в порядке вставки.
-func (s *Store) ListPeople() ([]*models.Person, error) {
-	return listEntities(s, "persons", s.GetPerson)
+func (s *Store) ListPeople(ctx context.Context) ([]*models.Person, error) {
+	return listEntities(ctx, s, "persons", s.GetPerson)
 }

@@ -10,6 +10,7 @@
 package list_settlements
 
 import (
+	context "context"
 	reflect "reflect"
 
 	models "github.com/amarin/genodex/internal/models"
@@ -41,16 +42,16 @@ func (m *MockAdminDivisionRepo) EXPECT() *MockAdminDivisionRepoMockRecorder {
 }
 
 // ListAdministrativeDivisions mocks base method.
-func (m *MockAdminDivisionRepo) ListAdministrativeDivisions() ([]*models.AdministrativeDivision, error) {
+func (m *MockAdminDivisionRepo) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAdministrativeDivisions")
+	ret := m.ctrl.Call(m, "ListAdministrativeDivisions", ctx)
 	ret0, _ := ret[0].([]*models.AdministrativeDivision)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAdministrativeDivisions indicates an expected call of ListAdministrativeDivisions.
-func (mr *MockAdminDivisionRepoMockRecorder) ListAdministrativeDivisions() *gomock.Call {
+func (mr *MockAdminDivisionRepoMockRecorder) ListAdministrativeDivisions(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockAdminDivisionRepo)(nil).ListAdministrativeDivisions))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockAdminDivisionRepo)(nil).ListAdministrativeDivisions), ctx)
 }

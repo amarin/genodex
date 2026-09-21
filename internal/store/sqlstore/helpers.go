@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -26,7 +27,7 @@ type valueRefs struct {
 }
 
 // deleteValues удаляет строки общей value-таблицы по собранным id.
-func deleteValues(tx *sql.Tx, table string, ids []int64) error {
+func deleteValues(tx runner, table string, ids []int64) error {
 	for _, id := range ids {
 		if _, err := tx.Exec(`DELETE FROM `+table+` WHERE id = ?`, id); err != nil {
 			return err
@@ -38,7 +39,7 @@ func deleteValues(tx *sql.Tx, table string, ids []int64) error {
 
 // clearChildren удаляет дочерние строки владельца вместе со строками
 // value-таблиц, на которые они ссылались.
-func clearChildren(tx *sql.Tx, table, ownerCol, ownerID string, refs ...valueRefs) error {
+func clearChildren(tx runner, table, ownerCol, ownerID string, refs ...valueRefs) error {
 	collected := make([][]int64, len(refs))
 
 	for i, r := range refs {
@@ -74,7 +75,7 @@ type mainRefs struct {
 }
 
 // collectMainRefs собирает текущие value-ссылки главной строки.
-func collectMainRefs(tx *sql.Tx, table, id string, dateCols, textCols, anchorCols []string) (mainRefs, error) {
+func collectMainRefs(tx runner, table, id string, dateCols, textCols, anchorCols []string) (mainRefs, error) {
 	var (
 		m   mainRefs
 		err error
@@ -104,7 +105,7 @@ func collectMainRefs(tx *sql.Tx, table, id string, dateCols, textCols, anchorCol
 }
 
 // drop удаляет собранные ранее значения (вызывается после upsert).
-func (m mainRefs) drop(tx *sql.Tx) error {
+func (m mainRefs) drop(tx runner) error {
 	if err := deleteValues(tx, "dates", m.dates); err != nil {
 		return err
 	}
@@ -120,7 +121,7 @@ func (m mainRefs) drop(tx *sql.Tx) error {
 
 // insertTextRef пишет TextRef в text_refs и возвращает id; пустое значение —
 // 0 (колонка получит NULL, элемент списка пропускается).
-func insertTextRef(tx *sql.Tx, tr *models.TextRef) (int64, error) {
+func insertTextRef(tx runner, tr *models.TextRef) (int64, error) {
 	if tr == nil || (tr.Text == "" && tr.Ref == "") {
 		return 0, nil
 	}
@@ -130,7 +131,7 @@ func insertTextRef(tx *sql.Tx, tr *models.TextRef) (int64, error) {
 
 // insertTextRefRow пишет строку text_refs безусловно: нужно для NOT NULL
 // колонок person_names.surname_id/given_id/patronymic_id.
-func insertTextRefRow(tx *sql.Tx, tr models.TextRef) (int64, error) {
+func insertTextRefRow(tx runner, tr models.TextRef) (int64, error) {
 	res, err := tx.Exec(`INSERT INTO text_refs(text, ref, ref_type) VALUES (?, ?, ?)`,
 		tr.Text, string(tr.Ref), string(tr.Type))
 	if err != nil {
@@ -174,7 +175,7 @@ func loadTextRefPtr(q queryer, id int64) (*models.TextRef, error) {
 }
 
 // replaceTextRefList переписывает список TextRef в связной таблице.
-func replaceTextRefList(tx *sql.Tx, table, ownerCol, ownerID string, items []models.TextRef) error {
+func replaceTextRefList(tx runner, table, ownerCol, ownerID string, items []models.TextRef) error {
 	if err := clearChildren(tx, table, ownerCol, ownerID,
 		valueRefs{table: "text_refs", cols: []string{"text_ref_id"}}); err != nil {
 		return err
@@ -225,7 +226,7 @@ func loadTextRefList(q queryer, table, ownerCol, ownerID string) ([]models.TextR
 // --- dates ----------------------------------------------------------------
 
 // insertDate пишет FactDate в dates и возвращает id; nil — 0 (колонка NULL).
-func insertDate(tx *sql.Tx, d *models.FactDate) (int64, error) {
+func insertDate(tx runner, d *models.FactDate) (int64, error) {
 	if d == nil {
 		return 0, nil
 	}
@@ -269,7 +270,7 @@ func loadDate(q queryer, id int64) (*models.FactDate, error) {
 // --- anchors --------------------------------------------------------------
 
 // insertAnchor пишет Anchor в anchors (дискриминатор — колонка kind).
-func insertAnchor(tx *sql.Tx, a models.Anchor) (int64, error) {
+func insertAnchor(tx runner, a models.Anchor) (int64, error) {
 	if a == nil {
 		return 0, nil
 	}
@@ -340,7 +341,7 @@ func loadAnchor(q queryer, id int64) (models.Anchor, error) {
 
 // replaceSourceLinks переписывает доказательства сущности. Полиморфная
 // связь (target_type + target_id) чистится владельцем утверждения.
-func replaceSourceLinks(tx *sql.Tx, t models.Type, id models.ID, links []models.SourceLink) error {
+func replaceSourceLinks(tx runner, t models.Type, id models.ID, links []models.SourceLink) error {
 	if _, err := tx.Exec(
 		`DELETE FROM source_links WHERE target_type = ? AND target_id = ?`,
 		string(t), string(id),
@@ -390,7 +391,7 @@ func loadSourceLinks(q queryer, t models.Type, id models.ID) ([]models.SourceLin
 // --- списки-значения ------------------------------------------------------
 
 // replaceStringList переписывает список строк (ad_variants, church_variants).
-func replaceStringList(tx *sql.Tx, table, ownerCol, ownerID string, values []string) error {
+func replaceStringList(tx runner, table, ownerCol, ownerID string, values []string) error {
 	if err := clearChildren(tx, table, ownerCol, ownerID); err != nil {
 		return err
 	}
@@ -423,7 +424,7 @@ func loadStringList(q queryer, table, ownerCol, ownerID string) ([]string, error
 
 // replaceRenames переписывает переименования (ad_renames: текст + период
 // строками).
-func replaceRenames(tx *sql.Tx, table, ownerCol, ownerID string, rns []models.NamedPeriod) error {
+func replaceRenames(tx runner, table, ownerCol, ownerID string, rns []models.NamedPeriod) error {
 	if err := clearChildren(tx, table, ownerCol, ownerID); err != nil {
 		return err
 	}
@@ -455,7 +456,7 @@ func loadRenames(q queryer, table, ownerCol, ownerID string) ([]models.NamedPeri
 // replaceSearchIndex переписывает поисковые термины сущности. Термины
 // нормализуются в Go (storage.Normalize): нижний регистр, ё→е, без
 // диакритики; обе стороны сравнения нормализованы, коллация бинарная.
-func replaceSearchIndex(tx *sql.Tx, table string, id models.ID, fields map[string][]string) error {
+func replaceSearchIndex(tx runner, table string, id models.ID, fields map[string][]string) error {
 	if _, err := tx.Exec(
 		`DELETE FROM search_index WHERE entity_table = ? AND entity_id = ?`, table, string(id),
 	); err != nil {
@@ -487,11 +488,11 @@ func replaceSearchIndex(tx *sql.Tx, table string, id models.ID, fields map[strin
 // searchIDs возвращает id сущностей таблицы, чей термин начинается с query.
 // Запрос нормализуется здесь же — регистронезависимость без участия
 // sqlite-коллаций.
-func (s *Store) searchIDs(table, query string) ([]models.ID, error) {
+func (s *Store) searchIDs(ctx context.Context, table, query string) ([]models.ID, error) {
 	norm := storage.Normalize(query)
 	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(norm)
 
-	return scanRows(s.db, func(r *sql.Rows) (models.ID, error) {
+	return scanRows(s.run(ctx), func(r *sql.Rows) (models.ID, error) {
 		var id string
 		err := r.Scan(&id)
 

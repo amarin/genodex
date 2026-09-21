@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/amarin/genodex/internal/models"
@@ -9,10 +10,10 @@ import (
 // --- AdministrativeDivision -----------------------------------------------
 
 // SaveAdministrativeDivision сохраняет единицу административного деления.
-func (s *Store) SaveAdministrativeDivision(a *models.AdministrativeDivision) (err error) {
+func (s *Store) SaveAdministrativeDivision(ctx context.Context, a *models.AdministrativeDivision) (err error) {
 	defer wrapSave(&err, "administrative division", a.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "administrative_divisions", string(a.ID),
 			[]string{"since_id", "until_id"}, nil, nil)
 		if err != nil {
@@ -77,8 +78,8 @@ func (s *Store) SaveAdministrativeDivision(a *models.AdministrativeDivision) (er
 	})
 }
 
-// GetAdministrativeDivision читает единицу деления по id; нет — (nil, nil).
-func (s *Store) GetAdministrativeDivision(id models.ID) (*models.AdministrativeDivision, error) {
+// GetAdministrativeDivision читает единицу деления по id; нет — models.ErrNotFound.
+func (s *Store) GetAdministrativeDivision(ctx context.Context, id models.ID) (*models.AdministrativeDivision, error) {
 	var (
 		a                models.AdministrativeDivision
 		rawID, divType   string
@@ -86,12 +87,12 @@ func (s *Store) GetAdministrativeDivision(id models.ID) (*models.AdministrativeD
 		sinceID, untilID sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, name, type, parent_id, since_id, until_id
 		 FROM administrative_divisions WHERE id = ?`, string(id),
 	).Scan(&rawID, &a.Name, &divType, &parentID, &sinceID, &untilID)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -101,35 +102,35 @@ func (s *Store) GetAdministrativeDivision(id models.ID) (*models.AdministrativeD
 	a.ID, a.Type = models.ID(rawID), models.AdminDivisionType(divType)
 	a.ParentID = idPtrFrom(parentID)
 
-	if a.Since, err = loadDate(s.db, int64From(sinceID)); err != nil {
+	if a.Since, err = loadDate(s.run(ctx), int64From(sinceID)); err != nil {
 		return nil, err
 	}
 
-	if a.Until, err = loadDate(s.db, int64From(untilID)); err != nil {
+	if a.Until, err = loadDate(s.run(ctx), int64From(untilID)); err != nil {
 		return nil, err
 	}
 
-	if a.Items, err = loadTextRefList(s.db, "ad_items", "ad_id", string(id)); err != nil {
+	if a.Items, err = loadTextRefList(s.run(ctx), "ad_items", "ad_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if a.Variants, err = loadStringList(s.db, "ad_variants", "ad_id", string(id)); err != nil {
+	if a.Variants, err = loadStringList(s.run(ctx), "ad_variants", "ad_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if a.Renames, err = loadRenames(s.db, "ad_renames", "ad_id", string(id)); err != nil {
+	if a.Renames, err = loadRenames(s.run(ctx), "ad_renames", "ad_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if a.Successors, err = loadTextRefList(s.db, "ad_successors", "ad_id", string(id)); err != nil {
+	if a.Successors, err = loadTextRefList(s.run(ctx), "ad_successors", "ad_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if a.Notes, err = loadTextRefList(s.db, "ad_notes", "ad_id", string(id)); err != nil {
+	if a.Notes, err = loadTextRefList(s.run(ctx), "ad_notes", "ad_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if a.Sources, err = loadSourceLinks(s.db, models.TypeAdministrativeDivision, id); err != nil {
+	if a.Sources, err = loadSourceLinks(s.run(ctx), models.TypeAdministrativeDivision, id); err != nil {
 		return nil, err
 	}
 
@@ -137,17 +138,17 @@ func (s *Store) GetAdministrativeDivision(id models.ID) (*models.AdministrativeD
 }
 
 // ListAdministrativeDivisions возвращает все единицы деления.
-func (s *Store) ListAdministrativeDivisions() ([]*models.AdministrativeDivision, error) {
-	return listEntities(s, "administrative_divisions", s.GetAdministrativeDivision)
+func (s *Store) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
+	return listEntities(ctx, s, "administrative_divisions", s.GetAdministrativeDivision)
 }
 
 // --- Church ---------------------------------------------------------------
 
 // SaveChurch сохраняет церковь.
-func (s *Store) SaveChurch(c *models.Church) (err error) {
+func (s *Store) SaveChurch(ctx context.Context, c *models.Church) (err error) {
 	defer wrapSave(&err, "church", c.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "churches", string(c.ID), nil, []string{"parish_id"}, nil)
 		if err != nil {
 			return err
@@ -192,18 +193,18 @@ func (s *Store) SaveChurch(c *models.Church) (err error) {
 	})
 }
 
-// GetChurch читает церковь по id; не найдена — (nil, nil).
-func (s *Store) GetChurch(id models.ID) (*models.Church, error) {
+// GetChurch читает церковь по id; не найдена — models.ErrNotFound.
+func (s *Store) GetChurch(ctx context.Context, id models.ID) (*models.Church, error) {
 	var (
 		c        models.Church
 		rawID    string
 		parishID sql.NullInt64
 	)
 
-	err := s.db.QueryRow(`SELECT id, name, parish_id FROM churches WHERE id = ?`, string(id)).
+	err := s.run(ctx).QueryRow(`SELECT id, name, parish_id FROM churches WHERE id = ?`, string(id)).
 		Scan(&rawID, &c.Name, &parishID)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -212,23 +213,23 @@ func (s *Store) GetChurch(id models.ID) (*models.Church, error) {
 
 	c.ID = models.ID(rawID)
 
-	if c.Parish, err = loadTextRefPtr(s.db, int64From(parishID)); err != nil {
+	if c.Parish, err = loadTextRefPtr(s.run(ctx), int64From(parishID)); err != nil {
 		return nil, err
 	}
 
-	if c.Settlements, err = loadTextRefList(s.db, "church_settlements", "church_id", string(id)); err != nil {
+	if c.Settlements, err = loadTextRefList(s.run(ctx), "church_settlements", "church_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if c.Variants, err = loadStringList(s.db, "church_variants", "church_id", string(id)); err != nil {
+	if c.Variants, err = loadStringList(s.run(ctx), "church_variants", "church_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if c.Notes, err = loadTextRefList(s.db, "church_notes", "church_id", string(id)); err != nil {
+	if c.Notes, err = loadTextRefList(s.run(ctx), "church_notes", "church_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if c.Sources, err = loadSourceLinks(s.db, models.TypeChurch, id); err != nil {
+	if c.Sources, err = loadSourceLinks(s.run(ctx), models.TypeChurch, id); err != nil {
 		return nil, err
 	}
 
@@ -236,17 +237,17 @@ func (s *Store) GetChurch(id models.ID) (*models.Church, error) {
 }
 
 // ListChurches возвращает все церкви в порядке вставки.
-func (s *Store) ListChurches() ([]*models.Church, error) {
-	return listEntities(s, "churches", s.GetChurch)
+func (s *Store) ListChurches(ctx context.Context) ([]*models.Church, error) {
+	return listEntities(ctx, s, "churches", s.GetChurch)
 }
 
 // --- Parish ---------------------------------------------------------------
 
 // SaveParish сохраняет приход.
-func (s *Store) SaveParish(p *models.Parish) (err error) {
+func (s *Store) SaveParish(ctx context.Context, p *models.Parish) (err error) {
 	defer wrapSave(&err, "parish", p.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "parishes", string(p.ID),
 			[]string{"since_id", "until_id"}, []string{"church_id"}, nil)
 		if err != nil {
@@ -297,8 +298,8 @@ func (s *Store) SaveParish(p *models.Parish) (err error) {
 	})
 }
 
-// GetParish читает приход по id; не найден — (nil, nil).
-func (s *Store) GetParish(id models.ID) (*models.Parish, error) {
+// GetParish читает приход по id; не найден — models.ErrNotFound.
+func (s *Store) GetParish(ctx context.Context, id models.ID) (*models.Parish, error) {
 	var (
 		p                models.Parish
 		rawID            string
@@ -306,11 +307,11 @@ func (s *Store) GetParish(id models.ID) (*models.Parish, error) {
 		sinceID, untilID sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, name, church_id, since_id, until_id FROM parishes WHERE id = ?`, string(id),
 	).Scan(&rawID, &p.Name, &churchID, &sinceID, &untilID)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -319,27 +320,27 @@ func (s *Store) GetParish(id models.ID) (*models.Parish, error) {
 
 	p.ID = models.ID(rawID)
 
-	if p.Church, err = loadTextRefPtr(s.db, int64From(churchID)); err != nil {
+	if p.Church, err = loadTextRefPtr(s.run(ctx), int64From(churchID)); err != nil {
 		return nil, err
 	}
 
-	if p.Settlements, err = loadTextRefList(s.db, "parish_settlements", "parish_id", string(id)); err != nil {
+	if p.Settlements, err = loadTextRefList(s.run(ctx), "parish_settlements", "parish_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if p.Since, err = loadDate(s.db, int64From(sinceID)); err != nil {
+	if p.Since, err = loadDate(s.run(ctx), int64From(sinceID)); err != nil {
 		return nil, err
 	}
 
-	if p.Until, err = loadDate(s.db, int64From(untilID)); err != nil {
+	if p.Until, err = loadDate(s.run(ctx), int64From(untilID)); err != nil {
 		return nil, err
 	}
 
-	if p.Notes, err = loadTextRefList(s.db, "parish_notes", "parish_id", string(id)); err != nil {
+	if p.Notes, err = loadTextRefList(s.run(ctx), "parish_notes", "parish_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if p.Sources, err = loadSourceLinks(s.db, models.TypeParish, id); err != nil {
+	if p.Sources, err = loadSourceLinks(s.run(ctx), models.TypeParish, id); err != nil {
 		return nil, err
 	}
 
@@ -347,6 +348,6 @@ func (s *Store) GetParish(id models.ID) (*models.Parish, error) {
 }
 
 // ListParishes возвращает все приходы в порядке вставки.
-func (s *Store) ListParishes() ([]*models.Parish, error) {
-	return listEntities(s, "parishes", s.GetParish)
+func (s *Store) ListParishes(ctx context.Context) ([]*models.Parish, error) {
+	return listEntities(ctx, s, "parishes", s.GetParish)
 }

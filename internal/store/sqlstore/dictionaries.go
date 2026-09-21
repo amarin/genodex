@@ -1,7 +1,7 @@
 package sqlstore
 
 import (
-	"database/sql"
+	"context"
 	"strings"
 
 	"github.com/amarin/genodex/internal/models"
@@ -46,7 +46,7 @@ type dictValue struct {
 
 // saveDictionary пишет словарную запись: upsert главной строки, перезапись
 // трёх списков и поискового индекса (canonical + тексты вариантов).
-func (s *Store) saveDictionary(spec dictSpec, v dictValue) error {
+func (s *Store) saveDictionary(ctx context.Context, spec dictSpec, v dictValue) error {
 	cols := append([]string{"id"}, spec.cols...)
 	set := make([]string, 0, len(spec.cols))
 
@@ -69,7 +69,7 @@ func (s *Store) saveDictionary(spec dictSpec, v dictValue) error {
 		terms = append(terms, variant.Text)
 	}
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		if _, err := tx.Exec(
 			`INSERT INTO `+spec.table+`(`+strings.Join(cols, ", ")+`) VALUES (`+placeholders+`)
 			 ON CONFLICT(id) DO UPDATE SET `+strings.Join(set, ", "), args...,
@@ -88,8 +88,8 @@ func (s *Store) saveDictionary(spec dictSpec, v dictValue) error {
 }
 
 // getDictionary читает скалярные колонки словарной записи и три списка;
-// found=false — записи нет.
-func (s *Store) getDictionary(spec dictSpec, id models.ID, dest ...*string) (dictValue, bool, error) {
+// записи нет — models.ErrNotFound.
+func (s *Store) getDictionary(ctx context.Context, spec dictSpec, id models.ID, dest ...*string) (dictValue, error) {
 	var v dictValue
 
 	ptrs := make([]any, 0, len(dest))
@@ -97,15 +97,15 @@ func (s *Store) getDictionary(spec dictSpec, id models.ID, dest ...*string) (dic
 		ptrs = append(ptrs, d)
 	}
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT `+strings.Join(spec.cols, ", ")+` FROM `+spec.table+` WHERE id = ?`, string(id),
 	).Scan(ptrs...)
 	if notFound(err) {
-		return v, false, nil
+		return v, models.ErrNotFound
 	}
 
 	if err != nil {
-		return v, false, err
+		return v, err
 	}
 
 	v.id = id
@@ -114,9 +114,9 @@ func (s *Store) getDictionary(spec dictSpec, id models.ID, dest ...*string) (dic
 	out := [3][]models.TextRef{}
 
 	for i, table := range lists {
-		items, err := loadTextRefList(s.db, table, spec.ownerCol, string(id))
+		items, err := loadTextRefList(s.run(ctx), table, spec.ownerCol, string(id))
 		if err != nil {
-			return v, false, err
+			return v, err
 		}
 
 		out[i] = items
@@ -124,27 +124,27 @@ func (s *Store) getDictionary(spec dictSpec, id models.ID, dest ...*string) (dic
 
 	v.variants, v.items, v.notes = out[0], out[1], out[2]
 
-	return v, true, nil
+	return v, nil
 }
 
 // --- Surname --------------------------------------------------------------
 
 // SaveSurname сохраняет словарную запись фамилии.
-func (s *Store) SaveSurname(v *models.Surname) (err error) {
+func (s *Store) SaveSurname(ctx context.Context, v *models.Surname) (err error) {
 	defer wrapSave(&err, "surname", v.ID)
 
-	return s.saveDictionary(surnameSpec, dictValue{
+	return s.saveDictionary(ctx, surnameSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
 	})
 }
 
-// GetSurname читает фамилию по id; не найдена — (nil, nil).
-func (s *Store) GetSurname(id models.ID) (*models.Surname, error) {
+// GetSurname читает фамилию по id; не найдена — models.ErrNotFound.
+func (s *Store) GetSurname(ctx context.Context, id models.ID) (*models.Surname, error) {
 	var canonical string
 
-	v, ok, err := s.getDictionary(surnameSpec, id, &canonical)
-	if err != nil || !ok {
+	v, err := s.getDictionary(ctx, surnameSpec, id, &canonical)
+	if err != nil {
 		return nil, err
 	}
 
@@ -155,28 +155,28 @@ func (s *Store) GetSurname(id models.ID) (*models.Surname, error) {
 }
 
 // ListSurnames возвращает все фамилии в порядке вставки.
-func (s *Store) ListSurnames() ([]*models.Surname, error) {
-	return listEntities(s, "surnames", s.GetSurname)
+func (s *Store) ListSurnames(ctx context.Context) ([]*models.Surname, error) {
+	return listEntities(ctx, s, "surnames", s.GetSurname)
 }
 
 // --- GivenName ------------------------------------------------------------
 
 // SaveGivenName сохраняет словарную запись имени.
-func (s *Store) SaveGivenName(v *models.GivenName) (err error) {
+func (s *Store) SaveGivenName(ctx context.Context, v *models.GivenName) (err error) {
 	defer wrapSave(&err, "given name", v.ID)
 
-	return s.saveDictionary(givenNameSpec, dictValue{
+	return s.saveDictionary(ctx, givenNameSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical, string(v.Gender)},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
 	})
 }
 
-// GetGivenName читает имя по id; не найдено — (nil, nil).
-func (s *Store) GetGivenName(id models.ID) (*models.GivenName, error) {
+// GetGivenName читает имя по id; не найдено — models.ErrNotFound.
+func (s *Store) GetGivenName(ctx context.Context, id models.ID) (*models.GivenName, error) {
 	var canonical, gender string
 
-	v, ok, err := s.getDictionary(givenNameSpec, id, &canonical, &gender)
-	if err != nil || !ok {
+	v, err := s.getDictionary(ctx, givenNameSpec, id, &canonical, &gender)
+	if err != nil {
 		return nil, err
 	}
 
@@ -187,28 +187,28 @@ func (s *Store) GetGivenName(id models.ID) (*models.GivenName, error) {
 }
 
 // ListGivenNames возвращает все имена в порядке вставки.
-func (s *Store) ListGivenNames() ([]*models.GivenName, error) {
-	return listEntities(s, "given_names", s.GetGivenName)
+func (s *Store) ListGivenNames(ctx context.Context) ([]*models.GivenName, error) {
+	return listEntities(ctx, s, "given_names", s.GetGivenName)
 }
 
 // --- Patronymic -----------------------------------------------------------
 
 // SavePatronymic сохраняет словарную запись отчества.
-func (s *Store) SavePatronymic(v *models.Patronymic) (err error) {
+func (s *Store) SavePatronymic(ctx context.Context, v *models.Patronymic) (err error) {
 	defer wrapSave(&err, "patronymic", v.ID)
 
-	return s.saveDictionary(patronymicSpec, dictValue{
+	return s.saveDictionary(ctx, patronymicSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
 	})
 }
 
-// GetPatronymic читает отчество по id; не найдено — (nil, nil).
-func (s *Store) GetPatronymic(id models.ID) (*models.Patronymic, error) {
+// GetPatronymic читает отчество по id; не найдено — models.ErrNotFound.
+func (s *Store) GetPatronymic(ctx context.Context, id models.ID) (*models.Patronymic, error) {
 	var canonical string
 
-	v, ok, err := s.getDictionary(patronymicSpec, id, &canonical)
-	if err != nil || !ok {
+	v, err := s.getDictionary(ctx, patronymicSpec, id, &canonical)
+	if err != nil {
 		return nil, err
 	}
 
@@ -219,28 +219,28 @@ func (s *Store) GetPatronymic(id models.ID) (*models.Patronymic, error) {
 }
 
 // ListPatronymics возвращает все отчества в порядке вставки.
-func (s *Store) ListPatronymics() ([]*models.Patronymic, error) {
-	return listEntities(s, "patronymics", s.GetPatronymic)
+func (s *Store) ListPatronymics(ctx context.Context) ([]*models.Patronymic, error) {
+	return listEntities(ctx, s, "patronymics", s.GetPatronymic)
 }
 
 // --- Estate ---------------------------------------------------------------
 
 // SaveEstate сохраняет словарную запись сословия.
-func (s *Store) SaveEstate(v *models.Estate) (err error) {
+func (s *Store) SaveEstate(ctx context.Context, v *models.Estate) (err error) {
 	defer wrapSave(&err, "estate", v.ID)
 
-	return s.saveDictionary(estateSpec, dictValue{
+	return s.saveDictionary(ctx, estateSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
 	})
 }
 
-// GetEstate читает сословие по id; не найдено — (nil, nil).
-func (s *Store) GetEstate(id models.ID) (*models.Estate, error) {
+// GetEstate читает сословие по id; не найдено — models.ErrNotFound.
+func (s *Store) GetEstate(ctx context.Context, id models.ID) (*models.Estate, error) {
 	var canonical string
 
-	v, ok, err := s.getDictionary(estateSpec, id, &canonical)
-	if err != nil || !ok {
+	v, err := s.getDictionary(ctx, estateSpec, id, &canonical)
+	if err != nil {
 		return nil, err
 	}
 
@@ -251,28 +251,28 @@ func (s *Store) GetEstate(id models.ID) (*models.Estate, error) {
 }
 
 // ListEstates возвращает все сословия в порядке вставки.
-func (s *Store) ListEstates() ([]*models.Estate, error) {
-	return listEntities(s, "estates", s.GetEstate)
+func (s *Store) ListEstates(ctx context.Context) ([]*models.Estate, error) {
+	return listEntities(ctx, s, "estates", s.GetEstate)
 }
 
 // --- Title ----------------------------------------------------------------
 
 // SaveTitle сохраняет словарную запись звания/титула.
-func (s *Store) SaveTitle(v *models.Title) (err error) {
+func (s *Store) SaveTitle(ctx context.Context, v *models.Title) (err error) {
 	defer wrapSave(&err, "title", v.ID)
 
-	return s.saveDictionary(titleSpec, dictValue{
+	return s.saveDictionary(ctx, titleSpec, dictValue{
 		id: v.ID, vals: []any{v.Canonical},
 		variants: v.Variants, items: v.Items, notes: v.Notes,
 	})
 }
 
-// GetTitle читает звание по id; не найдено — (nil, nil).
-func (s *Store) GetTitle(id models.ID) (*models.Title, error) {
+// GetTitle читает звание по id; не найдено — models.ErrNotFound.
+func (s *Store) GetTitle(ctx context.Context, id models.ID) (*models.Title, error) {
 	var canonical string
 
-	v, ok, err := s.getDictionary(titleSpec, id, &canonical)
-	if err != nil || !ok {
+	v, err := s.getDictionary(ctx, titleSpec, id, &canonical)
+	if err != nil {
 		return nil, err
 	}
 
@@ -283,6 +283,6 @@ func (s *Store) GetTitle(id models.ID) (*models.Title, error) {
 }
 
 // ListTitles возвращает все звания в порядке вставки.
-func (s *Store) ListTitles() ([]*models.Title, error) {
-	return listEntities(s, "titles", s.GetTitle)
+func (s *Store) ListTitles(ctx context.Context) ([]*models.Title, error) {
+	return listEntities(ctx, s, "titles", s.GetTitle)
 }

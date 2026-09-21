@@ -1,6 +1,7 @@
 package sqlstore
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/amarin/genodex/internal/models"
@@ -9,10 +10,10 @@ import (
 // --- Event ----------------------------------------------------------------
 
 // SaveEvent сохраняет событие вместе с коллекцией участников.
-func (s *Store) SaveEvent(e *models.Event) (err error) {
+func (s *Store) SaveEvent(ctx context.Context, e *models.Event) (err error) {
 	defer wrapSave(&err, "event", e.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "events", string(e.ID),
 			[]string{"date_id"}, []string{"place_id"}, nil)
 		if err != nil {
@@ -91,19 +92,19 @@ func textRefToPlaceRef(tr *models.TextRef) *models.PlaceRef {
 	return &models.PlaceRef{Text: tr.Text, Ref: tr.Ref, Type: tr.Type}
 }
 
-// GetEvent читает событие по id; не найдено — (nil, nil).
-func (s *Store) GetEvent(id models.ID) (*models.Event, error) {
+// GetEvent читает событие по id; не найдено — models.ErrNotFound.
+func (s *Store) GetEvent(ctx context.Context, id models.ID) (*models.Event, error) {
 	var (
 		e                models.Event
 		rawID, eventType string
 		dateID, placeID  sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, type, date_id, place_id, private FROM events WHERE id = ?`, string(id),
 	).Scan(&rawID, &eventType, &dateID, &placeID, &e.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -112,26 +113,26 @@ func (s *Store) GetEvent(id models.ID) (*models.Event, error) {
 
 	e.ID, e.Type = models.ID(rawID), models.EventType(eventType)
 
-	if e.Date, err = loadDate(s.db, int64From(dateID)); err != nil {
+	if e.Date, err = loadDate(s.run(ctx), int64From(dateID)); err != nil {
 		return nil, err
 	}
 
-	place, err := loadTextRefPtr(s.db, int64From(placeID))
+	place, err := loadTextRefPtr(s.run(ctx), int64From(placeID))
 	if err != nil {
 		return nil, err
 	}
 
 	e.Place = textRefToPlaceRef(place)
 
-	if e.Participants, err = loadParticipants(s.db, id); err != nil {
+	if e.Participants, err = loadParticipants(s.run(ctx), id); err != nil {
 		return nil, err
 	}
 
-	if e.Sources, err = loadSourceLinks(s.db, models.TypeEvent, id); err != nil {
+	if e.Sources, err = loadSourceLinks(s.run(ctx), models.TypeEvent, id); err != nil {
 		return nil, err
 	}
 
-	if e.Notes, err = loadTextRefList(s.db, "event_notes", "event_id", string(id)); err != nil {
+	if e.Notes, err = loadTextRefList(s.run(ctx), "event_notes", "event_id", string(id)); err != nil {
 		return nil, err
 	}
 
@@ -159,18 +160,18 @@ func loadParticipants(q queryer, id models.ID) ([]models.EventParticipant, error
 }
 
 // ListEvents возвращает все события в порядке вставки.
-func (s *Store) ListEvents() ([]*models.Event, error) {
-	return listEntities(s, "events", s.GetEvent)
+func (s *Store) ListEvents(ctx context.Context) ([]*models.Event, error) {
+	return listEntities(ctx, s, "events", s.GetEvent)
 }
 
 // --- Source ---------------------------------------------------------------
 
 // SaveSource сохраняет источник. RepositoryID — необязательная строгая
 // ссылка: пустой ID пишется как SQL NULL (иначе FK RESTRICT отвергнет вставку).
-func (s *Store) SaveSource(src *models.Source) (err error) {
+func (s *Store) SaveSource(ctx context.Context, src *models.Source) (err error) {
 	defer wrapSave(&err, "source", src.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "sources", string(src.ID), []string{"date_id"}, nil, nil)
 		if err != nil {
 			return err
@@ -210,8 +211,8 @@ func (s *Store) SaveSource(src *models.Source) (err error) {
 	})
 }
 
-// GetSource читает источник по id; не найден — (nil, nil).
-func (s *Store) GetSource(id models.ID) (*models.Source, error) {
+// GetSource читает источник по id; не найден — models.ErrNotFound.
+func (s *Store) GetSource(ctx context.Context, id models.ID) (*models.Source, error) {
 	var (
 		src              models.Source
 		rawID, kind, rel string
@@ -219,12 +220,12 @@ func (s *Store) GetSource(id models.ID) (*models.Source, error) {
 		repositoryID     sql.NullString
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, kind, title, author, date_id, reliability, repository_id, private
 		 FROM sources WHERE id = ?`, string(id),
 	).Scan(&rawID, &kind, &src.Title, &src.Author, &dateID, &rel, &repositoryID, &src.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -235,11 +236,11 @@ func (s *Store) GetSource(id models.ID) (*models.Source, error) {
 	src.Reliability = models.Reliability(rel)
 	src.RepositoryID = idFrom(repositoryID)
 
-	if src.Date, err = loadDate(s.db, int64From(dateID)); err != nil {
+	if src.Date, err = loadDate(s.run(ctx), int64From(dateID)); err != nil {
 		return nil, err
 	}
 
-	if src.Notes, err = loadTextRefList(s.db, "source_notes", "source_id", string(id)); err != nil {
+	if src.Notes, err = loadTextRefList(s.run(ctx), "source_notes", "source_id", string(id)); err != nil {
 		return nil, err
 	}
 
@@ -247,17 +248,17 @@ func (s *Store) GetSource(id models.ID) (*models.Source, error) {
 }
 
 // ListSources возвращает все источники в порядке вставки.
-func (s *Store) ListSources() ([]*models.Source, error) {
-	return listEntities(s, "sources", s.GetSource)
+func (s *Store) ListSources(ctx context.Context) ([]*models.Source, error) {
+	return listEntities(ctx, s, "sources", s.GetSource)
 }
 
 // --- Citation -------------------------------------------------------------
 
 // SaveCitation сохраняет цитату из источника вместе с якорем.
-func (s *Store) SaveCitation(c *models.Citation) (err error) {
+func (s *Store) SaveCitation(ctx context.Context, c *models.Citation) (err error) {
 	defer wrapSave(&err, "citation", c.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		old, err := collectMainRefs(tx, "citations", string(c.ID), nil, nil, []string{"anchor_id"})
 		if err != nil {
 			return err
@@ -287,19 +288,19 @@ func (s *Store) SaveCitation(c *models.Citation) (err error) {
 	})
 }
 
-// GetCitation читает цитату по id; не найдена — (nil, nil).
-func (s *Store) GetCitation(id models.ID) (*models.Citation, error) {
+// GetCitation читает цитату по id; не найдена — models.ErrNotFound.
+func (s *Store) GetCitation(ctx context.Context, id models.ID) (*models.Citation, error) {
 	var (
 		c               models.Citation
 		rawID, sourceID string
 		anchorID        sql.NullInt64
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, source_id, anchor_id, text, note, private FROM citations WHERE id = ?`, string(id),
 	).Scan(&rawID, &sourceID, &anchorID, &c.Text, &c.Note, &c.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -308,7 +309,7 @@ func (s *Store) GetCitation(id models.ID) (*models.Citation, error) {
 
 	c.ID, c.SourceID = models.ID(rawID), models.ID(sourceID)
 
-	if c.Anchor, err = loadAnchor(s.db, int64From(anchorID)); err != nil {
+	if c.Anchor, err = loadAnchor(s.run(ctx), int64From(anchorID)); err != nil {
 		return nil, err
 	}
 
@@ -316,17 +317,17 @@ func (s *Store) GetCitation(id models.ID) (*models.Citation, error) {
 }
 
 // ListCitations возвращает все цитаты в порядке вставки.
-func (s *Store) ListCitations() ([]*models.Citation, error) {
-	return listEntities(s, "citations", s.GetCitation)
+func (s *Store) ListCitations(ctx context.Context) ([]*models.Citation, error) {
+	return listEntities(ctx, s, "citations", s.GetCitation)
 }
 
 // --- Note -----------------------------------------------------------------
 
 // SaveNote сохраняет заметку (иерархия «книга → главы» через parent_id).
-func (s *Store) SaveNote(n *models.Note) (err error) {
+func (s *Store) SaveNote(ctx context.Context, n *models.Note) (err error) {
 	defer wrapSave(&err, "note", n.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		if _, err := tx.Exec(
 			`INSERT INTO notes(id, kind, title, text, parent_id, private) VALUES (?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET kind = excluded.kind, title = excluded.title,
@@ -344,19 +345,19 @@ func (s *Store) SaveNote(n *models.Note) (err error) {
 	})
 }
 
-// GetNote читает заметку по id; не найдена — (nil, nil).
-func (s *Store) GetNote(id models.ID) (*models.Note, error) {
+// GetNote читает заметку по id; не найдена — models.ErrNotFound.
+func (s *Store) GetNote(ctx context.Context, id models.ID) (*models.Note, error) {
 	var (
 		n           models.Note
 		rawID, kind string
 		parentID    sql.NullString
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, kind, title, text, parent_id, private FROM notes WHERE id = ?`, string(id),
 	).Scan(&rawID, &kind, &n.Title, &n.Text, &parentID, &n.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -366,7 +367,7 @@ func (s *Store) GetNote(id models.ID) (*models.Note, error) {
 	n.ID, n.Kind = models.ID(rawID), models.NoteKind(kind)
 	n.ParentID = idPtrFrom(parentID)
 
-	if n.Sources, err = loadSourceLinks(s.db, models.TypeNote, id); err != nil {
+	if n.Sources, err = loadSourceLinks(s.run(ctx), models.TypeNote, id); err != nil {
 		return nil, err
 	}
 
@@ -374,17 +375,17 @@ func (s *Store) GetNote(id models.ID) (*models.Note, error) {
 }
 
 // ListNotes возвращает все заметки в порядке вставки.
-func (s *Store) ListNotes() ([]*models.Note, error) {
-	return listEntities(s, "notes", s.GetNote)
+func (s *Store) ListNotes(ctx context.Context) ([]*models.Note, error) {
+	return listEntities(ctx, s, "notes", s.GetNote)
 }
 
 // --- Repository -----------------------------------------------------------
 
 // SaveRepository сохраняет хранилище-контейнер источников.
-func (s *Store) SaveRepository(r *models.Repository) (err error) {
+func (s *Store) SaveRepository(ctx context.Context, r *models.Repository) (err error) {
 	defer wrapSave(&err, "repository", r.ID)
 
-	return s.db.Tx(func(tx *sql.Tx) error {
+	return s.inTx(ctx, func(tx runner) error {
 		if _, err := tx.Exec(
 			`INSERT INTO repositories(id, name, type, address, private) VALUES (?, ?, ?, ?, ?)
 			 ON CONFLICT(id) DO UPDATE SET name = excluded.name, type = excluded.type,
@@ -410,18 +411,18 @@ func (s *Store) SaveRepository(r *models.Repository) (err error) {
 	})
 }
 
-// GetRepository читает хранилище по id; не найдено — (nil, nil).
-func (s *Store) GetRepository(id models.ID) (*models.Repository, error) {
+// GetRepository читает хранилище по id; не найдено — models.ErrNotFound.
+func (s *Store) GetRepository(ctx context.Context, id models.ID) (*models.Repository, error) {
 	var (
 		r              models.Repository
 		rawID, repType string
 	)
 
-	err := s.db.QueryRow(
+	err := s.run(ctx).QueryRow(
 		`SELECT id, name, type, address, private FROM repositories WHERE id = ?`, string(id),
 	).Scan(&rawID, &r.Name, &repType, &r.Address, &r.Private)
 	if notFound(err) {
-		return nil, nil
+		return nil, models.ErrNotFound
 	}
 
 	if err != nil {
@@ -430,15 +431,15 @@ func (s *Store) GetRepository(id models.ID) (*models.Repository, error) {
 
 	r.ID, r.Type = models.ID(rawID), models.RepositoryType(repType)
 
-	if r.URLs, err = loadTextRefList(s.db, "repository_urls", "repository_id", string(id)); err != nil {
+	if r.URLs, err = loadTextRefList(s.run(ctx), "repository_urls", "repository_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if r.Notes, err = loadTextRefList(s.db, "repository_notes", "repository_id", string(id)); err != nil {
+	if r.Notes, err = loadTextRefList(s.run(ctx), "repository_notes", "repository_id", string(id)); err != nil {
 		return nil, err
 	}
 
-	if r.Sources, err = loadSourceLinks(s.db, models.TypeRepository, id); err != nil {
+	if r.Sources, err = loadSourceLinks(s.run(ctx), models.TypeRepository, id); err != nil {
 		return nil, err
 	}
 
@@ -446,6 +447,6 @@ func (s *Store) GetRepository(id models.ID) (*models.Repository, error) {
 }
 
 // ListRepositories возвращает все хранилища в порядке вставки.
-func (s *Store) ListRepositories() ([]*models.Repository, error) {
-	return listEntities(s, "repositories", s.GetRepository)
+func (s *Store) ListRepositories(ctx context.Context) ([]*models.Repository, error) {
+	return listEntities(ctx, s, "repositories", s.GetRepository)
 }
