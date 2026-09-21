@@ -16,7 +16,7 @@ func (g PersonGender) Valid() bool {
 // Valid сообщает, что значение — одна из констант.
 func (g NameGender) Valid() bool {
 	switch g {
-	case MaleName, FemaleName, NeutralName:
+	case NameGenderMale, NameGenderFemale, NameGenderNeutral:
 		return true
 	}
 

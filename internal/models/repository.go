@@ -2,7 +2,7 @@ package models
 
 // Repository — хранилище-контейнер источников (архив, библиотека, музей,
 // частное собрание и т.п.). Source.repository_id / Archive.repository_id —
-// мягкие ссылки на него.
+// необязательные строгие ссылки на него (внешний ключ, ON DELETE RESTRICT).
 type Repository struct {
 	ID      ID
 	Name    string

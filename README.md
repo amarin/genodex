@@ -1,7 +1,7 @@
 # Genealogy MCP
 
 Single-binary service for a personal genealogy data store: keeps genealogy entities 
-(people, settlements, churches, parishes, territories, archives, events, marriages, sources, ...) 
+(people, administrative divisions, churches, parishes, archives, events, sources, families, ...) 
 and exposes them through two interfaces:
 
 - **MCP** (under `/mcp`, Streamable HTTP) — for AI assistants and MCP clients;
@@ -19,7 +19,7 @@ cd web && npm install && npm run build && cd ..
 
 # 2. Build and run
 go build ./...
-go run ./cmd/genealogy-mcp -p 9000
+go run ./cmd/genodex -p 9000
 ```
 
 Flags:

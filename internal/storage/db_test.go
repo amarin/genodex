@@ -514,3 +514,19 @@ func TestOpenDBPathWithSpecialCharacters(t *testing.T) {
 		}
 	}
 }
+
+// TestDSNCleansPath: путь очищается, поэтому «//» в начале не превращается в
+// authority file-URI, а спецсимволы экранируются.
+func TestDSNCleansPath(t *testing.T) {
+	cases := map[string]string{
+		"//tmp//x.db":       "file:/tmp/x.db?",
+		"/tmp/a b#c?d%e.db": "file:/tmp/a%20b%23c%3Fd%25e.db?",
+		"rel/./x.db":        "file:rel/x.db?",
+	}
+
+	for in, wantPrefix := range cases {
+		if got := dsn(in); !strings.HasPrefix(got, wantPrefix) {
+			t.Errorf("dsn(%q) = %q, want prefix %q", in, got, wantPrefix)
+		}
+	}
+}

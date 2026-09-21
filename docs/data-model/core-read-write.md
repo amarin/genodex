@@ -171,8 +171,8 @@
 - **Чистка при удалении**: `search_index` и `source_links` — полиморфные, FK на
   владельца у них нет; адаптер чистит их сам (в `Save*` и в `Delete*`), а также
   осиротевшие `text_refs`/`dates`/`anchors` (как уже делает `Save*`).
-- **DSN**: `foreign_keys` и `busy_timeout` задаются через `_pragma` в DSN,
-  чтобы они действовали на каждом соединении.
+- **DSN**: `foreign_keys`, `busy_timeout` и `journal_mode` задаются через `_pragma`
+  в DSN, чтобы они действовали на каждом соединении.
 
 ## 4. Порт `internal/store` и параметры запросов
 
@@ -284,7 +284,8 @@ type Hit struct{ Type Type; ID ID; Label, Field string }
 
 Выполнено в S12:
 
-- `PersonGender` константы: `Male/Female/Unknown` → `PersonGenderMale/Female/Unknown`.
+- Константы с префиксом типа: `PersonGender` (`Male/Female/Unknown` → `PersonGenderMale/…`) и
+  `NameGender` (`MaleName/…` → `NameGenderMale/…`, как требует §2 спеки S1+S2).
 - Тест соответствия `models.Type` ↔ реестр таблиц ↔ `search_index.entity_table` ↔
   префикс `ID` (`sqlstore/registry_test.go`).
 - `List*`-тесты для всех 21 типа — закрыты в S9 (`TestListPagesPartitionEveryKind`).

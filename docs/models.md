@@ -4,7 +4,7 @@
 
 ## Сущности
 
-- [archives.md](models/archives.md) — `Archive`, `ArchiveHierarchySystem`, `ArchiveNode`, `ArchiveDocument`, `Repository`
+- [archives.md](models/archives.md) — `Archive`, `ArchiveHierarchySystem` (проект), `ArchiveNode`, `ArchiveDocument`, `Repository`
 - [evidence.md](models/evidence.md) — `Source`, `Citation`, `SourceLink`, `Attachment`
 - [facts.md](models/facts.md) — `Event`, `Residence`
 - [notes.md](models/notes.md) — `Note`

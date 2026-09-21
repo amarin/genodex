@@ -747,7 +747,7 @@ func TestStoreRoundTripRest(t *testing.T) {
 	}
 
 	given := &models.GivenName{
-		ID: "giv-1", Canonical: "Пётр", Gender: models.MaleName,
+		ID: "giv-1", Canonical: "Пётр", Gender: models.NameGenderMale,
 		Variants: []models.TextRef{{Text: "Петр"}},
 	}
 	if err := s.SaveGivenName(t.Context(), given); err != nil {

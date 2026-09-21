@@ -154,7 +154,7 @@ func fullChain() []chainStep {
 		}},
 		{"GivenName", "giv-1", func(ctx context.Context, s *Store) error {
 			return s.SaveGivenName(ctx, &models.GivenName{
-				ID: "giv-1", Canonical: "Пётр", Gender: models.MaleName,
+				ID: "giv-1", Canonical: "Пётр", Gender: models.NameGenderMale,
 				Variants: []models.TextRef{text("Петр")}, Items: []models.TextRef{text("Пётр Иванов")},
 				Notes: []models.TextRef{text("апостол")},
 			})

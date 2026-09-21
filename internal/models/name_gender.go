@@ -4,7 +4,7 @@ package models
 type NameGender string
 
 const (
-	MaleName    NameGender = "male"
-	FemaleName  NameGender = "female"
-	NeutralName NameGender = "neutral"
+	NameGenderMale    NameGender = "male"
+	NameGenderFemale  NameGender = "female"
+	NameGenderNeutral NameGender = "neutral"
 )

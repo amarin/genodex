@@ -20,9 +20,9 @@ func TestDictionaryFullForm(t *testing.T) {
 func TestGivenNameGenderRequired(t *testing.T) {
 	// Gender — обязательный номинальный домен: без него нельзя строить
 	// вывод пола (docs/models/people.md).
-	g := GivenName{ID: ID("g-1"), Canonical: "Акилина", Gender: FemaleName}
-	if g.Gender != FemaleName {
-		t.Fatalf("Gender: expected %q, got %q", FemaleName, g.Gender)
+	g := GivenName{ID: ID("g-1"), Canonical: "Акилина", Gender: NameGenderFemale}
+	if g.Gender != NameGenderFemale {
+		t.Fatalf("Gender: expected %q, got %q", NameGenderFemale, g.Gender)
 	}
 	if g.EntityType() != TypeGivenName {
 		t.Fatalf("EntityType(): expected %q, got %q", TypeGivenName, g.EntityType())

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -28,7 +29,8 @@ type DB struct {
 // соединению. PRAGMA foreign_keys действует на соединение, а не на базу:
 // пересозданное пулом соединение без DSN-прагм потеряло бы внешние ключи.
 func dsn(path string) string {
-	u := url.URL{Path: path}
+	// Clean: путь, начинающийся с «//», иначе стал бы authority file-URI
+	u := url.URL{Path: filepath.ToSlash(filepath.Clean(path))}
 
 	return "file:" + u.EscapedPath() +
 		"?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)"

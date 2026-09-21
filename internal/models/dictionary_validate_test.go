@@ -59,7 +59,7 @@ func TestDictionaryPublicValidate(t *testing.T) {
 	entries := []entry{
 		{TypeSurname, func(id ID) interface{ Validate() error } { return &Surname{ID: id, Canonical: "Дорожкин"} }},
 		{TypeGivenName, func(id ID) interface{ Validate() error } {
-			return &GivenName{ID: id, Canonical: "Иван", Gender: MaleName}
+			return &GivenName{ID: id, Canonical: "Иван", Gender: NameGenderMale}
 		}},
 		{TypePatronymic, func(id ID) interface{ Validate() error } { return &Patronymic{ID: id, Canonical: "Иванович"} }},
 		{TypeEstate, func(id ID) interface{ Validate() error } { return &Estate{ID: id, Canonical: "крестьяне"} }},
@@ -77,7 +77,7 @@ func TestDictionaryPublicValidate(t *testing.T) {
 
 func TestGivenNameValidateGender(t *testing.T) {
 	base := func() *GivenName {
-		return &GivenName{ID: testID(TypeGivenName), Canonical: "Женя", Gender: NeutralName}
+		return &GivenName{ID: testID(TypeGivenName), Canonical: "Женя", Gender: NameGenderNeutral}
 	}
 	if err := base().Validate(); err != nil {
 		t.Errorf("нейтральное имя: %v", err)

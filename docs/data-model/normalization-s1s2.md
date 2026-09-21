@@ -173,7 +173,7 @@ CamelCase-поля без JSON-тегов.
 
 ### Repository
 `id`, `name string`, `type RepositoryType`, `address string?`, `urls []TextRef`,
-`sources []SourceLink`, `private bool`.
+`notes []TextRef`, `sources []SourceLink`, `private bool`.
 
 ### Archive
 `id`, `name string`, `system TextRef?`, `repository_id ID?`, `notes []TextRef`,
@@ -218,7 +218,7 @@ timecode, url)` — все `Anchor`; колонки зависят от `kind`, 
 `text_refs(id INTEGER PK, text, ref, ref_type)` — одиночные `TextRef?`-поля,
 которые имеют семантику ссылки (например `AdministrativeDivision.parent` — нет,
 это строгий FK). Применяется только там, где `TextRef` как связь: `Church.parish`,
-`Parish.church`, `ArchiveNode.parish`, `Archive.system`. Иначе — не `text_refs`:
+`Parish.church`, `ArchiveNode.parish`, `ArchiveDocument.parish`, `Archive.system`, `Event.place`. Иначе — не `text_refs`:
 напр. `Citation.anchor` — anchor отдельно, в `anchors`. См. карту полей ниже.
 
 Многозначные `TextRef`-списки — связные таблицы вида
@@ -241,18 +241,18 @@ timecode, url)` — все `Anchor`; колонки зависят от `kind`, 
 |---|---|---|
 | `persons` | id, gender, private | person_names, person_estates, person_titles, person_nicknames, person_notes, source_links(target=person) |
 | `person_names` | id, person_id, type, prefix, suffix, since(date_id), until(date_id) | … см. карту |
-| `relations` | id, kind, rel_type, person_a, person_b, since, until, private | relation_sources, relation_notes |
+| `relations` | id, kind, rel_type, person_a, person_b, since, until, private | relation_notes, source_links(target=relation) |
 | `families` | id, name, private | family_members, family_notes, source_links |
 | `surnames`, `given_names`, `patronymics`, `estates`, `titles` | id, canonical(+given_names.gender) | *_variants, *_items, *_notes |
-| `administrative_divisions` | id, name, type, parent_id(fk), item ids | ad_items, ad_variants, ad_renames(named_periods), ad_successors, ad_notes, source_links |
+| `administrative_divisions` | id, name, type, parent_id(fk), since(date_id), until(date_id) | ad_items, ad_variants, ad_renames(named_periods), ad_successors, ad_notes, source_links |
 | `churches` | id, name, parish text_ref_id | church_settlements(text_refs), church_variants, church_notes, source_links |
 | `parishes` | id, name, church text_ref_id, since, until | parish_settlements, parish_notes, source_links |
-| `events` | id, type, date(date_id), place text_ref_id, private | event_participants, event_sources, event_notes |
+| `events` | id, type, date(date_id), place text_ref_id, private | event_participants, event_notes, source_links(target=event) |
 | `event_participants` | event_id, position, person_id, role, note | |
-| `residences` | id, person_id, place_id, since, until, note, private | residence_sources |
+| `residences` | id, person_id, place_id, since, until, note, private | source_links(target=residence) |
 | `sources` | id, kind, title, author, date(date_id), reliability, repository_id(fk), private | source_notes |
 | `citations` | id, source_id(fk), anchor_id, text, note, private | (без списков) |
-| `notes` | id, kind, title, text, parent_id(fk), private | note_sources (source_links(target=note)) |
+| `notes` | id, kind, title, text, parent_id(fk), private | source_links(target=note) |
 | `repositories` | id, name, type, address, private | repository_urls, repository_notes, source_links(target=repository) |
 | `archives` | id, name, system text_ref_id, repository_id(fk), private | archive_notes, source_links |
 | `archive_nodes` | id, type, archive_id, parent_id, label, name, since, until, parish text_ref_id, private | node_settlements, node_notes, source_links |
