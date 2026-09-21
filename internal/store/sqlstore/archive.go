@@ -88,8 +88,8 @@ func (s *Store) GetArchive(ctx context.Context, id models.ID) (*models.Archive, 
 }
 
 // ListArchives возвращает все архивы в порядке вставки.
-func (s *Store) ListArchives(ctx context.Context) ([]*models.Archive, error) {
-	return listEntities(ctx, s, "archives", s.GetArchive)
+func (s *Store) ListArchives(ctx context.Context, access models.Access, page models.Page) ([]*models.Archive, error) {
+	return listEntities(ctx, s, "archives", access, page, s.GetArchive)
 }
 
 // --- ArchiveNode ----------------------------------------------------------
@@ -209,8 +209,8 @@ func (s *Store) GetArchiveNode(ctx context.Context, id models.ID) (*models.Archi
 }
 
 // ListArchiveNodes возвращает все узлы в порядке вставки.
-func (s *Store) ListArchiveNodes(ctx context.Context) ([]*models.ArchiveNode, error) {
-	return listEntities(ctx, s, "archive_nodes", s.GetArchiveNode)
+func (s *Store) ListArchiveNodes(ctx context.Context, access models.Access, page models.Page) ([]*models.ArchiveNode, error) {
+	return listEntities(ctx, s, "archive_nodes", access, page, s.GetArchiveNode)
 }
 
 // --- ArchiveDocument ------------------------------------------------------
@@ -324,8 +324,8 @@ func (s *Store) GetArchiveDocument(ctx context.Context, id models.ID) (*models.A
 }
 
 // ListArchiveDocuments возвращает все документы в порядке вставки.
-func (s *Store) ListArchiveDocuments(ctx context.Context) ([]*models.ArchiveDocument, error) {
-	return listEntities(ctx, s, "archive_documents", s.GetArchiveDocument)
+func (s *Store) ListArchiveDocuments(ctx context.Context, access models.Access, page models.Page) ([]*models.ArchiveDocument, error) {
+	return listEntities(ctx, s, "archive_documents", access, page, s.GetArchiveDocument)
 }
 
 // --- Attachment -----------------------------------------------------------
@@ -385,6 +385,6 @@ func (s *Store) GetAttachment(ctx context.Context, id models.ID) (*models.Attach
 }
 
 // ListAttachments возвращает все вложения в порядке вставки.
-func (s *Store) ListAttachments(ctx context.Context) ([]*models.Attachment, error) {
-	return listEntities(ctx, s, "attachments", s.GetAttachment)
+func (s *Store) ListAttachments(ctx context.Context, access models.Access, page models.Page) ([]*models.Attachment, error) {
+	return listEntities(ctx, s, "attachments", access, page, s.GetAttachment)
 }

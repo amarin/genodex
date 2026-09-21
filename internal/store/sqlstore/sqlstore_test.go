@@ -279,7 +279,7 @@ func TestStoreRoundTripNote(t *testing.T) {
 		t.Fatalf("round trip note:\n want %+v\n got  %+v", want, got)
 	}
 
-	list, err := s.ListNotes(t.Context())
+	list, err := s.ListNotes(t.Context(), models.AccessFull, models.Page{})
 	if err != nil {
 		t.Fatalf("list notes: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestStoreListPeople(t *testing.T) {
 		}
 	}
 
-	list, err := s.ListPeople(t.Context())
+	list, err := s.ListPeople(t.Context(), models.AccessFull, models.Page{})
 	if err != nil {
 		t.Fatalf("list people: %v", err)
 	}
@@ -810,37 +810,37 @@ func TestStoreRoundTripRest(t *testing.T) {
 	}
 
 	// списки не падают и возвращают сохранённое.
-	if list, err := s.ListRelations(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListRelations(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListRelations: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListResidences(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListResidences(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListResidences: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListFamilies(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListFamilies(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListFamilies: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListSurnames(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListSurnames(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListSurnames: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListGivenNames(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListGivenNames(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListGivenNames: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListPatronymics(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListPatronymics(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListPatronymics: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListEstates(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListEstates(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListEstates: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListTitles(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListTitles(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListTitles: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListChurches(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListChurches(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListChurches: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListParishes(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListParishes(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListParishes: err=%v len=%d", err, len(list))
 	}
-	if list, err := s.ListAdministrativeDivisions(t.Context()); err != nil || len(list) != 1 {
+	if list, err := s.ListAdministrativeDivisions(t.Context(), models.AccessFull, models.Page{}); err != nil || len(list) != 1 {
 		t.Fatalf("ListAdministrativeDivisions: err=%v len=%d", err, len(list))
 	}
 }

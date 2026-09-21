@@ -155,8 +155,8 @@ func (s *Store) GetSurname(ctx context.Context, id models.ID) (*models.Surname, 
 }
 
 // ListSurnames возвращает все фамилии в порядке вставки.
-func (s *Store) ListSurnames(ctx context.Context) ([]*models.Surname, error) {
-	return listEntities(ctx, s, "surnames", s.GetSurname)
+func (s *Store) ListSurnames(ctx context.Context, access models.Access, page models.Page) ([]*models.Surname, error) {
+	return listEntities(ctx, s, "surnames", access, page, s.GetSurname)
 }
 
 // --- GivenName ------------------------------------------------------------
@@ -187,8 +187,8 @@ func (s *Store) GetGivenName(ctx context.Context, id models.ID) (*models.GivenNa
 }
 
 // ListGivenNames возвращает все имена в порядке вставки.
-func (s *Store) ListGivenNames(ctx context.Context) ([]*models.GivenName, error) {
-	return listEntities(ctx, s, "given_names", s.GetGivenName)
+func (s *Store) ListGivenNames(ctx context.Context, access models.Access, page models.Page) ([]*models.GivenName, error) {
+	return listEntities(ctx, s, "given_names", access, page, s.GetGivenName)
 }
 
 // --- Patronymic -----------------------------------------------------------
@@ -219,8 +219,8 @@ func (s *Store) GetPatronymic(ctx context.Context, id models.ID) (*models.Patron
 }
 
 // ListPatronymics возвращает все отчества в порядке вставки.
-func (s *Store) ListPatronymics(ctx context.Context) ([]*models.Patronymic, error) {
-	return listEntities(ctx, s, "patronymics", s.GetPatronymic)
+func (s *Store) ListPatronymics(ctx context.Context, access models.Access, page models.Page) ([]*models.Patronymic, error) {
+	return listEntities(ctx, s, "patronymics", access, page, s.GetPatronymic)
 }
 
 // --- Estate ---------------------------------------------------------------
@@ -251,8 +251,8 @@ func (s *Store) GetEstate(ctx context.Context, id models.ID) (*models.Estate, er
 }
 
 // ListEstates возвращает все сословия в порядке вставки.
-func (s *Store) ListEstates(ctx context.Context) ([]*models.Estate, error) {
-	return listEntities(ctx, s, "estates", s.GetEstate)
+func (s *Store) ListEstates(ctx context.Context, access models.Access, page models.Page) ([]*models.Estate, error) {
+	return listEntities(ctx, s, "estates", access, page, s.GetEstate)
 }
 
 // --- Title ----------------------------------------------------------------
@@ -283,6 +283,6 @@ func (s *Store) GetTitle(ctx context.Context, id models.ID) (*models.Title, erro
 }
 
 // ListTitles возвращает все звания в порядке вставки.
-func (s *Store) ListTitles(ctx context.Context) ([]*models.Title, error) {
-	return listEntities(ctx, s, "titles", s.GetTitle)
+func (s *Store) ListTitles(ctx context.Context, access models.Access, page models.Page) ([]*models.Title, error) {
+	return listEntities(ctx, s, "titles", access, page, s.GetTitle)
 }

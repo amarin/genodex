@@ -106,8 +106,8 @@ func (s *Store) GetRelation(ctx context.Context, id models.ID) (*models.Relation
 }
 
 // ListRelations возвращает все связи в порядке вставки.
-func (s *Store) ListRelations(ctx context.Context) ([]*models.Relation, error) {
-	return listEntities(ctx, s, "relations", s.GetRelation)
+func (s *Store) ListRelations(ctx context.Context, access models.Access, page models.Page) ([]*models.Relation, error) {
+	return listEntities(ctx, s, "relations", access, page, s.GetRelation)
 }
 
 // --- Residence ------------------------------------------------------------
@@ -195,8 +195,8 @@ func (s *Store) GetResidence(ctx context.Context, id models.ID) (*models.Residen
 }
 
 // ListResidences возвращает все проживания в порядке вставки.
-func (s *Store) ListResidences(ctx context.Context) ([]*models.Residence, error) {
-	return listEntities(ctx, s, "residences", s.GetResidence)
+func (s *Store) ListResidences(ctx context.Context, access models.Access, page models.Page) ([]*models.Residence, error) {
+	return listEntities(ctx, s, "residences", access, page, s.GetResidence)
 }
 
 // --- Family ---------------------------------------------------------------
@@ -265,6 +265,6 @@ func (s *Store) GetFamily(ctx context.Context, id models.ID) (*models.Family, er
 }
 
 // ListFamilies возвращает все роды в порядке вставки.
-func (s *Store) ListFamilies(ctx context.Context) ([]*models.Family, error) {
-	return listEntities(ctx, s, "families", s.GetFamily)
+func (s *Store) ListFamilies(ctx context.Context, access models.Access, page models.Page) ([]*models.Family, error) {
+	return listEntities(ctx, s, "families", access, page, s.GetFamily)
 }

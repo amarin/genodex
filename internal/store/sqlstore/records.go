@@ -160,8 +160,8 @@ func loadParticipants(q queryer, id models.ID) ([]models.EventParticipant, error
 }
 
 // ListEvents возвращает все события в порядке вставки.
-func (s *Store) ListEvents(ctx context.Context) ([]*models.Event, error) {
-	return listEntities(ctx, s, "events", s.GetEvent)
+func (s *Store) ListEvents(ctx context.Context, access models.Access, page models.Page) ([]*models.Event, error) {
+	return listEntities(ctx, s, "events", access, page, s.GetEvent)
 }
 
 // --- Source ---------------------------------------------------------------
@@ -248,8 +248,8 @@ func (s *Store) GetSource(ctx context.Context, id models.ID) (*models.Source, er
 }
 
 // ListSources возвращает все источники в порядке вставки.
-func (s *Store) ListSources(ctx context.Context) ([]*models.Source, error) {
-	return listEntities(ctx, s, "sources", s.GetSource)
+func (s *Store) ListSources(ctx context.Context, access models.Access, page models.Page) ([]*models.Source, error) {
+	return listEntities(ctx, s, "sources", access, page, s.GetSource)
 }
 
 // --- Citation -------------------------------------------------------------
@@ -317,8 +317,8 @@ func (s *Store) GetCitation(ctx context.Context, id models.ID) (*models.Citation
 }
 
 // ListCitations возвращает все цитаты в порядке вставки.
-func (s *Store) ListCitations(ctx context.Context) ([]*models.Citation, error) {
-	return listEntities(ctx, s, "citations", s.GetCitation)
+func (s *Store) ListCitations(ctx context.Context, access models.Access, page models.Page) ([]*models.Citation, error) {
+	return listEntities(ctx, s, "citations", access, page, s.GetCitation)
 }
 
 // --- Note -----------------------------------------------------------------
@@ -375,8 +375,8 @@ func (s *Store) GetNote(ctx context.Context, id models.ID) (*models.Note, error)
 }
 
 // ListNotes возвращает все заметки в порядке вставки.
-func (s *Store) ListNotes(ctx context.Context) ([]*models.Note, error) {
-	return listEntities(ctx, s, "notes", s.GetNote)
+func (s *Store) ListNotes(ctx context.Context, access models.Access, page models.Page) ([]*models.Note, error) {
+	return listEntities(ctx, s, "notes", access, page, s.GetNote)
 }
 
 // --- Repository -----------------------------------------------------------
@@ -447,6 +447,6 @@ func (s *Store) GetRepository(ctx context.Context, id models.ID) (*models.Reposi
 }
 
 // ListRepositories возвращает все хранилища в порядке вставки.
-func (s *Store) ListRepositories(ctx context.Context) ([]*models.Repository, error) {
-	return listEntities(ctx, s, "repositories", s.GetRepository)
+func (s *Store) ListRepositories(ctx context.Context, access models.Access, page models.Page) ([]*models.Repository, error) {
+	return listEntities(ctx, s, "repositories", access, page, s.GetRepository)
 }

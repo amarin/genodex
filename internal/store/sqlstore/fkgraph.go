@@ -56,12 +56,14 @@ type fkEdge struct {
 	child, col, parent, onDelete string
 }
 
-// schemaGraph — все внешние ключи схемы в стабильном порядке.
+// schemaGraph — все внешние ключи схемы в стабильном порядке и таблицы с
+// колонкой private (по ним List* фильтрует приватное для AccessPublic).
 type schemaGraph struct {
-	edges []fkEdge
+	edges   []fkEdge
+	private map[string]bool
 }
 
-// loadSchemaGraph читает внешние ключи всех таблиц одним запросом.
+// loadSchemaGraph читает внешние ключи всех таблиц и список таблиц с колонкой private.
 func loadSchemaGraph(ctx context.Context, s *Store) (*schemaGraph, error) {
 	edges, err := scanRows(s.run(ctx), func(r *sql.Rows) (fkEdge, error) {
 		var e fkEdge
@@ -76,8 +78,28 @@ func loadSchemaGraph(ctx context.Context, s *Store) (*schemaGraph, error) {
 		return nil, err
 	}
 
-	return &schemaGraph{edges: edges}, nil
+	names, err := scanRows(s.run(ctx), func(r *sql.Rows) (string, error) {
+		var n string
+		err := r.Scan(&n)
+
+		return n, err
+	}, `SELECT m.name FROM sqlite_master AS m, pragma_table_info(m.name) AS p
+		WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name = 'private'
+		ORDER BY m.name`)
+	if err != nil {
+		return nil, err
+	}
+
+	private := make(map[string]bool, len(names))
+	for _, n := range names {
+		private[n] = true
+	}
+
+	return &schemaGraph{edges: edges, private: private}, nil
 }
+
+// hasPrivate — есть ли у таблицы колонка private.
+func (g *schemaGraph) hasPrivate(table string) bool { return g.private[table] }
 
 // graph возвращает граф схемы; результат кэшируется, ошибка — нет (отменённый
 // контекст не должен «отравить» хранилище). Внутри InTx запрос идёт в той же

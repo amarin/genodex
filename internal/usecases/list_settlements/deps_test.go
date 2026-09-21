@@ -42,16 +42,16 @@ func (m *MockAdminDivisionRepo) EXPECT() *MockAdminDivisionRepoMockRecorder {
 }
 
 // ListAdministrativeDivisions mocks base method.
-func (m *MockAdminDivisionRepo) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
+func (m *MockAdminDivisionRepo) ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAdministrativeDivisions", ctx)
+	ret := m.ctrl.Call(m, "ListAdministrativeDivisions", ctx, access, page)
 	ret0, _ := ret[0].([]*models.AdministrativeDivision)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAdministrativeDivisions indicates an expected call of ListAdministrativeDivisions.
-func (mr *MockAdminDivisionRepoMockRecorder) ListAdministrativeDivisions(ctx any) *gomock.Call {
+func (mr *MockAdminDivisionRepoMockRecorder) ListAdministrativeDivisions(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockAdminDivisionRepo)(nil).ListAdministrativeDivisions), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockAdminDivisionRepo)(nil).ListAdministrativeDivisions), ctx, access, page)
 }

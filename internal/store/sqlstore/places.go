@@ -138,8 +138,8 @@ func (s *Store) GetAdministrativeDivision(ctx context.Context, id models.ID) (*m
 }
 
 // ListAdministrativeDivisions возвращает все единицы деления.
-func (s *Store) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
-	return listEntities(ctx, s, "administrative_divisions", s.GetAdministrativeDivision)
+func (s *Store) ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
+	return listEntities(ctx, s, "administrative_divisions", access, page, s.GetAdministrativeDivision)
 }
 
 // --- Church ---------------------------------------------------------------
@@ -237,8 +237,8 @@ func (s *Store) GetChurch(ctx context.Context, id models.ID) (*models.Church, er
 }
 
 // ListChurches возвращает все церкви в порядке вставки.
-func (s *Store) ListChurches(ctx context.Context) ([]*models.Church, error) {
-	return listEntities(ctx, s, "churches", s.GetChurch)
+func (s *Store) ListChurches(ctx context.Context, access models.Access, page models.Page) ([]*models.Church, error) {
+	return listEntities(ctx, s, "churches", access, page, s.GetChurch)
 }
 
 // --- Parish ---------------------------------------------------------------
@@ -348,6 +348,6 @@ func (s *Store) GetParish(ctx context.Context, id models.ID) (*models.Parish, er
 }
 
 // ListParishes возвращает все приходы в порядке вставки.
-func (s *Store) ListParishes(ctx context.Context) ([]*models.Parish, error) {
-	return listEntities(ctx, s, "parishes", s.GetParish)
+func (s *Store) ListParishes(ctx context.Context, access models.Access, page models.Page) ([]*models.Parish, error) {
+	return listEntities(ctx, s, "parishes", access, page, s.GetParish)
 }

@@ -10,11 +10,16 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// getFunc и listFunc — методы порта в виде выражений методов, приведённые к
+// getFunc и listerSpec — методы порта в виде выражений методов, приведённые к
 // одному виду: так один тест обходит все 21 сущность.
 type (
-	getFunc  func(*Store, context.Context, models.ID) error
-	listFunc func(*Store, context.Context) error
+	getFunc func(*Store, context.Context, models.ID) error
+
+	// listerSpec — List*-метод с таблицей главной строки; список отдаёт id.
+	listerSpec struct {
+		table string
+		list  func(*Store, context.Context, models.Access, models.Page) ([]models.ID, error)
+	}
 )
 
 func probeGet[T any](get func(*Store, context.Context, models.ID) (*T, error)) getFunc {
@@ -25,12 +30,19 @@ func probeGet[T any](get func(*Store, context.Context, models.ID) (*T, error)) g
 	}
 }
 
-func probeList[T any](list func(*Store, context.Context) ([]*T, error)) listFunc {
-	return func(s *Store, ctx context.Context) error {
-		_, err := list(s, ctx)
+func probeList[T any](
+	table string, list func(*Store, context.Context, models.Access, models.Page) ([]*T, error),
+) listerSpec {
+	return listerSpec{table: table, list: func(s *Store, ctx context.Context, a models.Access, p models.Page) ([]models.ID, error) {
+		items, err := list(s, ctx, a, p)
 
-		return err
-	}
+		ids := make([]models.ID, len(items))
+		for i, it := range items {
+			ids[i] = models.ID(reflect.ValueOf(it).Elem().FieldByName("ID").String())
+		}
+
+		return ids, err
+	}}
 }
 
 var getters = map[string]getFunc{
@@ -57,28 +69,28 @@ var getters = map[string]getFunc{
 	"Repository":             probeGet((*Store).GetRepository),
 }
 
-var listers = map[string]listFunc{
-	"People":                  probeList((*Store).ListPeople),
-	"Relations":               probeList((*Store).ListRelations),
-	"Residences":              probeList((*Store).ListResidences),
-	"Families":                probeList((*Store).ListFamilies),
-	"Surnames":                probeList((*Store).ListSurnames),
-	"GivenNames":              probeList((*Store).ListGivenNames),
-	"Patronymics":             probeList((*Store).ListPatronymics),
-	"Estates":                 probeList((*Store).ListEstates),
-	"Titles":                  probeList((*Store).ListTitles),
-	"AdministrativeDivisions": probeList((*Store).ListAdministrativeDivisions),
-	"Churches":                probeList((*Store).ListChurches),
-	"Parishes":                probeList((*Store).ListParishes),
-	"Events":                  probeList((*Store).ListEvents),
-	"Sources":                 probeList((*Store).ListSources),
-	"Archives":                probeList((*Store).ListArchives),
-	"ArchiveNodes":            probeList((*Store).ListArchiveNodes),
-	"ArchiveDocuments":        probeList((*Store).ListArchiveDocuments),
-	"Attachments":             probeList((*Store).ListAttachments),
-	"Citations":               probeList((*Store).ListCitations),
-	"Notes":                   probeList((*Store).ListNotes),
-	"Repositories":            probeList((*Store).ListRepositories),
+var listers = map[string]listerSpec{
+	"People":                  probeList("persons", (*Store).ListPeople),
+	"Relations":               probeList("relations", (*Store).ListRelations),
+	"Residences":              probeList("residences", (*Store).ListResidences),
+	"Families":                probeList("families", (*Store).ListFamilies),
+	"Surnames":                probeList("surnames", (*Store).ListSurnames),
+	"GivenNames":              probeList("given_names", (*Store).ListGivenNames),
+	"Patronymics":             probeList("patronymics", (*Store).ListPatronymics),
+	"Estates":                 probeList("estates", (*Store).ListEstates),
+	"Titles":                  probeList("titles", (*Store).ListTitles),
+	"AdministrativeDivisions": probeList("administrative_divisions", (*Store).ListAdministrativeDivisions),
+	"Churches":                probeList("churches", (*Store).ListChurches),
+	"Parishes":                probeList("parishes", (*Store).ListParishes),
+	"Events":                  probeList("events", (*Store).ListEvents),
+	"Sources":                 probeList("sources", (*Store).ListSources),
+	"Archives":                probeList("archives", (*Store).ListArchives),
+	"ArchiveNodes":            probeList("archive_nodes", (*Store).ListArchiveNodes),
+	"ArchiveDocuments":        probeList("archive_documents", (*Store).ListArchiveDocuments),
+	"Attachments":             probeList("attachments", (*Store).ListAttachments),
+	"Citations":               probeList("citations", (*Store).ListCitations),
+	"Notes":                   probeList("notes", (*Store).ListNotes),
+	"Repositories":            probeList("repositories", (*Store).ListRepositories),
 }
 
 // canceled возвращает уже отменённый контекст.
@@ -144,9 +156,9 @@ func TestGetCanceledContextIsNotNotFound(t *testing.T) {
 func TestListCanceledContext(t *testing.T) {
 	s := newStore(t)
 
-	for name, list := range listers {
+	for name, spec := range listers {
 		t.Run(name, func(t *testing.T) {
-			if err := list(s, canceled(t)); !errors.Is(err, context.Canceled) {
+			if _, err := spec.list(s, canceled(t), models.AccessFull, models.Page{}); !errors.Is(err, context.Canceled) {
 				t.Fatalf("List%s с отменённым ctx = %v, ожидалось context.Canceled", name, err)
 			}
 		})
@@ -191,7 +203,7 @@ func TestListEntitiesSkipsRowDeletedMidList(t *testing.T) {
 		return s.GetPerson(ctx, id)
 	}
 
-	got, err := listEntities(t.Context(), s, "persons", gone)
+	got, err := listEntities(t.Context(), s, "persons", models.AccessFull, models.Page{}, gone)
 	if err != nil || len(got) != 1 || got[0].ID != "p-2" {
 		t.Fatalf("listEntities = %+v, %v; ожидалась одна персона p-2", got, err)
 	}
@@ -199,7 +211,7 @@ func TestListEntitiesSkipsRowDeletedMidList(t *testing.T) {
 	boom := errors.New("boom")
 	failing := func(context.Context, models.ID) (*models.Person, error) { return nil, boom }
 
-	if _, err := listEntities(t.Context(), s, "persons", failing); !errors.Is(err, boom) {
+	if _, err := listEntities(t.Context(), s, "persons", models.AccessFull, models.Page{}, failing); !errors.Is(err, boom) {
 		t.Fatalf("listEntities с падающим Get = %v, ожидалась boom", err)
 	}
 }

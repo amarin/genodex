@@ -665,318 +665,318 @@ func (mr *MockStoreMockRecorder) InTx(ctx, fn any) *gomock.Call {
 }
 
 // ListAdministrativeDivisions mocks base method.
-func (m *MockStore) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
+func (m *MockStore) ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAdministrativeDivisions", ctx)
+	ret := m.ctrl.Call(m, "ListAdministrativeDivisions", ctx, access, page)
 	ret0, _ := ret[0].([]*models.AdministrativeDivision)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAdministrativeDivisions indicates an expected call of ListAdministrativeDivisions.
-func (mr *MockStoreMockRecorder) ListAdministrativeDivisions(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListAdministrativeDivisions(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockStore)(nil).ListAdministrativeDivisions), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAdministrativeDivisions", reflect.TypeOf((*MockStore)(nil).ListAdministrativeDivisions), ctx, access, page)
 }
 
 // ListArchiveDocuments mocks base method.
-func (m *MockStore) ListArchiveDocuments(ctx context.Context) ([]*models.ArchiveDocument, error) {
+func (m *MockStore) ListArchiveDocuments(ctx context.Context, access models.Access, page models.Page) ([]*models.ArchiveDocument, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListArchiveDocuments", ctx)
+	ret := m.ctrl.Call(m, "ListArchiveDocuments", ctx, access, page)
 	ret0, _ := ret[0].([]*models.ArchiveDocument)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListArchiveDocuments indicates an expected call of ListArchiveDocuments.
-func (mr *MockStoreMockRecorder) ListArchiveDocuments(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListArchiveDocuments(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveDocuments", reflect.TypeOf((*MockStore)(nil).ListArchiveDocuments), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveDocuments", reflect.TypeOf((*MockStore)(nil).ListArchiveDocuments), ctx, access, page)
 }
 
 // ListArchiveNodes mocks base method.
-func (m *MockStore) ListArchiveNodes(ctx context.Context) ([]*models.ArchiveNode, error) {
+func (m *MockStore) ListArchiveNodes(ctx context.Context, access models.Access, page models.Page) ([]*models.ArchiveNode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListArchiveNodes", ctx)
+	ret := m.ctrl.Call(m, "ListArchiveNodes", ctx, access, page)
 	ret0, _ := ret[0].([]*models.ArchiveNode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListArchiveNodes indicates an expected call of ListArchiveNodes.
-func (mr *MockStoreMockRecorder) ListArchiveNodes(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListArchiveNodes(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveNodes", reflect.TypeOf((*MockStore)(nil).ListArchiveNodes), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchiveNodes", reflect.TypeOf((*MockStore)(nil).ListArchiveNodes), ctx, access, page)
 }
 
 // ListArchives mocks base method.
-func (m *MockStore) ListArchives(ctx context.Context) ([]*models.Archive, error) {
+func (m *MockStore) ListArchives(ctx context.Context, access models.Access, page models.Page) ([]*models.Archive, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListArchives", ctx)
+	ret := m.ctrl.Call(m, "ListArchives", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Archive)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListArchives indicates an expected call of ListArchives.
-func (mr *MockStoreMockRecorder) ListArchives(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListArchives(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchives", reflect.TypeOf((*MockStore)(nil).ListArchives), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListArchives", reflect.TypeOf((*MockStore)(nil).ListArchives), ctx, access, page)
 }
 
 // ListAttachments mocks base method.
-func (m *MockStore) ListAttachments(ctx context.Context) ([]*models.Attachment, error) {
+func (m *MockStore) ListAttachments(ctx context.Context, access models.Access, page models.Page) ([]*models.Attachment, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAttachments", ctx)
+	ret := m.ctrl.Call(m, "ListAttachments", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Attachment)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAttachments indicates an expected call of ListAttachments.
-func (mr *MockStoreMockRecorder) ListAttachments(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListAttachments(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAttachments", reflect.TypeOf((*MockStore)(nil).ListAttachments), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAttachments", reflect.TypeOf((*MockStore)(nil).ListAttachments), ctx, access, page)
 }
 
 // ListChurches mocks base method.
-func (m *MockStore) ListChurches(ctx context.Context) ([]*models.Church, error) {
+func (m *MockStore) ListChurches(ctx context.Context, access models.Access, page models.Page) ([]*models.Church, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListChurches", ctx)
+	ret := m.ctrl.Call(m, "ListChurches", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Church)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListChurches indicates an expected call of ListChurches.
-func (mr *MockStoreMockRecorder) ListChurches(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListChurches(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListChurches", reflect.TypeOf((*MockStore)(nil).ListChurches), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListChurches", reflect.TypeOf((*MockStore)(nil).ListChurches), ctx, access, page)
 }
 
 // ListCitations mocks base method.
-func (m *MockStore) ListCitations(ctx context.Context) ([]*models.Citation, error) {
+func (m *MockStore) ListCitations(ctx context.Context, access models.Access, page models.Page) ([]*models.Citation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListCitations", ctx)
+	ret := m.ctrl.Call(m, "ListCitations", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Citation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListCitations indicates an expected call of ListCitations.
-func (mr *MockStoreMockRecorder) ListCitations(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListCitations(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCitations", reflect.TypeOf((*MockStore)(nil).ListCitations), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListCitations", reflect.TypeOf((*MockStore)(nil).ListCitations), ctx, access, page)
 }
 
 // ListEstates mocks base method.
-func (m *MockStore) ListEstates(ctx context.Context) ([]*models.Estate, error) {
+func (m *MockStore) ListEstates(ctx context.Context, access models.Access, page models.Page) ([]*models.Estate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEstates", ctx)
+	ret := m.ctrl.Call(m, "ListEstates", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Estate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEstates indicates an expected call of ListEstates.
-func (mr *MockStoreMockRecorder) ListEstates(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListEstates(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEstates", reflect.TypeOf((*MockStore)(nil).ListEstates), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEstates", reflect.TypeOf((*MockStore)(nil).ListEstates), ctx, access, page)
 }
 
 // ListEvents mocks base method.
-func (m *MockStore) ListEvents(ctx context.Context) ([]*models.Event, error) {
+func (m *MockStore) ListEvents(ctx context.Context, access models.Access, page models.Page) ([]*models.Event, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEvents", ctx)
+	ret := m.ctrl.Call(m, "ListEvents", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Event)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListEvents indicates an expected call of ListEvents.
-func (mr *MockStoreMockRecorder) ListEvents(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListEvents(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEvents", reflect.TypeOf((*MockStore)(nil).ListEvents), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEvents", reflect.TypeOf((*MockStore)(nil).ListEvents), ctx, access, page)
 }
 
 // ListFamilies mocks base method.
-func (m *MockStore) ListFamilies(ctx context.Context) ([]*models.Family, error) {
+func (m *MockStore) ListFamilies(ctx context.Context, access models.Access, page models.Page) ([]*models.Family, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListFamilies", ctx)
+	ret := m.ctrl.Call(m, "ListFamilies", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Family)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListFamilies indicates an expected call of ListFamilies.
-func (mr *MockStoreMockRecorder) ListFamilies(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListFamilies(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFamilies", reflect.TypeOf((*MockStore)(nil).ListFamilies), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListFamilies", reflect.TypeOf((*MockStore)(nil).ListFamilies), ctx, access, page)
 }
 
 // ListGivenNames mocks base method.
-func (m *MockStore) ListGivenNames(ctx context.Context) ([]*models.GivenName, error) {
+func (m *MockStore) ListGivenNames(ctx context.Context, access models.Access, page models.Page) ([]*models.GivenName, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListGivenNames", ctx)
+	ret := m.ctrl.Call(m, "ListGivenNames", ctx, access, page)
 	ret0, _ := ret[0].([]*models.GivenName)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListGivenNames indicates an expected call of ListGivenNames.
-func (mr *MockStoreMockRecorder) ListGivenNames(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListGivenNames(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListGivenNames", reflect.TypeOf((*MockStore)(nil).ListGivenNames), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListGivenNames", reflect.TypeOf((*MockStore)(nil).ListGivenNames), ctx, access, page)
 }
 
 // ListNotes mocks base method.
-func (m *MockStore) ListNotes(ctx context.Context) ([]*models.Note, error) {
+func (m *MockStore) ListNotes(ctx context.Context, access models.Access, page models.Page) ([]*models.Note, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListNotes", ctx)
+	ret := m.ctrl.Call(m, "ListNotes", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Note)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListNotes indicates an expected call of ListNotes.
-func (mr *MockStoreMockRecorder) ListNotes(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListNotes(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotes", reflect.TypeOf((*MockStore)(nil).ListNotes), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListNotes", reflect.TypeOf((*MockStore)(nil).ListNotes), ctx, access, page)
 }
 
 // ListParishes mocks base method.
-func (m *MockStore) ListParishes(ctx context.Context) ([]*models.Parish, error) {
+func (m *MockStore) ListParishes(ctx context.Context, access models.Access, page models.Page) ([]*models.Parish, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListParishes", ctx)
+	ret := m.ctrl.Call(m, "ListParishes", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Parish)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListParishes indicates an expected call of ListParishes.
-func (mr *MockStoreMockRecorder) ListParishes(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListParishes(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListParishes", reflect.TypeOf((*MockStore)(nil).ListParishes), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListParishes", reflect.TypeOf((*MockStore)(nil).ListParishes), ctx, access, page)
 }
 
 // ListPatronymics mocks base method.
-func (m *MockStore) ListPatronymics(ctx context.Context) ([]*models.Patronymic, error) {
+func (m *MockStore) ListPatronymics(ctx context.Context, access models.Access, page models.Page) ([]*models.Patronymic, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListPatronymics", ctx)
+	ret := m.ctrl.Call(m, "ListPatronymics", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Patronymic)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListPatronymics indicates an expected call of ListPatronymics.
-func (mr *MockStoreMockRecorder) ListPatronymics(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListPatronymics(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPatronymics", reflect.TypeOf((*MockStore)(nil).ListPatronymics), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPatronymics", reflect.TypeOf((*MockStore)(nil).ListPatronymics), ctx, access, page)
 }
 
 // ListPeople mocks base method.
-func (m *MockStore) ListPeople(ctx context.Context) ([]*models.Person, error) {
+func (m *MockStore) ListPeople(ctx context.Context, access models.Access, page models.Page) ([]*models.Person, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListPeople", ctx)
+	ret := m.ctrl.Call(m, "ListPeople", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Person)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListPeople indicates an expected call of ListPeople.
-func (mr *MockStoreMockRecorder) ListPeople(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListPeople(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPeople", reflect.TypeOf((*MockStore)(nil).ListPeople), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListPeople", reflect.TypeOf((*MockStore)(nil).ListPeople), ctx, access, page)
 }
 
 // ListRelations mocks base method.
-func (m *MockStore) ListRelations(ctx context.Context) ([]*models.Relation, error) {
+func (m *MockStore) ListRelations(ctx context.Context, access models.Access, page models.Page) ([]*models.Relation, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRelations", ctx)
+	ret := m.ctrl.Call(m, "ListRelations", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Relation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRelations indicates an expected call of ListRelations.
-func (mr *MockStoreMockRecorder) ListRelations(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListRelations(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelations", reflect.TypeOf((*MockStore)(nil).ListRelations), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRelations", reflect.TypeOf((*MockStore)(nil).ListRelations), ctx, access, page)
 }
 
 // ListRepositories mocks base method.
-func (m *MockStore) ListRepositories(ctx context.Context) ([]*models.Repository, error) {
+func (m *MockStore) ListRepositories(ctx context.Context, access models.Access, page models.Page) ([]*models.Repository, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListRepositories", ctx)
+	ret := m.ctrl.Call(m, "ListRepositories", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Repository)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListRepositories indicates an expected call of ListRepositories.
-func (mr *MockStoreMockRecorder) ListRepositories(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListRepositories(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRepositories", reflect.TypeOf((*MockStore)(nil).ListRepositories), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListRepositories", reflect.TypeOf((*MockStore)(nil).ListRepositories), ctx, access, page)
 }
 
 // ListResidences mocks base method.
-func (m *MockStore) ListResidences(ctx context.Context) ([]*models.Residence, error) {
+func (m *MockStore) ListResidences(ctx context.Context, access models.Access, page models.Page) ([]*models.Residence, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListResidences", ctx)
+	ret := m.ctrl.Call(m, "ListResidences", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Residence)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListResidences indicates an expected call of ListResidences.
-func (mr *MockStoreMockRecorder) ListResidences(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListResidences(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResidences", reflect.TypeOf((*MockStore)(nil).ListResidences), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListResidences", reflect.TypeOf((*MockStore)(nil).ListResidences), ctx, access, page)
 }
 
 // ListSources mocks base method.
-func (m *MockStore) ListSources(ctx context.Context) ([]*models.Source, error) {
+func (m *MockStore) ListSources(ctx context.Context, access models.Access, page models.Page) ([]*models.Source, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSources", ctx)
+	ret := m.ctrl.Call(m, "ListSources", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Source)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSources indicates an expected call of ListSources.
-func (mr *MockStoreMockRecorder) ListSources(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListSources(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSources", reflect.TypeOf((*MockStore)(nil).ListSources), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSources", reflect.TypeOf((*MockStore)(nil).ListSources), ctx, access, page)
 }
 
 // ListSurnames mocks base method.
-func (m *MockStore) ListSurnames(ctx context.Context) ([]*models.Surname, error) {
+func (m *MockStore) ListSurnames(ctx context.Context, access models.Access, page models.Page) ([]*models.Surname, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListSurnames", ctx)
+	ret := m.ctrl.Call(m, "ListSurnames", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Surname)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListSurnames indicates an expected call of ListSurnames.
-func (mr *MockStoreMockRecorder) ListSurnames(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListSurnames(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSurnames", reflect.TypeOf((*MockStore)(nil).ListSurnames), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSurnames", reflect.TypeOf((*MockStore)(nil).ListSurnames), ctx, access, page)
 }
 
 // ListTitles mocks base method.
-func (m *MockStore) ListTitles(ctx context.Context) ([]*models.Title, error) {
+func (m *MockStore) ListTitles(ctx context.Context, access models.Access, page models.Page) ([]*models.Title, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListTitles", ctx)
+	ret := m.ctrl.Call(m, "ListTitles", ctx, access, page)
 	ret0, _ := ret[0].([]*models.Title)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListTitles indicates an expected call of ListTitles.
-func (mr *MockStoreMockRecorder) ListTitles(ctx any) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListTitles(ctx, access, page any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitles", reflect.TypeOf((*MockStore)(nil).ListTitles), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTitles", reflect.TypeOf((*MockStore)(nil).ListTitles), ctx, access, page)
 }
 
 // SaveAdministrativeDivision mocks base method.

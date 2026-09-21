@@ -211,6 +211,6 @@ func loadPersonName(q queryer, nr personNameRow) (models.PersonName, error) {
 }
 
 // ListPeople возвращает всех персон в порядке вставки.
-func (s *Store) ListPeople(ctx context.Context) ([]*models.Person, error) {
-	return listEntities(ctx, s, "persons", s.GetPerson)
+func (s *Store) ListPeople(ctx context.Context, access models.Access, page models.Page) ([]*models.Person, error) {
+	return listEntities(ctx, s, "persons", access, page, s.GetPerson)
 }

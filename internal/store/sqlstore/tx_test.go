@@ -111,7 +111,7 @@ func TestInTxSeesOwnWrites(t *testing.T) {
 			t.Errorf("запись не видна внутри транзакции: %v", err)
 		}
 
-		if list, err := tx.ListPeople(ctx); err != nil || len(list) != 2 {
+		if list, err := tx.ListPeople(ctx, models.AccessFull, models.Page{}); err != nil || len(list) != 2 {
 			t.Errorf("ListPeople внутри транзакции: len=%d err=%v, ожидалось 2", len(list), err)
 		}
 

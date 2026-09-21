@@ -256,20 +256,37 @@ func collectIDs(q queryer, query string, args ...any) ([]int64, error) {
 	return out, rows.Close()
 }
 
-// listIDs возвращает идентификаторы всех строк таблицы в порядке вставки.
-func listIDs(q queryer, table string) ([]models.ID, error) {
+// listIDs возвращает идентификаторы строк таблицы в порядке вставки (rowid)
+// в окне page; publicOnly исключает строки с private = 1 на уровне SQL.
+func listIDs(q queryer, table string, publicOnly bool, page models.Page) ([]models.ID, error) {
+	page = page.Normalized()
+
+	where := ""
+	if publicOnly {
+		where = ` WHERE private = 0`
+	}
+
 	return scanRows(q, func(r *sql.Rows) (models.ID, error) {
 		var id string
 		err := r.Scan(&id)
 
 		return models.ID(id), err
-	}, `SELECT id FROM `+table+` ORDER BY rowid`)
+	}, `SELECT id FROM `+table+where+` ORDER BY rowid LIMIT ? OFFSET ?`, page.Limit, page.Offset)
 }
 
-// listEntities читает список сущностей таблицы: сначала все id (курсор
-// закрыт), затем Get по каждому. Масштаб личной генеалогии это позволяет.
-func listEntities[T any](ctx context.Context, s *Store, table string, get func(context.Context, models.ID) (*T, error)) ([]*T, error) {
-	ids, err := listIDs(s.run(ctx), table)
+// listEntities читает окно списка сущностей таблицы: сначала id страницы
+// (курсор закрыт), затем Get по каждому. Любой режим, кроме AccessFull,
+// скрывает приватные строки таблиц, у которых есть колонка private.
+func listEntities[T any](
+	ctx context.Context, s *Store, table string, access models.Access, page models.Page,
+	get func(context.Context, models.ID) (*T, error),
+) ([]*T, error) {
+	g, err := s.graph(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := listIDs(s.run(ctx), table, access != models.AccessFull && g.hasPrivate(table), page)
 	if err != nil {
 		return nil, err
 	}
