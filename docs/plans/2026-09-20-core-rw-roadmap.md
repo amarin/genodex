@@ -150,7 +150,9 @@
   скрывает `private` (на сущностях с флагом), `AccessFull` — нет.
 
 ### S10. Пакетная загрузка
-- **Файлы:** `sqlstore/helpers.go`, `person.go`, `places.go`, тесты.
+- **Файлы:** `sqlstore/batch.go` (пакетные загрузчики), `person.go`, `places.go`,
+  `sqlstore.go` (`listByIDs`), тесты (`batch_test.go`, `legacy_test.go` —
+  эталон поштучной загрузки); план — `2026-09-21-core-rw-s10-batch.md`.
 - **Приёмка:** число SQL-запросов `ListPeople`/`ListAdministrativeDivisions` не
   зависит от числа строк (тест считает запросы через обёртку над `*sql.DB`);
   результаты совпадают с поштучной загрузкой.
