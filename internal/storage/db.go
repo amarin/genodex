@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -73,6 +74,34 @@ func (d *DB) Query(query string, args ...any) (*sql.Rows, error) { return d.d.Qu
 
 // QueryRow выполняет запрос с одной строкой.
 func (d *DB) QueryRow(query string, args ...any) *sql.Row { return d.d.QueryRow(query, args...) }
+
+// ExecContext — Exec с контекстом: отмена доходит до драйвера.
+func (d *DB) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
+	return d.d.ExecContext(ctx, query, args...)
+}
+
+// QueryContext — Query с контекстом.
+func (d *DB) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	return d.d.QueryContext(ctx, query, args...)
+}
+
+// QueryRowContext — QueryRow с контекстом.
+func (d *DB) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
+	return d.d.QueryRowContext(ctx, query, args...)
+}
+
+// TxContext выполняет fn в транзакции, привязанной к ctx; при ошибке — откат.
+func (d *DB) TxContext(ctx context.Context, fn func(tx *sql.Tx) error) error {
+	tx, err := d.d.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	return tx.Commit()
+}
 
 // Tx выполняет fn в транзакции; при ошибке — откат.
 func (d *DB) Tx(fn func(tx *sql.Tx) error) error {

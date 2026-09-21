@@ -1,7 +1,9 @@
 package storage
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -318,4 +320,67 @@ func insertTextRef(t *testing.T, db *DB, text string) int64 {
 		t.Fatal(err)
 	}
 	return id
+}
+
+func TestContextMethodsHonourCancellation(t *testing.T) {
+	db := openTestDB(t)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+
+	if _, err := db.ExecContext(ctx, "INSERT INTO persons(id) VALUES ('p-1')"); !errors.Is(err, context.Canceled) {
+		t.Errorf("ExecContext = %v, want context.Canceled", err)
+	}
+
+	if rows, err := db.QueryContext(ctx, "SELECT id FROM persons"); !errors.Is(err, context.Canceled) {
+		if rows != nil {
+			_ = rows.Close()
+		}
+
+		t.Errorf("QueryContext = %v, want context.Canceled", err)
+	}
+
+	if err := db.QueryRowContext(ctx, "SELECT 1").Scan(new(int)); !errors.Is(err, context.Canceled) {
+		t.Errorf("QueryRowContext = %v, want context.Canceled", err)
+	}
+
+	err := db.TxContext(ctx, func(*sql.Tx) error {
+		t.Error("fn не должна вызываться при отменённом контексте")
+
+		return nil
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("TxContext = %v, want context.Canceled", err)
+	}
+
+	if n, _ := db.Count("persons"); n != 0 {
+		t.Fatalf("Count persons=%d после отменённых запросов, want 0", n)
+	}
+}
+
+func TestTxContextCommitAndRollback(t *testing.T) {
+	db := openTestDB(t)
+
+	if err := db.TxContext(t.Context(), func(tx *sql.Tx) error {
+		_, err := tx.Exec("INSERT INTO persons(id) VALUES ('p-1')")
+
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	err := db.TxContext(t.Context(), func(tx *sql.Tx) error {
+		if _, err := tx.Exec("INSERT INTO persons(id) VALUES ('p-2')"); err != nil {
+			return err
+		}
+
+		return fmt.Errorf("boom")
+	})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if n, _ := db.Count("persons"); n != 1 {
+		t.Fatalf("Count persons=%d, want 1 (p-1 закоммичена, p-2 откатана)", n)
+	}
 }
