@@ -129,16 +129,16 @@
   (`text_refs`, `dates`, `anchors`) не растут.
 
 ### S8. `InTx`
-- **Файлы:** `store/deps.go`, `sqlstore/sqlstore.go`, `sqlstore/tx.go`,
-  рефакторинг методов на общий исполнитель, тесты.
+- **Файлы:** `storage/db.go` (`TxContext` откатывает при панике),
+  `store/deps.go`, `sqlstore/sqlstore.go` (`exec`, `scoped`, кэш графа схемы),
+  `sqlstore/tx.go`, тесты (`sqlstore/tx_test.go`); общий исполнитель (`runner`)
+  появился в S6; план — `2026-09-21-core-rw-s08-intx.md`.
 - **Интерфейсы:** `InTx(ctx, func(Store) error) error`.
 - **Приёмка:** `Citation` + `Person` записываются атомарно; ошибка внутри
   откатывает обе; вложенный `InTx` использует ту же транзакцию.
-- **Предпосылка из S7:** `deleteEntity` лениво строит граф внешних ключей
-  (`(*Store).graph(ctx)`) отдельным запросом до своей транзакции. Внутри
-  `InTx` (одно соединение, открытая внешняя транзакция) этот запрос повиснет
-  до отмены `ctx` — граф нужно загружать при `Open`/`New` (или передавать
-  `runner`), иначе `Delete*` внутри `InTx` зависнет.
+- **Предпосылка из S7 (закрыта):** граф внешних ключей внутри `InTx` строится в
+  той же транзакции (`Store.exec = *sql.Tx`), поэтому `Delete*` внутри `InTx` не
+  зависает; кэш графа общий для копий `Store` (`schemaCache`).
 
 ### S9. `Page` и `Access`
 - **Файлы:** `models/query.go` (`Page`, `Access`), `store/deps.go`,

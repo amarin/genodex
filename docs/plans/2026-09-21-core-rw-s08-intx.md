@@ -671,3 +671,14 @@ git commit -m "test(store): InTx — атомарность, вложеннос�
 git add docs/data-model/core-read-write.md docs/plans/2026-09-20-core-rw-roadmap.md
 git commit -m "docs: S8 — InTx"
 ```
+
+---
+
+## Правки по итогам ревью (внесены после выполнения задач)
+
+Код в репозитории — источник истины; плановые блоки выше описывают первую версию. Отличия:
+
+- `TxContext` (`storage/db.go`): вместо `recover` — `defer func() { _ = tx.Rollback() }()` (откат на любом выходе, включая `runtime.Goexit`; после `Commit` — `ErrTxDone`, безвредно); план Task 1 и таблица мутаций уже приведены к этому виду.
+- `schemaCache` (`sqlstore.go`/`fkgraph.go`): вместо `sync.Mutex` — `atomic.Pointer[schemaGraph]` с `CompareAndSwap`; замок на время загрузки графа давал взаимоблокировку с транзакцией, держащей единственное соединение (Delete вне транзакции: замок → ждёт соединение; Delete внутри `InTx`: соединение → ждёт замок).
+- `tx.go`: вложенный `InTx` на `scoped`-`Store` проверяет `ctx.Err()` до вызова `fn`; комментарий порта дополнен (ошибка `fn` возвращается как есть, отменённый `ctx` — ошибка контекста без вызова `fn`).
+- `tx_test.go`: добавлены `TestInTxColdGraphDoesNotDeadlockWithOutsideDelete` и `TestInTxNestedCanceledContext`.
