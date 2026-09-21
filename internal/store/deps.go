@@ -27,7 +27,7 @@ import (
 //     (TextRef.Ref, id в якорях цитат) не блокируют удаление и не чистятся —
 //     после него они могут указывать на несуществующую сущность.
 //   - List*(ctx, access, page) отдаёт окно списка в порядке сохранения (стабильном);
-//     page нормализуется (Limit 0 → models.DefaultPageLimit, не больше
+//     page нормализуется (Limit ≤ 0 → models.DefaultPageLimit, не больше
 //     models.MaxPageLimit). Любой access, кроме models.AccessFull, скрывает
 //     сущности с Private = true (для сущностей без флага режим не влияет).
 //   - Save* — upsert: сохраняет сущность целиком и заменяет её дочерние строки
