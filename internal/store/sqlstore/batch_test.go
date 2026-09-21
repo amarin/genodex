@@ -50,12 +50,25 @@ func counted(t *testing.T, s *Store) (*Store, *countingExec) {
 	return &Store{st: s.st, db: s.db, exec: c, cache: s.cache}, c
 }
 
-// batchDate — дата для фикстур: разные i дают разные значения.
+// batchDate — дата для фикстур: разные i дают разные значения; чётные — с
+// верхней границей диапазона (between), нечётные кратные трём — по юлианскому
+// календарю, остальные — точная григорианская дата.
 func batchDate(i int) *models.FactDate {
-	return &models.FactDate{
+	d := &models.FactDate{
 		Year: 1800 + i%100, Month: 1 + i%12, Day: 1 + i%28,
 		Precision: models.PrecisionDay, Modifier: models.ModifierExact,
 	}
+
+	if i%2 == 0 {
+		d.Modifier = models.ModifierBetween
+		d.YearTo, d.MonthTo, d.DayTo = d.Year+1, 1+(i+3)%12, 1+(i+5)%28
+	}
+
+	if i%3 == 0 {
+		d.Calendar = models.FactCalendarJulian
+	}
+
+	return d
 }
 
 // batchPerson строит персону: full — все поля заполнены; иначе по i получается
@@ -79,7 +92,10 @@ func batchPerson(i int, full bool) *models.Person {
 		p.Notes = []models.TextRef{{Text: "из ревизии"}, {Text: "запись " + string(id)}}
 		p.Sources = link(models.TypePerson, id)
 	case i%3 == 2:
-		p.Names = []models.PersonName{{Surname: models.TextRef{Text: "Сидоров"}, Given: models.TextRef{Text: "Иван"}}}
+		p.Names = []models.PersonName{{
+			Surname: models.TextRef{Text: "Сидоров"}, Given: models.TextRef{Text: "Иван"},
+			Since: batchDate(i), // только начало периода: Until остаётся nil
+		}}
 		p.Notes = []models.TextRef{{Text: "только заметка"}}
 	}
 
@@ -187,10 +203,12 @@ func TestBatchListMatchesPerItemLoad(t *testing.T) {
 }
 
 // TestBatchListAcrossChunkBoundaries: окно из 500 персон разбивает IN-списки
-// значений на несколько кусков (1500 text_refs), и ни одно значение не теряется.
+// значений на несколько кусков (3000 id text_refs — 6 кусков, 1000 id dates —
+// 2 куска; списки по владельцам ровно на одном куске в 500), и ни одно
+// значение не теряется. Хвост за пределами первого окна тоже сверяется с эталоном.
 func TestBatchListAcrossChunkBoundaries(t *testing.T) {
 	s := newStore(t)
-	ctx := withTimeout(t)
+	ctx := t.Context() // тысячи эталонных запросов: без короткого таймаута
 
 	seedBatch(t, s, inChunk+20, true)
 
@@ -217,15 +235,34 @@ func TestBatchListAcrossChunkBoundaries(t *testing.T) {
 		t.Fatalf("хвост %d персон, ожидалось 20", len(tail))
 	}
 
-	divisions, err := s.ListAdministrativeDivisions(ctx, models.AccessFull, models.Page{Limit: models.MaxPageLimit})
-	mustDo(t, "divisions", err)
+	for _, p := range tail {
+		want, err := legacyGetPerson(s, ctx, p.ID)
+		mustDo(t, "legacy tail "+string(p.ID), err)
 
-	for _, d := range divisions {
-		want, err := legacyGetDivision(s, ctx, d.ID)
-		mustDo(t, "legacy "+string(d.ID), err)
+		if !reflect.DeepEqual(p, want) {
+			t.Fatalf("персона %s из хвоста расходится с поштучной загрузкой:\n пакетно  %+v\n поштучно %+v", p.ID, p, want)
+		}
+	}
 
-		if !reflect.DeepEqual(d, want) {
-			t.Fatalf("деление %s расходится с поштучной загрузкой:\n пакетно  %+v\n поштучно %+v", d.ID, d, want)
+	// деления: корень + 520 — второе окно тоже сверяется с эталоном
+	for _, page := range []models.Page{
+		{Limit: models.MaxPageLimit},
+		{Limit: models.MaxPageLimit, Offset: models.MaxPageLimit},
+	} {
+		divisions, err := s.ListAdministrativeDivisions(ctx, models.AccessFull, page)
+		mustDo(t, "divisions", err)
+
+		if len(divisions) == 0 {
+			t.Fatalf("окно делений %+v пусто", page)
+		}
+
+		for _, d := range divisions {
+			want, err := legacyGetDivision(s, ctx, d.ID)
+			mustDo(t, "legacy "+string(d.ID), err)
+
+			if !reflect.DeepEqual(d, want) {
+				t.Fatalf("деление %s расходится с поштучной загрузкой:\n пакетно  %+v\n поштучно %+v", d.ID, d, want)
+			}
 		}
 	}
 }
@@ -235,6 +272,8 @@ func TestBatchListAcrossChunkBoundaries(t *testing.T) {
 // строк (в пределах одного куска IN) и равно известной константе.
 func TestListQueryCountDoesNotDependOnRowCount(t *testing.T) {
 	const (
+		// Значения верны для полностью заполненных строк (full = true): загрузка
+		// text_refs/dates не делает запроса на пустой список id.
 		// id окна + persons, person_names, text_refs, dates, 4 списка, source_links
 		peopleQueries = 10
 		// id окна + деления, dates, 3 списка, variants, renames, source_links
