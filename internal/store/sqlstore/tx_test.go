@@ -312,7 +312,13 @@ func TestInTxColdGraphDoesNotDeadlockWithOutsideDelete(t *testing.T) {
 		})
 	}()
 
-	<-entered
+	select {
+	case <-entered:
+	case err := <-inside:
+		t.Fatalf("InTx завершился до вызова fn: %v", err)
+	case <-ctx.Done():
+		t.Fatal("InTx не вызвал fn за отведённое время")
+	}
 
 	go func() { outside <- s.DeletePerson(ctx, "p-a") }()
 
