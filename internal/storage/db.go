@@ -52,6 +52,10 @@ func OpenDB(path string) (*DB, error) {
 			return nil, fmt.Errorf("schema: %w", err)
 		}
 	}
+	if err := createFKIndexes(d); err != nil {
+		d.Close()
+		return nil, fmt.Errorf("indexes: %w", err)
+	}
 	if _, err := d.Exec(
 		`INSERT OR IGNORE INTO meta(key, value) VALUES ('schema_version', ?)`, schemaVersion,
 	); err != nil {
