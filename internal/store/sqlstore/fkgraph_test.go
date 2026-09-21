@@ -3,6 +3,7 @@ package sqlstore
 import (
 	"context"
 	"database/sql"
+	"reflect"
 	"sort"
 	"testing"
 
@@ -116,4 +117,41 @@ func scanRowsStrings(s *Store, query string) ([]string, error) {
 
 		return v, err
 	}, query)
+}
+
+// TestPrivateColumnTablesAreTheEntitiesWithFlag: фильтр AccessPublic опирается
+// на граф схемы; набор таблиц с колонкой private — ровно сущности с флагом
+// приватности в моделях.
+func TestPrivateColumnTablesAreTheEntitiesWithFlag(t *testing.T) {
+	s := newStore(t)
+
+	g, err := s.graph(t.Context())
+	if err != nil {
+		t.Fatalf("graph: %v", err)
+	}
+
+	want := []string{
+		"archive_documents", "archive_nodes", "archives", "attachments", "citations", "events",
+		"families", "notes", "persons", "relations", "repositories", "residences", "sources",
+	}
+
+	var got []string
+
+	for _, table := range entityTables {
+		if g.hasPrivate(table) {
+			got = append(got, table)
+		}
+	}
+
+	sort.Strings(got)
+
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("таблицы с колонкой private %v, ожидалось %v", got, want)
+	}
+
+	for table := range g.private {
+		if _, isEntity := typeOfTable[table]; !isEntity {
+			t.Errorf("колонка private у таблицы %s, не являющейся сущностью", table)
+		}
+	}
 }
