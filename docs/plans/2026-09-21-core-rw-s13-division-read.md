@@ -1727,3 +1727,12 @@ Expected: только явные записи о переименовании: 
 git add -A README.md AGENTS.md docs
 git commit -m "docs: S13 — контракт делений, параметры, коды ответов"
 ```
+
+---
+
+## Правки по итогам ревью (внесены после выполнения задач)
+
+Код в репозитории — источник истины; плановые блоки выше описывают первую версию. Отличия:
+
+- `mcp/division.go` (`optionalInt`): явный `null` в `limit`/`offset` считается отсутствием аргумента, дробное число — ошибка тула (раньше `null` давал ошибку, а `1.5` усекалось до 1); тест `TestDivisionListToolNullAndFractionalNumbers`.
+- `models/query_test.go`: в `TestDivisionQueryMatches` добавлен случай «единица без типа не проходит фильтр `kind=settlement`» (белый список `IsSettlement`).

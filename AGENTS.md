@@ -43,7 +43,7 @@ Project instructions for AI agents (Codex, Claude, LGTM). The authoritative docs
 - If you change a MCP tool or `/api` endpoint: update the contract and the frontend types if needed, run `go build ./...`, start the server and verify the route.
 - If you change frontend code (`web/src`): run `npm run build` to refresh `web/dist`, then `go build ./...`; the new frontend only reaches the binary through `web/dist`.
 - If you change `web/embed.go` or the serving modes: verify both `-web prod` and `-web dev`.
-- Base checks before handoff: `gofmt -l .` clean, `go build ./...`, `go vet ./...`, and a quick smoke test of `/api/health`, `/api/settlements`, and `/`.
+- Base checks before handoff: `gofmt -l .` clean, `go build ./...`, `go vet ./...`, and a quick smoke test of `/api/health`, `/api/admin-divisions`, and `/`.
 
 ## PR review rules
 - LGTM uses this `AGENTS.md` as project context.

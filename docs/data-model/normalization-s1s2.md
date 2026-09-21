@@ -11,10 +11,11 @@
   произвольной структурой не будет нигде (решение пользователя).
 - `settlement` больше не отдельная сущность: населённый пункт — уровень
   `AdministrativeDivision.type`. Доменный тип `Settlement` удаляется из `models`
-  (пакет `entity` упраздняется целиком). Публичный контракт `settlement_list`
-  пока сохраняет имя и отдаётся DTO `transport.Settlement{id, name, type}`;
-  сценарий возвращает домен `AdministrativeDivision`. Переименование
-  публичных контрактов — проход C и правка только в `transport`.
+  (пакет `entity` упраздняется целиком). Публичный контракт (с S13 — MCP-тул
+  `division_list` и `GET /api/admin-divisions`; «населённые пункты» — фильтр
+  `kind=settlement`) отдаётся DTO `transport.AdminDivision{id, name, type, parent_id}`;
+  сценарий возвращает домен `AdministrativeDivision`. Переименования контрактов
+  правятся только в `transport` (так и сделано в S13).
 - Тип сущности `first_name` переименован в `given_name` для соответствия
   `docs/models/people.md` (Surname / GivenName / Patronymic).
 
@@ -52,8 +53,9 @@ entity     — упразднён
 - Почему DTO, а не общий тип: контракт — производная от домена, а не источник
   истины. Изменения API (переименования контрактов, формы ответов и запросов)
   правятся только в `transport` и не трогают ни домен, ни хранилище. Например,
-  `GET /api/settlements` и `settlement_list` могут отдавать `{id, name, type}`
-  под именем `transport.Settlement`, а домен растёт как `AdministrativeDivision`.
+  контракт делений отдаёт `{id, name, type, parent_id}` под именем
+  `transport.AdminDivision` (до S13 — `{id, name, type}` как `transport.Settlement`),
+  а домен растёт как `AdministrativeDivision`.
   Сейчас путь чтения один, writes нет — конвертеры крошечные.
 
 ## 2. Enum-домены (номинальные типы в internal/models)
@@ -322,13 +324,13 @@ PRIMARY KEY(entity_table, entity_id, field, term))`.
 `sqlstore` маппит сущность ↔ набор строк (вложенные списки — отдельными
 INSERT; удаление — `Delete*` по графу внешних ключей, см. `core-read-write.md` §4).
 
-## 7. usecase settlement_list (в составе S1+S2)
+## 7. usecase «список делений» (в составе S1+S2)
 
-Единственный существующий сценарий: возвращает населённые пункты как
-`[]models.AdministrativeDivision` (типы из вида нас. пунктов). Сценарий не знает
-про JSON и про `transport`. Публичные имена `settlement_list` (MCP) и
-`/api/settlements` (HTTP) пока сохраняются — см. раздел 8; переименование
-контрактов — проход C.
+Единственный сценарий этого прохода (с S13 — `list_divisions`, ранее
+`list_settlements`): возвращает единицы деления как
+`[]models.AdministrativeDivision` (с фильтрами вида и типа и окном). Сценарий не
+знает про JSON и про `transport`. Публичные имена — `division_list` (MCP) и
+`/api/admin-divisions` (HTTP), см. раздел 8.
 
 ## 8. transport: DTO и конвертеры
 
@@ -337,10 +339,11 @@ INSERT; удаление — `Delete*` по графу внешних ключе
 `definitions` о нём не знают.
 
 - Один DTO на публичный контракт, файл на тип (snake_case). В этом проходе —
-  `transport.Settlement{ID, Name, Type}` с тегами `id`, `name`, `type`
-  (`Type` — `models.AdminDivisionType`, значение на проводе = домен).
-- Конвертеры односторонние (домен → DTO): `SettlementFromModel(models.AdministrativeDivision)`
-  и `SettlementsFromModels([]models.AdministrativeDivision)` (пустой список — `[]`,
+  `transport.AdminDivision{ID, Name, Type, ParentID}` с тегами `id`, `name`, `type`,
+  `parent_id` (`Type` — `models.AdminDivisionType`, значение на проводе = домен;
+  `parent_id` — `null` у корня; до S13 — `Settlement{id, name, type}`).
+- Конвертеры односторонние (домен → DTO): `AdminDivisionFromModel(models.AdministrativeDivision)`
+  и `AdminDivisionsFromModels([]models.AdministrativeDivision)` (пустой список — `[]`,
   не `null`). `ToModel` не пишется, пока нет путей записи (появится вместе с
   первой write-операцией).
 - Enum-домены и `ID` — типы `models` напрямую, без алиасов (раздел 2).
@@ -349,12 +352,12 @@ INSERT; удаление — `Delete*` по графу внешних ключе
   `ParseFactDate`); `Anchor` — плоский DTO с дискриминатором `kind`
   (archive/file/url). В этом проходе контрактов, которые их отдают, нет —
   типы добавляются вместе с первым контрактом, который их использует.
-- Обработчики: `httpapi.handleSettlementList` и MCP-тул `settlement_list`
+- Обработчики: `httpapi.handleDivisionList` и MCP-тул `division_list`
   вызывают сценарий, конвертируют результат через `transport` и сериализуют.
-  Интерфейсы `SettlementService` в `httpapi/deps.go` и `mcp/deps.go` возвращают
+  Интерфейсы `DivisionService` в `httpapi/deps.go` и `mcp/deps.go` возвращают
   `[]models.AdministrativeDivision`.
-- Форма ответа меняется с `[{id,name,metadata?}]` на `[{id,name,type}]`;
-  `metadata` исчезает вместе с `Metadata` в домене.
+- Форма ответа: `[{id,name,type}]` (S1+S2; `metadata` исчезла вместе с `Metadata`
+  в домене), с S13 — `[{id,name,type,parent_id}]`.
 
 ## 9. Тесты
 
@@ -363,9 +366,9 @@ INSERT; удаление — `Delete*` по графу внешних ключе
   заполняется/удаляется; `schema_version=0`.
 - `internal/store/sqlstore`: round-trip Save/Get/List для всех типов
   (включая вложенные списки: names, participants, items и т.д.); delete-каскад.
-- `internal/transport`: конвертер `Settlement` — поля, `type`, пустой список
+- `internal/transport`: конвертер `AdminDivision` — поля, `type`, пустой список
   сериализуется как `[]`; JSON-контракт зафиксирован тестом (golden-строка).
-- `httpapi`/`mcp`: обработчики отдают форму `transport.Settlement`.
+- `httpapi`/`mcp`: обработчики отдают форму `transport.AdminDivision`.
 - Бэкап/restore/verify остаются (работают через `VACUUM INTO` — изменений не
   требуют, кроме списка типов в `entity_counts`, который читает из схемы).
 - Сохраняются существующие тесты `FactDate`.
@@ -376,4 +379,4 @@ INSERT; удаление — `Delete*` по графу внешних ключе
 
 `gofmt -l .` пусто; `go build ./...`; `go vet ./...`; `go test ./...`;
 `grep -rn "internal/entity" .` пусто; `grep -rn 'json:"' internal/models` пусто;
-smoke `/api/health`, `/api/settlements`, `/`.
+smoke `/api/health`, `/api/admin-divisions`, `/`.

@@ -269,11 +269,15 @@ type Hit struct{ Type Type; ID ID; Label, Field string }
   HTTP `GET/POST /api/<множественное>`, `GET/PUT/DELETE /api/<множественное>/{id}`.
   DTO и запросы — в `transport`; ошибки сценариев в статусы: `ErrNotFound` → 404,
   `*ValidationError` → 422, `*InUseError` → 409 (тело — список ссылающихся).
-- Переименование единственного текущего контракта: `settlement_list` →
+- Переименование единственного текущего контракта (выполнено в S13): `settlement_list` →
   `division_list`, `GET /api/settlements` → `GET /api/admin-divisions`, сценарий
   `list_settlements` → `list_divisions`, DTO `Settlement` → `AdminDivision`
   (`id`, `name`, `type`, `parent_id`). Фильтр «только населённые пункты» становится
-  параметром запроса (`kind=settlement`), а не именем контракта.
+  параметром запроса (`kind=settlement`), а не именем контракта. Параметры списка:
+  `kind`, `type`, `limit`, `offset` (`models.DivisionQuery`); окно применяется после
+  фильтра, сценарий фильтрует в памяти по окнам репозитория. Коды: `400` — параметр
+  не число, `422` — `*ValidationError` (`{error, field}`), `500` — сбой; в MCP —
+  ошибка внутри результата тула. Подробности — `docs/usage.md`.
 - Вертикальный срез на делениях (`AdministrativeDivision`): полный CRUD, список
   (с фильтром по `parent_id`, `type`, `kind`), поиск, дочерние единицы. Срез
   служит образцом для остальных групп сущностей (люди, события, источники,

@@ -35,7 +35,7 @@ Flags:
 |------|---------|
 | `/mcp` | MCP server, Streamable HTTP transport |
 | `/api/health` | Liveness: `{"status":"ok"}` |
-| `/api/settlements` | List of settlements (JSON) |
+| `/api/admin-divisions` | Administrative divisions (JSON array `[{"id","name","type","parent_id"}]`); query: `kind=settlement`, `type=<type>`, `limit` (default 50, max 500), `offset` |
 | `/static/` | Built SPA assets |
 | `/` | Web SPA (`index.html`, fallback for client-side routes) |
 
@@ -43,7 +43,7 @@ Smoke test:
 
 ```bash
 curl -s http://localhost:9000/api/health      # {"status":"ok"}
-curl -s http://localhost:9000/api/settlements
+curl -s 'http://localhost:9000/api/admin-divisions?kind=settlement'
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:9000/  # 200
 ```
 

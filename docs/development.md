@@ -47,7 +47,7 @@ go test ./...       # storage (БД/backup/restore/verify), sqlstore, usecases
 ```bash
 go run ./cmd/genodex -p 9000 &
 curl -s http://localhost:9000/api/health      # {"status":"ok"}
-curl -s http://localhost:9000/api/settlements # [...]
+curl -s 'http://localhost:9000/api/admin-divisions?kind=settlement' # [...]
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:9000/  # 200
 ```
 

@@ -75,7 +75,7 @@ genodex verify [--data DIR] [--backup DIR]             # проверка цел
 |------|-----------|
 | `/mcp` | MCP-сервер, транспорт Streamable HTTP. Для AI-ассистентов и MCP-клиентов. |
 | `/api/health` | Проверка живости: `{"status":"ok"}`. |
-| `/api/settlements` | Список населённых пунктов (JSON): массив `[{"id", "name", "type"}]`. |
+| `/api/admin-divisions` | Единицы административного деления (JSON): массив `[{"id", "name", "type", "parent_id"}]`; параметры — ниже. |
 | `/static/` | Собранные ассеты SPA (JS/CSS). |
 | `/` | Веб-интерфейс (SPA): `index.html`, для неизвестных путей — fallback на неё. |
 
@@ -94,14 +94,31 @@ curl -s -X POST http://localhost:9000/mcp \
 
 | Тул | Описание |
 |-----|---------|
-| `settlement_list` | Получить список всех населённых пунктов |
+| `division_list` | Список единиц административного деления; аргументы `kind`, `type`, `limit`, `offset` (как параметры HTTP, см. ниже) |
 
 ### HTTP API
 
 ```bash
 curl -s http://localhost:9000/api/health
-curl -s http://localhost:9000/api/settlements
+curl -s 'http://localhost:9000/api/admin-divisions?kind=settlement&limit=20'
 ```
+
+### Список единиц деления
+
+`GET /api/admin-divisions` и MCP-тул `division_list` принимают одни и те же параметры:
+
+| Параметр | Значение |
+|----------|----------|
+| `kind` | пусто — без фильтра; `settlement` — только населённые пункты (город, село, деревня, хутор, погост, станица, местечко) |
+| `type` | пусто — без фильтра; иначе точный тип: `governorate`, `district`, `volost`, `gorod`, `selo`, `derevnya`, `hutor`, `pogost`, `stanitsa`, `mestechko`, `other` |
+| `limit` | размер окна: по умолчанию 50, не больше 500 (больше — сужается до 500) |
+| `offset` | сдвиг окна, по умолчанию 0 |
+
+`kind` и `type` пересекаются. Порядок — порядок сохранения; окно считается после
+фильтра; результат короче `limit` — конец списка. `parent_id` — `null` у корневых
+единиц. Ошибки HTTP: `400` — `limit`/`offset` не целое число; `422` — неизвестные
+`kind`/`type` или отрицательное окно (тело `{"error": "…", "field": "kind"}`);
+`500` — сбой хранилища. Ошибки MCP-тула приходят в результате вызова с признаком ошибки.
 
 ### Веб
 
