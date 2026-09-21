@@ -223,6 +223,10 @@ type Hit struct{ Type Type; ID ID; Label, Field string }
   `exec = *sql.Tx`.
 - `List*(ctx, Access, Page)` — пагинация везде; `AccessPublic` исключает
   сущности с `private = 1` на уровне SQL (для сущностей без флага — не влияет).
+  Порядок — порядок сохранения (`rowid`), окно считается после фильтра;
+  `Page` нормализуется (`Limit` ≤ 0 → 50, > 500 → 500, отрицательный `Offset` →
+  0), любой режим, кроме `AccessFull`, — публичный (безопасный отказ). Таблицы
+  с колонкой `private` определяются по схеме. Реализовано в S9.
 - `Search(ctx, query, Access, Page) ([]Hit, error)` — по `search_index`, префикс
   нормализованного запроса, порядок стабильный.
 - Точечные запросы: `ChildrenOfDivision(ctx, parent, Access, Page)`; остальные

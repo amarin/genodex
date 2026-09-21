@@ -142,7 +142,9 @@
 
 ### S9. `Page` и `Access`
 - **Файлы:** `models/query.go` (`Page`, `Access`), `store/deps.go`,
-  `sqlstore/*` (общий `listEntities`), тесты, `usecases`.
+  `sqlstore/*` (`listEntities`, `listIDs`, признак `private` в графе схемы),
+  тесты (`sqlstore/list_test.go`), `usecases/list_settlements` (обход окон);
+  план — `2026-09-21-core-rw-s09-page-access.md`.
 - **Интерфейсы:** `List*(ctx, Access, Page)`; `Page.Limit` 0 → 50, максимум 500.
 - **Приёмка:** страницы не пересекаются и покрывают набор; `AccessPublic`
   скрывает `private` (на сущностях с флагом), `AccessFull` — нет.

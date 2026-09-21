@@ -968,3 +968,12 @@ git commit -m "test(store): окна и приватность списков д
 git add docs/data-model/core-read-write.md docs/plans/2026-09-20-core-rw-roadmap.md
 git commit -m "docs: S9 — Page и Access"
 ```
+
+---
+
+## Правки по итогам ревью (внесены после выполнения задач)
+
+Код в репозитории — источник истины; плановые блоки выше описывают первую версию. Отличия:
+
+- `store/deps.go`: в комментарии `List*` правило `Limit` — «≤ 0 → по умолчанию».
+- `list_test.go`: `TestListPagesPartitionEveryKind` считает «смешанные» виды (и приватные, и публичные строки) и требует их не меньше трёх; `TestListDefaultAndMaxPageLimit` проверяет ещё и первую строку окна; тест обхода окон ограничен по числу итераций.
