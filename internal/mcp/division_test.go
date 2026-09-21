@@ -104,6 +104,24 @@ func TestDivisionListToolBadNumberIsToolError(t *testing.T) {
 	}
 }
 
+// TestDivisionListToolNullAndFractionalNumbers: явный null — как отсутствие
+// аргумента; дробное число — ошибка тула, а не молчаливое усечение.
+func TestDivisionListToolNullAndFractionalNumbers(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	res := callDivisionList(t, svc, map[string]any{"limit": nil, "offset": nil})
+	if res.IsError || svc.got != (models.DivisionQuery{}) {
+		t.Fatalf("null-аргументы: isError=%v запрос=%+v; ожидалось значение по умолчанию", res.IsError, svc.got)
+	}
+
+	svc = &fakeDivisions{}
+
+	res = callDivisionList(t, svc, map[string]any{"limit": 1.5})
+	if !res.IsError || svc.call != 0 {
+		t.Fatalf("дробный limit: isError=%v calls=%d; ожидалась ошибка тула без вызова сценария", res.IsError, svc.call)
+	}
+}
+
 func TestDivisionListToolErrorsAreToolErrors(t *testing.T) {
 	for name, err := range map[string]error{
 		"ошибка проверки": &models.ValidationError{Field: "kind", Reason: "неизвестный вид"},

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -76,8 +77,13 @@ func divisionQueryFromRequest(req mcp.CallToolRequest) (models.DivisionQuery, er
 
 // optionalInt читает необязательный целочисленный аргумент.
 func optionalInt(req mcp.CallToolRequest, name string) (int, error) {
-	if _, ok := req.GetArguments()[name]; !ok {
+	raw, ok := req.GetArguments()[name]
+	if !ok || raw == nil { // нет аргумента или явный null — значение по умолчанию
 		return 0, nil
+	}
+
+	if f, isFloat := raw.(float64); isFloat && f != math.Trunc(f) {
+		return 0, fmt.Errorf("аргумент %s: ожидалось целое число", name)
 	}
 
 	n, err := req.RequireInt(name)
