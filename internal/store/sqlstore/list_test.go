@@ -21,10 +21,11 @@ func tableHasPrivate(t *testing.T, s *Store, table string) bool {
 	return n > 0
 }
 
-// TestListPagesPartitionEveryKind: для каждого из 21 видов окна любого размера
+// TestListPagesPartitionEveryKind: для каждого из 21 видов окна размером 1–3
 // не пересекаются и в сумме дают весь список, окно за пределами набора пусто,
 // AccessPublic скрывает ровно приватные строки (а на таблицах без флага не
-// влияет). Набор — fullChain: по сущности каждого вида, часть приватная.
+// влияет). Набор — fullChain: по одной-двум сущностям каждого вида, часть
+// приватных; смешанные виды (и приватные, и публичные строки) считаются отдельно.
 func TestListPagesPartitionEveryKind(t *testing.T) {
 	s := newStore(t)
 
@@ -32,7 +33,7 @@ func TestListPagesPartitionEveryKind(t *testing.T) {
 		mustDo(t, "save "+st.kind+" "+string(st.id), st.save(t.Context(), s))
 	}
 
-	hidden := 0
+	hidden, mixed := 0, 0
 
 	for name, spec := range listers {
 		t.Run(name, func(t *testing.T) {
@@ -86,6 +87,10 @@ func TestListPagesPartitionEveryKind(t *testing.T) {
 
 				wantPublic -= priv
 				hidden += priv
+
+				if priv > 0 && priv < total {
+					mixed++
+				}
 			}
 
 			public, err := spec.list(s, ctx, models.AccessPublic, models.Page{})
@@ -97,8 +102,8 @@ func TestListPagesPartitionEveryKind(t *testing.T) {
 		})
 	}
 
-	if hidden == 0 {
-		t.Fatal("в наборе нет приватных строк — проверка фильтра пуста")
+	if hidden == 0 || mixed < 3 {
+		t.Fatalf("набор не проверяет фильтр: приватных строк %d, смешанных видов %d (нужно ≥ 3)", hidden, mixed)
 	}
 }
 
@@ -189,6 +194,11 @@ func TestListDefaultAndMaxPageLimit(t *testing.T) {
 
 			if len(got) != c.want {
 				t.Fatalf("окно %+v вернуло %d строк, ожидалось %d", c.page, len(got), c.want)
+			}
+
+			// окно начинается с сохранённой по порядку персоны Offset (сдвиг ≥ 0)
+			if first := max(c.page.Offset, 0); c.want > 0 && got[0] != models.ID("p-"+strconv.Itoa(1000+first)) {
+				t.Fatalf("окно %+v начинается с %s, ожидалась p-%d", c.page, got[0], 1000+first)
 			}
 		})
 	}
