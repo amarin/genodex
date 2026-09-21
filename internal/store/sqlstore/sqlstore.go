@@ -259,19 +259,35 @@ func collectIDs(q queryer, query string, args ...any) ([]int64, error) {
 // listIDs возвращает идентификаторы строк таблицы в порядке вставки (rowid)
 // в окне page; publicOnly исключает строки с private = 1 на уровне SQL.
 func listIDs(q queryer, table string, publicOnly bool, page models.Page) ([]models.ID, error) {
-	page = page.Normalized()
-
 	where := ""
 	if publicOnly {
-		where = ` WHERE private = 0`
+		where = "private = 0"
 	}
+
+	return pagedIDs(q, table, where, nil, page)
+}
+
+// pagedIDsSQL — текст запроса pagedIDs (отдельно, чтобы тесты объясняли план
+// именно этого запроса).
+func pagedIDsSQL(table, where string) string {
+	if where != "" {
+		where = " WHERE " + where
+	}
+
+	return `SELECT id FROM ` + table + where + ` ORDER BY rowid LIMIT ? OFFSET ?`
+}
+
+// pagedIDs возвращает id строк таблицы в порядке вставки (rowid) в окне page;
+// where — необязательное условие (фиксированный текст, значения — в args).
+func pagedIDs(q queryer, table, where string, args []any, page models.Page) ([]models.ID, error) {
+	page = page.Normalized()
 
 	return scanRows(q, func(r *sql.Rows) (models.ID, error) {
 		var id string
 		err := r.Scan(&id)
 
 		return models.ID(id), err
-	}, `SELECT id FROM `+table+where+` ORDER BY rowid LIMIT ? OFFSET ?`, page.Limit, page.Offset)
+	}, pagedIDsSQL(table, where), append(append([]any{}, args...), page.Limit, page.Offset)...)
 }
 
 // listByIDs читает окно списка сущностей таблицы: сначала id окна (курсор

@@ -191,6 +191,31 @@ func (s *Store) getDivisions(ctx context.Context, ids []models.ID) ([]*models.Ad
 	return out, nil
 }
 
+// ChildrenOfDivision возвращает прямые дочерние единицы деления parent в порядке
+// сохранения; нет такого деления — models.ErrNotFound.
+func (s *Store) ChildrenOfDivision(
+	ctx context.Context, parent models.ID, access models.Access, page models.Page,
+) ([]*models.AdministrativeDivision, error) {
+	q := s.run(ctx)
+
+	var exists int
+	if err := q.QueryRow(`SELECT 1 FROM administrative_divisions WHERE id = ?`, string(parent)).Scan(&exists); err != nil {
+		if notFound(err) {
+			return nil, models.ErrNotFound
+		}
+
+		return nil, err
+	}
+
+	// у делений нет колонки private — access на выборку не влияет
+	ids, err := pagedIDs(q, "administrative_divisions", "parent_id = ?", []any{string(parent)}, page)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.getDivisions(ctx, ids)
+}
+
 // ListAdministrativeDivisions возвращает окно списка единиц деления.
 func (s *Store) ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
 	return listByIDs(ctx, s, "administrative_divisions", access, page, s.getDivisions)

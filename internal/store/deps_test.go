@@ -41,6 +41,21 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
+// ChildrenOfDivision mocks base method.
+func (m *MockStore) ChildrenOfDivision(ctx context.Context, parent models.ID, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChildrenOfDivision", ctx, parent, access, page)
+	ret0, _ := ret[0].([]*models.AdministrativeDivision)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChildrenOfDivision indicates an expected call of ChildrenOfDivision.
+func (mr *MockStoreMockRecorder) ChildrenOfDivision(ctx, parent, access, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChildrenOfDivision", reflect.TypeOf((*MockStore)(nil).ChildrenOfDivision), ctx, parent, access, page)
+}
+
 // DeleteAdministrativeDivision mocks base method.
 func (m *MockStore) DeleteAdministrativeDivision(ctx context.Context, id models.ID) error {
 	m.ctrl.T.Helper()
@@ -1271,4 +1286,19 @@ func (m *MockStore) SaveTitle(ctx context.Context, t *models.Title) error {
 func (mr *MockStoreMockRecorder) SaveTitle(ctx, t any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveTitle", reflect.TypeOf((*MockStore)(nil).SaveTitle), ctx, t)
+}
+
+// Search mocks base method.
+func (m *MockStore) Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Search", ctx, query, access, page)
+	ret0, _ := ret[0].([]models.Hit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Search indicates an expected call of Search.
+func (mr *MockStoreMockRecorder) Search(ctx, query, access, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Search", reflect.TypeOf((*MockStore)(nil).Search), ctx, query, access, page)
 }

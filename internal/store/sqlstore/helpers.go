@@ -1,7 +1,6 @@
 package sqlstore
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"strings"
@@ -473,24 +472,6 @@ func replaceSearchIndex(tx runner, table string, id models.ID, fields map[string
 	}
 
 	return nil
-}
-
-// searchIDs возвращает id сущностей таблицы, чей термин начинается с query.
-// Запрос нормализуется здесь же — регистронезависимость без участия
-// sqlite-коллаций.
-func (s *Store) searchIDs(ctx context.Context, table, query string) ([]models.ID, error) {
-	norm := storage.Normalize(query)
-	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(norm)
-
-	return scanRows(s.run(ctx), func(r *sql.Rows) (models.ID, error) {
-		var id string
-		err := r.Scan(&id)
-
-		return models.ID(id), err
-	},
-		`SELECT DISTINCT entity_id FROM search_index
-		 WHERE entity_table = ? AND term LIKE ? ESCAPE '\' ORDER BY entity_id`,
-		table, escaped+"%")
 }
 
 // wrapSave дополняет ошибку сохранения видом и id сущности; %w сохраняет

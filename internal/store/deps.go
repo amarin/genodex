@@ -63,6 +63,19 @@ type Store interface {
 	// проверяет).
 	InTx(ctx context.Context, fn func(Store) error) error
 
+	// Search ищет сущности по префиксу термина поискового индекса: запрос
+	// нормализуется (регистр, ё/е, диакритика), совпадение — по началу одного
+	// термина (многословный запрос не разбивается); пустой запрос — пустой
+	// результат. Одна сущность — один Hit; порядок — по виду и id (стабилен),
+	// access и page действуют как в List*. Приватность решается по таблице
+	// сущности, а не по индексу.
+	Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error)
+
+	// ChildrenOfDivision — прямые дочерние единицы деления parent в порядке
+	// сохранения; нет такого деления — models.ErrNotFound. access и page — как в
+	// List* (у делений флага приватности нет).
+	ChildrenOfDivision(ctx context.Context, parent models.ID, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error)
+
 	// Person
 	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
 	SavePerson(ctx context.Context, p *models.Person) error

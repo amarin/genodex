@@ -426,12 +426,12 @@ func TestStoreSearchIndex(t *testing.T) {
 	}
 
 	for _, query := range []string{"ИВАНОВ", "иванов", "Иван", "ПЕТР"} {
-		found, err := s.searchIDs(t.Context(), "persons", query)
+		found, err := s.Search(t.Context(), query, models.AccessFull, models.Page{})
 		if err != nil {
-			t.Fatalf("searchIDs %q: %v", query, err)
+			t.Fatalf("Search %q: %v", query, err)
 		}
-		if len(found) != 1 || found[0] != "p-1" {
-			t.Fatalf("searchIDs %q вернул %v, ожидалось [p-1]", query, found)
+		if len(found) != 1 || found[0].ID != "p-1" {
+			t.Fatalf("Search %q вернул %v, ожидалось [p-1]", query, found)
 		}
 	}
 }
