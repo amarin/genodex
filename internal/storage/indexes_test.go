@@ -337,3 +337,35 @@ func TestOpenDBUpgradesDatabaseWithoutFKIndexes(t *testing.T) {
 		t.Errorf("IntegrityCheck: %v", err)
 	}
 }
+
+// TestSearchTermIndex: покрывающий индекс поиска по префиксу термина создан
+// схемой и содержит колонки выборки Search в нужном порядке.
+func TestSearchTermIndex(t *testing.T) {
+	db := openTestDB(t)
+
+	rows, err := db.Query(`SELECT name FROM pragma_index_info('idx_search_term') ORDER BY seqno`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+
+	var cols []string
+
+	for rows.Next() {
+		var c string
+		if err := rows.Scan(&c); err != nil {
+			t.Fatal(err)
+		}
+
+		cols = append(cols, c)
+	}
+
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []string{"term", "entity_table", "entity_id", "field"}
+	if fmt.Sprint(cols) != fmt.Sprint(want) {
+		t.Fatalf("колонки idx_search_term %v, want %v", cols, want)
+	}
+}

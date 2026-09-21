@@ -587,4 +587,9 @@ var schemaDDL = []string{
 		term         TEXT NOT NULL COLLATE BINARY,
 		PRIMARY KEY (entity_table, entity_id, field, term)
 	)`,
+
+	// Префиксный поиск — диапазон по term; индекс покрывающий (все колонки
+	// выборки Search), поэтому таблица не читается.
+	`CREATE INDEX IF NOT EXISTS idx_search_term
+		ON search_index (term, entity_table, entity_id, field)`,
 }
