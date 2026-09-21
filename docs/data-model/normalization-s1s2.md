@@ -283,8 +283,10 @@ timecode, url)` — все `Anchor`; колонки зависят от `kind`, 
 `Note.parent_id`, `Source.repository_id`, `Archive.repository_id`) — внешние ключи.
 Связывающие `text_refs`, `dates`, `anchors` — внешние ключи от владельцев.
 Поведение при удалении цели строгой ссылки — `RESTRICT` (нельзя удалить персону,
-на которую есть `Relation`), при удалении владельца `source_links`/`text_refs` —
-каскад.
+на которую есть `Relation`). При удалении владельца каскад сносит только его
+связные строки; `source_links`, `search_index` и осиротевшие строки
+`text_refs`/`dates`/`anchors` внешнего ключа на владельца не имеют, поэтому их
+чистит `sqlstore` явно (`Delete*`, S7); `source_links.citation_id` — `RESTRICT`.
 
 ### Поиск: таблица search_index
 
@@ -297,11 +299,11 @@ PRIMARY KEY(entity_table, entity_id, field, term))`.
 - При `Save` сущности её поисковые поля (name/label/canonical + variants
   + тексты TextRef) переписываются в индекс. `search_index` и `source_links`
   полиморфны и внешнего ключа на владельца не имеют, поэтому каскада нет:
-  sqlstore чистит их явно (сейчас — при `Save`; любой будущий `Delete*` обязан
-  делать то же).
-- Запрос: `WHERE term LIKE ?` с параметром = уже lowered строка + `%`
-  (без участия sqlite-коллаций — регистронезависимость обеспечена нормализацией
-  обеих сторон в Go).
+  sqlstore чистит их явно (при `Save` и при `Delete*`, S7).
+- Запрос (S11): диапазон `term >= p AND term < p+U+10FFFF` по покрывающему индексу
+  `idx_search_term`, `p` — префикс, нормализованный так же, как термины (без
+  участия sqlite-коллаций — регистронезависимость обеспечена нормализацией обеих
+  сторон в Go); см. `core-read-write.md` §4.
 - Поддерживает «точное совпадение» и «совпадение по вариантам» (поле
   различает name/label/canonical/variant) — ранжирование — проход C.
 
@@ -313,10 +315,12 @@ PRIMARY KEY(entity_table, entity_id, field, term))`.
 `Parish`, `Event`, `Source`, `Citation`, `Note`, `Repository`, `Archive`,
 `ArchiveNode`, `ArchiveDocument`, `Attachment`). Порт оперирует типами
 `internal/models`. Методы `GetSettlement/...` удаляются. `go:generate mockgen`
-сохраняется.
+сохраняется. Позже порт расширен методами `DeleteX`, `Search`,
+`ChildrenOfDivision`, `InTx` и параметрами `ctx`, `Access`, `Page` — актуальный
+контракт в `core-read-write.md` §4.
 
 `sqlstore` маппит сущность ↔ набор строк (вложенные списки — отдельными
-INSERT; удаление — каскад по FK).
+INSERT; удаление — `Delete*` по графу внешних ключей, см. `core-read-write.md` §4).
 
 ## 7. usecase settlement_list (в составе S1+S2)
 

@@ -282,14 +282,23 @@ type Hit struct{ Type Type; ID ID; Label, Field string }
 
 ## 6. Мелочи (этап E)
 
-- `PersonGender` константы: `Male/Female/Unknown` → `PersonGenderMale/Female/Unknown`
-  (как в спеке S1+S2 §2).
-- Тест, фиксирующий соответствие `models.Type` ↔ реестр таблиц ↔
-  `search_index.entity_table` ↔ префикс `ID`.
-- `List*`-тесты для всех 21 типа.
-- Устаревшие абзацы: каскад `source_links`/`text_refs` в спеке S1+S2 §5,
-  раздел «Открытые вопросы» в `docs/todo.md`, пометка о несоответствии
-  словаря `internal/definitions/russia` (блок D `docs/todo.md`).
+Выполнено в S12:
+
+- `PersonGender` константы: `Male/Female/Unknown` → `PersonGenderMale/Female/Unknown`.
+- Тест соответствия `models.Type` ↔ реестр таблиц ↔ `search_index.entity_table` ↔
+  префикс `ID` (`sqlstore/registry_test.go`).
+- `List*`-тесты для всех 21 типа — закрыты в S9 (`TestListPagesPartitionEveryKind`).
+- Тест транзакционности порта (все 21 `Save*` и 21 `Delete*` внутри откатываемого
+  `InTx`) и тест порядка списков после `Backup`/`Restore`.
+- Прагмы соединения (`foreign_keys`, `busy_timeout`, `journal_mode`) — в DSN, а
+  значит действуют на каждое соединение пула; `DB.Tx` без `ctx` удалён.
+- Устаревшие абзацы: каскад `source_links`/`text_refs`, механизм поиска и порт в
+  `normalization-s1s2.md`, «Открытые вопросы» в `docs/todo.md`, пометка о словаре
+  `internal/definitions/russia`, ссылка на отменённое правило id в
+  `docs/superpowers/specs/2026-09-19-storage-design.md`.
+
+Отклонено: ошибка «не найдено» с видом и id сущности — обработчик знает, что
+запрашивал, а `errors.Is(err, ErrNotFound)` достаточно.
 
 ## 7. Порядок работ
 
