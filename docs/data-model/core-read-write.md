@@ -158,12 +158,12 @@
 
 ## 3. Хранилище (`internal/storage`, `sqlstore`)
 
-- **Индексы** (в том же `CREATE … IF NOT EXISTS`, миграций данных не требуют):
+- **Индексы** (`CREATE INDEX IF NOT EXISTS`, миграций данных не требуют):
   - на каждую FK-колонку каждой таблицы, у которой нет своего ведущего индекса
     (владельцы дочерних таблиц, `parent_id`, `person_a/b`, `person_id`,
     `place_id`, `source_id`, `archive_id`, `node_id` и т. д.). Список
-    генерируется из `PRAGMA foreign_key_list` при создании схемы, а не
-    перечисляется вручную;
+    генерируется из `PRAGMA foreign_key_list` при каждом открытии БД
+    (`createFKIndexes`, `storage/indexes.go`), а не перечисляется вручную;
   - `search_index(term)` — для поиска по префиксу диапазоном
     `term >= ? AND term < ?` (оператор `LIKE` с `COLLATE BINARY` индекс не
     использует).
