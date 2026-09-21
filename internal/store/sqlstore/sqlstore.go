@@ -20,12 +20,22 @@ import (
 // Соединение у storage.DB одно (SetMaxOpenConns(1)): вложенный запрос при
 // открытом курсоре встаёт в дедлок, поэтому все помощники читают строки
 // целиком и закрывают курсор до следующего запроса.
+//
+// Store внутри InTx — копия с exec = транзакция и scoped = true: все методы
+// порта работают в ней, вложенный InTx не открывает новую транзакцию.
 type Store struct {
 	st *storage.Storage
 	db *storage.DB
 
-	graphMu sync.Mutex
-	schema  *schemaGraph // граф внешних ключей, строится при первом удалении
+	exec   sqlExecutor  // соединение или (внутри InTx) транзакция
+	scoped bool         // true — Store привязан к транзакции InTx
+	cache  *schemaCache // общий для копий Store кэш графа внешних ключей
+}
+
+// schemaCache — граф внешних ключей схемы, строится при первом удалении.
+type schemaCache struct {
+	mu sync.Mutex
+	g  *schemaGraph
 }
 
 var _ store.Store = (*Store)(nil)
@@ -42,7 +52,9 @@ func Open(dataDir string) (*Store, error) {
 
 // New оборачивает уже открытое хранилище.
 func New(st *storage.Storage) *Store {
-	return &Store{st: st, db: st.DB()}
+	db := st.DB()
+
+	return &Store{st: st, db: db, exec: db, cache: &schemaCache{}}
 }
 
 // Close закрывает хранилище.
@@ -86,11 +98,16 @@ func (r runner) QueryRow(query string, args ...any) *sql.Row {
 	return r.x.QueryRowContext(r.ctx, query, args...)
 }
 
-// run возвращает runner поверх соединения без транзакции.
-func (s *Store) run(ctx context.Context) runner { return runner{ctx: ctx, x: s.db} }
+// run возвращает runner поверх соединения или, внутри InTx, транзакции.
+func (s *Store) run(ctx context.Context) runner { return runner{ctx: ctx, x: s.exec} }
 
 // inTx выполняет fn в транзакции с привязанным контекстом; ошибка — откат.
+// Внутри InTx транзакция уже открыта: fn выполняется в ней без новой.
 func (s *Store) inTx(ctx context.Context, fn func(tx runner) error) error {
+	if s.scoped {
+		return fn(s.run(ctx))
+	}
+
 	return s.db.TxContext(ctx, func(tx *sql.Tx) error {
 		return fn(runner{ctx: ctx, x: tx})
 	})

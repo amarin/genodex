@@ -650,6 +650,20 @@ func (mr *MockStoreMockRecorder) GetTitle(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTitle", reflect.TypeOf((*MockStore)(nil).GetTitle), ctx, id)
 }
 
+// InTx mocks base method.
+func (m *MockStore) InTx(ctx context.Context, fn func(Store) error) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "InTx", ctx, fn)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// InTx indicates an expected call of InTx.
+func (mr *MockStoreMockRecorder) InTx(ctx, fn any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InTx", reflect.TypeOf((*MockStore)(nil).InTx), ctx, fn)
+}
+
 // ListAdministrativeDivisions mocks base method.
 func (m *MockStore) ListAdministrativeDivisions(ctx context.Context) ([]*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()

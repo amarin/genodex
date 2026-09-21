@@ -14,6 +14,8 @@ import (
 //   - Все методы принимают ctx первым аргументом: отмена или истечение срока
 //     прерывают запрос и возвращают ошибку контекста (запись при этом не
 //     применяется).
+//   - InTx группирует несколько вызовов порта в одну атомарную операцию (см.
+//     метод).
 //   - Get* возвращает models.ErrNotFound (проверять через errors.Is), если
 //     сущности с таким id нет; остальные ошибки — сбой хранилища.
 //   - Delete* удаляет сущность вместе с её связными строками, записями
@@ -36,6 +38,16 @@ import (
 //
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type Store interface {
+	// InTx выполняет fn в одной транзакции: все методы переданного Store
+	// работают в ней; ошибка fn (или паника) откатывает всё, nil — фиксирует.
+	// Вложенный InTx на переданном Store использует ту же транзакцию (без
+	// savepoint: ошибку вложенного вызова, проглоченную снаружи, откатить
+	// нельзя). Внутри fn пользоваться нужно только переданным Store, не
+	// внешним: соединение одно, и внешний Store ждёт его до отмены ctx.
+	// Переданный Store нельзя сохранять и использовать после возврата из InTx
+	// (методы вернут sql.ErrTxDone).
+	InTx(ctx context.Context, fn func(Store) error) error
+
 	// Person
 	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
 	SavePerson(ctx context.Context, p *models.Person) error

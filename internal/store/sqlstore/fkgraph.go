@@ -80,13 +80,14 @@ func loadSchemaGraph(ctx context.Context, s *Store) (*schemaGraph, error) {
 }
 
 // graph возвращает граф схемы; результат кэшируется, ошибка — нет (отменённый
-// контекст не должен «отравить» хранилище).
+// контекст не должен «отравить» хранилище). Внутри InTx запрос идёт в той же
+// транзакции, поэтому не блокируется на единственном соединении.
 func (s *Store) graph(ctx context.Context) (*schemaGraph, error) {
-	s.graphMu.Lock()
-	defer s.graphMu.Unlock()
+	s.cache.mu.Lock()
+	defer s.cache.mu.Unlock()
 
-	if s.schema != nil {
-		return s.schema, nil
+	if s.cache.g != nil {
+		return s.cache.g, nil
 	}
 
 	g, err := loadSchemaGraph(ctx, s)
@@ -94,7 +95,7 @@ func (s *Store) graph(ctx context.Context) (*schemaGraph, error) {
 		return nil, err
 	}
 
-	s.schema = g
+	s.cache.g = g
 
 	return g, nil
 }
