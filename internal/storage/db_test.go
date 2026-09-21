@@ -503,7 +503,11 @@ func TestOpenDBPathWithSpecialCharacters(t *testing.T) {
 		t.Fatalf("файл БД не по запрошенному пути: %v", err)
 	}
 
-	entries, _ := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	for _, e := range entries {
 		if !strings.HasPrefix(e.Name(), "genealogy.db") {
 			t.Errorf("лишний файл рядом с БД: %s", e.Name())
