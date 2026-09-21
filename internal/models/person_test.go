@@ -5,7 +5,7 @@ import "testing"
 func TestPersonFullForm(t *testing.T) {
 	p := Person{
 		ID:     ID("p-1"),
-		Gender: Female,
+		Gender: PersonGenderFemale,
 		Names: []PersonName{
 			{
 				Type:    PersonNameMain,

@@ -60,7 +60,7 @@ func TestStoreRoundTripPerson(t *testing.T) {
 	since := models.FactDate{Year: 1881, Precision: models.PrecisionYear, Modifier: models.ModifierExact}
 	want := &models.Person{
 		ID:     "p-1",
-		Gender: models.Male,
+		Gender: models.PersonGenderMale,
 		Names: []models.PersonName{
 			{
 				Type:       models.PersonNameMain,
@@ -205,7 +205,7 @@ func TestStoreRoundTripEvent(t *testing.T) {
 	citID := seedCitation(t, s)
 
 	for _, id := range []models.ID{"p-1", "p-2"} {
-		if err := s.SavePerson(t.Context(), &models.Person{ID: id, Gender: models.Male}); err != nil {
+		if err := s.SavePerson(t.Context(), &models.Person{ID: id, Gender: models.PersonGenderMale}); err != nil {
 			t.Fatalf("save person %s: %v", id, err)
 		}
 	}
@@ -367,7 +367,7 @@ func TestStoreListPeople(t *testing.T) {
 
 	ids := []models.ID{"p-c", "p-a", "p-b"}
 	for _, id := range ids {
-		if err := s.SavePerson(t.Context(), &models.Person{ID: id, Gender: models.Unknown}); err != nil {
+		if err := s.SavePerson(t.Context(), &models.Person{ID: id, Gender: models.PersonGenderUnknown}); err != nil {
 			t.Fatalf("save %s: %v", id, err)
 		}
 	}
@@ -512,7 +512,7 @@ func TestStoreCount(t *testing.T) {
 		}
 	}
 	// повторное сохранение — upsert, не новая строка.
-	if err := s.SavePerson(t.Context(), &models.Person{ID: "p-1", Gender: models.Female}); err != nil {
+	if err := s.SavePerson(t.Context(), &models.Person{ID: "p-1", Gender: models.PersonGenderFemale}); err != nil {
 		t.Fatalf("resave: %v", err)
 	}
 

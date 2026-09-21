@@ -209,7 +209,7 @@ func fullChain() []chainStep {
 		}},
 		{"Person", "p-1", func(ctx context.Context, s *Store) error {
 			return s.SavePerson(ctx, &models.Person{
-				ID: "p-1", Gender: models.Male,
+				ID: "p-1", Gender: models.PersonGenderMale,
 				Names: []models.PersonName{
 					{Type: models.PersonNameMain, Surname: text("Иванов"), Given: text("Пётр"),
 						Patronymic: text("Сергеевич"), Prefix: "фон", Suffix: "ст.", Since: &since, Until: &until},
@@ -221,7 +221,7 @@ func fullChain() []chainStep {
 			})
 		}},
 		{"Person", "p-2", func(ctx context.Context, s *Store) error {
-			return s.SavePerson(ctx, &models.Person{ID: "p-2", Gender: models.Female})
+			return s.SavePerson(ctx, &models.Person{ID: "p-2", Gender: models.PersonGenderFemale})
 		}},
 		{"Family", "fam-1", func(ctx context.Context, s *Store) error {
 			return s.SaveFamily(ctx, &models.Family{

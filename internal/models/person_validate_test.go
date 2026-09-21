@@ -6,7 +6,7 @@ import "testing"
 func validPerson() *Person {
 	return &Person{
 		ID:     testID(TypePerson),
-		Gender: Female,
+		Gender: PersonGenderFemale,
 		Names: []PersonName{{
 			Type:    PersonNameMain,
 			Surname: TextRef{Text: "Дорожкина", Ref: testID(TypeSurname), Type: TypeSurname},

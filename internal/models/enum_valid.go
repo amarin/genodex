@@ -6,7 +6,7 @@ func (t Type) Valid() bool { return t.IDPrefix() != "" }
 // Valid сообщает, что значение — одна из констант.
 func (g PersonGender) Valid() bool {
 	switch g {
-	case Male, Female, Unknown:
+	case PersonGenderMale, PersonGenderFemale, PersonGenderUnknown:
 		return true
 	}
 

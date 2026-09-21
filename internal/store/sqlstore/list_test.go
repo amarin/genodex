@@ -214,7 +214,7 @@ func TestListOrderSurvivesResave(t *testing.T) {
 		mustDo(t, "save "+string(id), s.SavePerson(ctx, &models.Person{ID: id}))
 	}
 
-	mustDo(t, "resave", s.SavePerson(ctx, &models.Person{ID: "p-c", Gender: models.Female}))
+	mustDo(t, "resave", s.SavePerson(ctx, &models.Person{ID: "p-c", Gender: models.PersonGenderFemale}))
 
 	got, err := listers["People"].list(s, ctx, models.AccessFull, models.Page{Limit: 2, Offset: 0})
 	mustDo(t, "list", err)

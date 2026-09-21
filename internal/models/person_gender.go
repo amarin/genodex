@@ -4,7 +4,7 @@ package models
 type PersonGender string
 
 const (
-	Male    PersonGender = "male"
-	Female  PersonGender = "female"
-	Unknown PersonGender = "unknown"
+	PersonGenderMale    PersonGender = "male"
+	PersonGenderFemale  PersonGender = "female"
+	PersonGenderUnknown PersonGender = "unknown"
 )

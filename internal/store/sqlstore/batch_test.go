@@ -76,7 +76,7 @@ func batchDate(i int) *models.FactDate {
 // отдельные случаи пакетной сборки).
 func batchPerson(i int, full bool) *models.Person {
 	id := models.ID(fmt.Sprintf("p-%04d", i))
-	p := &models.Person{ID: id, Gender: models.Male, Private: i%4 == 0}
+	p := &models.Person{ID: id, Gender: models.PersonGenderMale, Private: i%4 == 0}
 
 	switch {
 	case full || i%3 == 0:
