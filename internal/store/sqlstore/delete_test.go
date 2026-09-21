@@ -355,9 +355,18 @@ func TestDeleteMissingReturnsErrNotFound(t *testing.T) {
 func TestDeleteCanceledContext(t *testing.T) {
 	s := newStore(t)
 
-	if err := s.SavePerson(t.Context(), &models.Person{ID: "p-1"}); err != nil {
-		t.Fatalf("save: %v", err)
+	for _, id := range []models.ID{"p-1", "p-warm"} {
+		if err := s.SavePerson(t.Context(), &models.Person{ID: id}); err != nil {
+			t.Fatalf("save: %v", err)
+		}
 	}
+
+	// прогреть кэш графа схемы: дальше отмена ловится уже внутри транзакции
+	if err := s.DeletePerson(t.Context(), "p-warm"); err != nil {
+		t.Fatalf("прогревающее удаление: %v", err)
+	}
+
+	before := snapshot(t, s)
 
 	err := s.DeletePerson(canceled(t), "p-1")
 	if !errors.Is(err, context.Canceled) || errors.Is(err, models.ErrNotFound) {
@@ -370,6 +379,10 @@ func TestDeleteCanceledContext(t *testing.T) {
 
 	if _, err := s.GetPerson(t.Context(), "p-1"); err != nil {
 		t.Fatalf("персона пропала после отменённого удаления: %v", err)
+	}
+
+	if got := snapshot(t, s); !reflect.DeepEqual(got, before) {
+		t.Fatalf("отменённое удаление изменило таблицы:\n got  %v\n want %v", got, before)
 	}
 }
 
