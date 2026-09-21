@@ -439,3 +439,37 @@ func TestTxContextCancelInsideKeepsContextError(t *testing.T) {
 		})
 	}
 }
+
+// TestTxContextPanicRollsBack: паника в fn откатывает транзакцию, повторно
+// однимается и не оставляет единственное соединение занятым.
+func TestTxContextPanicRollsBack(t *testing.T) {
+	db := openTestDB(t)
+
+	func() {
+		defer func() {
+			if p := recover(); p != "boom" {
+				t.Fatalf("паника = %v, want boom", p)
+			}
+		}()
+
+		_ = db.TxContext(t.Context(), func(tx *sql.Tx) error {
+			if _, err := tx.Exec("INSERT INTO persons(id) VALUES ('p-1')"); err != nil {
+				return err
+			}
+
+			panic("boom")
+		})
+	}()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	var n int
+	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM persons").Scan(&n); err != nil {
+		t.Fatalf("соединение занято после паники: %v", err)
+	}
+
+	if n != 0 {
+		t.Fatalf("Count persons=%d после паники, want 0", n)
+	}
+}

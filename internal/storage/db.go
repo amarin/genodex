@@ -97,6 +97,14 @@ func (d *DB) TxContext(ctx context.Context, fn func(tx *sql.Tx) error) error {
 	if err != nil {
 		return err
 	}
+	// одно соединение: незакрытая транзакция заблокировала бы все следующие
+	// запросы, поэтому паника в fn тоже откатывает её
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback()
+			panic(p)
+		}
+	}()
 	if err := fn(tx); err != nil {
 		_ = tx.Rollback()
 		return ctxCause(ctx, err)
