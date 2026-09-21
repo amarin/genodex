@@ -82,6 +82,10 @@
   `ArchiveNode`, `ArchiveDocument`, `Attachment`; тесты.
 - **Приёмка:** для каждой сущности: валидный экземпляр проходит, каждый
   нарушенный инвариант даёт `*ValidationError` с полем.
+- **Решения этапа:** `ArchiveNodeType` — открытый enum; `Archive.System` — только
+  текст; `PlaceRef` проверяется как `TextRef` с типами
+  `administrative_division`/`church`/`parish`; `NamedPeriod` — строки формата
+  `ParseFactDate`; план — `2026-09-21-core-rw-s04-validation.md`.
 - **Предпосылки из S3:**
   - helper `validateOptionalID` для `*ID` и необязательных `ID` (`ParentID`,
     `DocumentID`, `RepositoryID`);

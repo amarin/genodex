@@ -118,6 +118,34 @@
     и не заканчивается раньше начала нижней.
   - `Family.Name` и `canonical` словарей обязательны (непустые после обрезки
     пробелов).
+  - Открытые enum'ы: `EventType`, `NoteKind`, `RepositoryType`, `RelationType` и
+    `ArchiveNodeType` (уровни систем иерархии архивов задаются данными, а не кодом;
+    соответствие уровня системе архива проверяют сценарии). Закрытые:
+    `AdminDivisionType`, `SourceKind`, `Reliability`, `AttachmentKind`.
+  - Ожидаемые типы ссылок: `Settlements`, `Items`, `Successors` — на
+    `administrative_division`; `Church.Parish`, `ArchiveNode.Parish`,
+    `ArchiveDocument.Parish` — на `parish`; `Parish.Church` — на `church`;
+    `Source.RepositoryID`, `Archive.RepositoryID` — на `repository`;
+    `ArchiveNode.ArchiveID` — на `archive`; `ArchiveDocument.UnitID`,
+    `Attachment.NodeID` — на `archive_node`; `Attachment.DocumentID` — на
+    `archive_document`; `Citation.SourceID` — на `source`;
+    `EventParticipant.PersonID` — на `person`.
+  - `ParentID` у `AdministrativeDivision`, `ArchiveNode`, `Note` — сущность того же
+    типа и не она сама; более длинные циклы проверяют сценарии.
+  - `PlaceRef` — как `TextRef`, а ссылка только на `administrative_division`,
+    `church` или `parish`. `NamedPeriod`: наименование обязательно, `since`/`until` —
+    строки формата `ParseFactDate` (пустое допустимо), начало не позже конца.
+  - `Archive.System` — только текст (имя системы иерархии, без ссылки на сущность).
+  - `Citation`: `SourceID` обязателен, якорь и текст необязательны. Якорь: `ArchiveAnchor` —
+    `node_id` (`archive_node`), `document_id` (необязателен), `page` не меньше 1;
+    `FileAnchor` — `attachment_id`; `URLAnchor` — абсолютный `http(s)`-адрес с хостом;
+    `rect` и `timecode` — свободные строки.
+  - `Event`: вид обязателен, у участника обязательны персона и роль. `Source`: вид,
+    название и достоверность обязательны. `Note`: нужен заголовок или текст.
+    `Attachment`: нужен `uri` или имя файла, MIME — «тип/подтип», страница не
+    отрицательна (0 — не указана). Названия и шифры (`Name`, `Title`, `Label`)
+    обязательны там, где это указано в `docs/models/*` (не пусты после обрезки
+    пробелов).
 - `Validate()` вызывается на непустом указателе; nil-получатель не поддерживается
   (паника).
 - **Проверки с обращением к хранилищу** (существование ссылок, циклы по
