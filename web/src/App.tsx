@@ -2,18 +2,18 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Alert, Card, Layout, List, Spin, Tabs, Typography } from "antd";
 import { BookOutlined, HomeOutlined } from "@ant-design/icons";
-import { fetchSettlements, type Settlement } from "./api";
+import { fetchAdminDivisions, MAX_PAGE_LIMIT, type AdminDivision } from "./api";
 import DocsPanel from "./docs-panel";
 
 const { Header, Content } = Layout;
 
 function SettlementsTab() {
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [settlements, setSettlements] = useState<AdminDivision[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchSettlements()
+    fetchAdminDivisions({ kind: "settlement", limit: MAX_PAGE_LIMIT })
       .then(setSettlements)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -23,6 +23,13 @@ function SettlementsTab() {
     <Card title="Населённые пункты">
       {loading && <Spin />}
       {error != null && <Alert type="error" showIcon message={error} />}
+      {settlements.length >= MAX_PAGE_LIMIT && (
+        <Alert
+          type="info"
+          showIcon
+          message={`Показаны первые ${MAX_PAGE_LIMIT} населённых пунктов`}
+        />
+      )}
       {!loading && error == null && (
         <List
           dataSource={settlements}

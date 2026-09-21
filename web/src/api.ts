@@ -1,11 +1,31 @@
-export interface Settlement {
+export interface AdminDivision {
   id: string;
   name: string;
   type: string;
+  parent_id: string | null;
 }
 
-export async function fetchSettlements(): Promise<Settlement[]> {
-  const resp = await fetch("/api/settlements");
+export interface AdminDivisionQuery {
+  kind?: "settlement";
+  type?: string;
+  limit?: number;
+  offset?: number;
+}
+
+// Максимальный размер окна списка (совпадает с MaxPageLimit на сервере).
+export const MAX_PAGE_LIMIT = 500;
+
+export async function fetchAdminDivisions(
+  query: AdminDivisionQuery = {},
+): Promise<AdminDivision[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/admin-divisions${qs ? `?${qs}` : ""}`);
   if (!resp.ok) {
     throw new Error(`API error: ${resp.status}`);
   }
