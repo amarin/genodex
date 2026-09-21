@@ -13,7 +13,7 @@ import (
 	"github.com/amarin/genodex/internal/httpapi"
 	"github.com/amarin/genodex/internal/mcp"
 	"github.com/amarin/genodex/internal/store/sqlstore"
-	"github.com/amarin/genodex/internal/usecases/list_settlements"
+	"github.com/amarin/genodex/internal/usecases/list_divisions"
 	"github.com/amarin/genodex/web"
 )
 
@@ -38,11 +38,11 @@ func New(cfg Config) (*App, error) {
 		return nil, fmt.Errorf("open store: %w", err)
 	}
 
-	settlements := list_settlements.New(st)
+	divisions := list_divisions.New(st)
 
 	mux := http.NewServeMux()
-	mux.Handle("/mcp", server.NewStreamableHTTPServer(mcp.NewServer(settlements)))
-	mux.Handle("/api/", httpapi.NewHandler(settlements, genodex.DocsFS(cfg.WebMode)))
+	mux.Handle("/mcp", server.NewStreamableHTTPServer(mcp.NewServer(divisions)))
+	mux.Handle("/api/", httpapi.NewHandler(divisions, genodex.DocsFS(cfg.WebMode)))
 	mux.Handle("/static/", http.StripPrefix("/static/", web.StaticHandler(cfg.WebMode)))
 	mux.Handle("/", web.SPAHandler(cfg.WebMode))
 

@@ -1,4 +1,4 @@
-package list_settlements
+package list_divisions
 
 import (
 	"context"

@@ -5,13 +5,13 @@ import (
 )
 
 // NewServer создаёт MCP-сервер и регистрирует доступные тулы.
-func NewServer(settlements SettlementService) *server.MCPServer {
+func NewServer(divisions DivisionService) *server.MCPServer {
 	s := server.NewMCPServer(
 		"genodex",
 		"0.1.0",
 	)
 
-	registerSettlementTools(s, settlements)
+	registerDivisionTools(s, divisions)
 
 	return s
 }

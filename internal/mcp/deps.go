@@ -6,7 +6,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// SettlementService — контракт сценария «список населённых пунктов».
-type SettlementService interface {
-	ListSettlements(ctx context.Context) ([]models.AdministrativeDivision, error)
+// DivisionService — контракт сценария «список единиц административного деления».
+type DivisionService interface {
+	ListDivisions(ctx context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error)
 }
