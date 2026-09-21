@@ -136,7 +136,7 @@ func fullChain() []chainStep {
 			return s.SaveArchiveDocument(ctx, &models.ArchiveDocument{
 				ID: "doc-1", UnitID: "node-2", Title: "МК 1881", Kind: "метрическая книга",
 				Since: &since, Until: &until, Parish: &models.TextRef{Text: "Никольский"},
-				Settlements: []models.TextRef{text("Davydovo")}, Notes: []models.TextRef{text("том 1")},
+				Settlements: []models.TextRef{text("Давыдово")}, Notes: []models.TextRef{text("том 1")},
 				Sources: link(models.TypeArchiveDocument, "doc-1"),
 			})
 		}},
@@ -362,6 +362,10 @@ func TestDeleteCanceledContext(t *testing.T) {
 	err := s.DeletePerson(canceled(t), "p-1")
 	if !errors.Is(err, context.Canceled) || errors.Is(err, models.ErrNotFound) {
 		t.Fatalf("DeletePerson с отменённым ctx = %v, ожидалось context.Canceled", err)
+	}
+
+	if !strings.Contains(err.Error(), `delete person "p-1"`) {
+		t.Errorf("ошибка сбоя %q не называет вид и id сущности", err)
 	}
 
 	if _, err := s.GetPerson(t.Context(), "p-1"); err != nil {
