@@ -100,8 +100,9 @@
 ## Часть B/C — хранилище и порт
 
 ### S5. Индексы
-- **Файлы:** `storage/schema.go` (функция `createIndexes` по
-  `PRAGMA foreign_key_list`), тест `storage/db_test.go`.
+- **Файлы:** `storage/indexes.go` (`createFKIndexes` по `pragma_foreign_key_list`,
+  вызывается из `OpenDB`), тест `storage/indexes_test.go`; план —
+  `2026-09-21-core-rw-s05-indexes.md`.
 - **Приёмка:** каждая FK-колонка имеет индекс (тест обходит `sqlite_master`);
   `EXPLAIN QUERY PLAN` для выборки дочерних строк по владельцу использует индекс;
   повторное открытие БД идемпотентно.
