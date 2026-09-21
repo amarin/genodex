@@ -41,6 +41,300 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 	return m.recorder
 }
 
+// DeleteAdministrativeDivision mocks base method.
+func (m *MockStore) DeleteAdministrativeDivision(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAdministrativeDivision", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteAdministrativeDivision indicates an expected call of DeleteAdministrativeDivision.
+func (mr *MockStoreMockRecorder) DeleteAdministrativeDivision(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAdministrativeDivision", reflect.TypeOf((*MockStore)(nil).DeleteAdministrativeDivision), ctx, id)
+}
+
+// DeleteArchive mocks base method.
+func (m *MockStore) DeleteArchive(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteArchive", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteArchive indicates an expected call of DeleteArchive.
+func (mr *MockStoreMockRecorder) DeleteArchive(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteArchive", reflect.TypeOf((*MockStore)(nil).DeleteArchive), ctx, id)
+}
+
+// DeleteArchiveDocument mocks base method.
+func (m *MockStore) DeleteArchiveDocument(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteArchiveDocument", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteArchiveDocument indicates an expected call of DeleteArchiveDocument.
+func (mr *MockStoreMockRecorder) DeleteArchiveDocument(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteArchiveDocument", reflect.TypeOf((*MockStore)(nil).DeleteArchiveDocument), ctx, id)
+}
+
+// DeleteArchiveNode mocks base method.
+func (m *MockStore) DeleteArchiveNode(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteArchiveNode", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteArchiveNode indicates an expected call of DeleteArchiveNode.
+func (mr *MockStoreMockRecorder) DeleteArchiveNode(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteArchiveNode", reflect.TypeOf((*MockStore)(nil).DeleteArchiveNode), ctx, id)
+}
+
+// DeleteAttachment mocks base method.
+func (m *MockStore) DeleteAttachment(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteAttachment", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteAttachment indicates an expected call of DeleteAttachment.
+func (mr *MockStoreMockRecorder) DeleteAttachment(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAttachment", reflect.TypeOf((*MockStore)(nil).DeleteAttachment), ctx, id)
+}
+
+// DeleteChurch mocks base method.
+func (m *MockStore) DeleteChurch(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteChurch", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteChurch indicates an expected call of DeleteChurch.
+func (mr *MockStoreMockRecorder) DeleteChurch(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteChurch", reflect.TypeOf((*MockStore)(nil).DeleteChurch), ctx, id)
+}
+
+// DeleteCitation mocks base method.
+func (m *MockStore) DeleteCitation(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteCitation", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteCitation indicates an expected call of DeleteCitation.
+func (mr *MockStoreMockRecorder) DeleteCitation(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteCitation", reflect.TypeOf((*MockStore)(nil).DeleteCitation), ctx, id)
+}
+
+// DeleteEstate mocks base method.
+func (m *MockStore) DeleteEstate(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteEstate", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteEstate indicates an expected call of DeleteEstate.
+func (mr *MockStoreMockRecorder) DeleteEstate(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEstate", reflect.TypeOf((*MockStore)(nil).DeleteEstate), ctx, id)
+}
+
+// DeleteEvent mocks base method.
+func (m *MockStore) DeleteEvent(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteEvent", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteEvent indicates an expected call of DeleteEvent.
+func (mr *MockStoreMockRecorder) DeleteEvent(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEvent", reflect.TypeOf((*MockStore)(nil).DeleteEvent), ctx, id)
+}
+
+// DeleteFamily mocks base method.
+func (m *MockStore) DeleteFamily(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteFamily", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteFamily indicates an expected call of DeleteFamily.
+func (mr *MockStoreMockRecorder) DeleteFamily(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteFamily", reflect.TypeOf((*MockStore)(nil).DeleteFamily), ctx, id)
+}
+
+// DeleteGivenName mocks base method.
+func (m *MockStore) DeleteGivenName(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteGivenName", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteGivenName indicates an expected call of DeleteGivenName.
+func (mr *MockStoreMockRecorder) DeleteGivenName(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteGivenName", reflect.TypeOf((*MockStore)(nil).DeleteGivenName), ctx, id)
+}
+
+// DeleteNote mocks base method.
+func (m *MockStore) DeleteNote(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteNote", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteNote indicates an expected call of DeleteNote.
+func (mr *MockStoreMockRecorder) DeleteNote(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteNote", reflect.TypeOf((*MockStore)(nil).DeleteNote), ctx, id)
+}
+
+// DeleteParish mocks base method.
+func (m *MockStore) DeleteParish(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteParish", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteParish indicates an expected call of DeleteParish.
+func (mr *MockStoreMockRecorder) DeleteParish(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteParish", reflect.TypeOf((*MockStore)(nil).DeleteParish), ctx, id)
+}
+
+// DeletePatronymic mocks base method.
+func (m *MockStore) DeletePatronymic(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeletePatronymic", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeletePatronymic indicates an expected call of DeletePatronymic.
+func (mr *MockStoreMockRecorder) DeletePatronymic(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePatronymic", reflect.TypeOf((*MockStore)(nil).DeletePatronymic), ctx, id)
+}
+
+// DeletePerson mocks base method.
+func (m *MockStore) DeletePerson(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeletePerson", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeletePerson indicates an expected call of DeletePerson.
+func (mr *MockStoreMockRecorder) DeletePerson(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePerson", reflect.TypeOf((*MockStore)(nil).DeletePerson), ctx, id)
+}
+
+// DeleteRelation mocks base method.
+func (m *MockStore) DeleteRelation(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRelation", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRelation indicates an expected call of DeleteRelation.
+func (mr *MockStoreMockRecorder) DeleteRelation(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRelation", reflect.TypeOf((*MockStore)(nil).DeleteRelation), ctx, id)
+}
+
+// DeleteRepository mocks base method.
+func (m *MockStore) DeleteRepository(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRepository", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRepository indicates an expected call of DeleteRepository.
+func (mr *MockStoreMockRecorder) DeleteRepository(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRepository", reflect.TypeOf((*MockStore)(nil).DeleteRepository), ctx, id)
+}
+
+// DeleteResidence mocks base method.
+func (m *MockStore) DeleteResidence(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteResidence", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteResidence indicates an expected call of DeleteResidence.
+func (mr *MockStoreMockRecorder) DeleteResidence(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteResidence", reflect.TypeOf((*MockStore)(nil).DeleteResidence), ctx, id)
+}
+
+// DeleteSource mocks base method.
+func (m *MockStore) DeleteSource(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSource", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSource indicates an expected call of DeleteSource.
+func (mr *MockStoreMockRecorder) DeleteSource(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSource", reflect.TypeOf((*MockStore)(nil).DeleteSource), ctx, id)
+}
+
+// DeleteSurname mocks base method.
+func (m *MockStore) DeleteSurname(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSurname", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSurname indicates an expected call of DeleteSurname.
+func (mr *MockStoreMockRecorder) DeleteSurname(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSurname", reflect.TypeOf((*MockStore)(nil).DeleteSurname), ctx, id)
+}
+
+// DeleteTitle mocks base method.
+func (m *MockStore) DeleteTitle(ctx context.Context, id models.ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteTitle", ctx, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteTitle indicates an expected call of DeleteTitle.
+func (mr *MockStoreMockRecorder) DeleteTitle(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteTitle", reflect.TypeOf((*MockStore)(nil).DeleteTitle), ctx, id)
+}
+
 // GetAdministrativeDivision mocks base method.
 func (m *MockStore) GetAdministrativeDivision(ctx context.Context, id models.ID) (*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()

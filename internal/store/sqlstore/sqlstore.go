@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/storage"
@@ -22,6 +23,9 @@ import (
 type Store struct {
 	st *storage.Storage
 	db *storage.DB
+
+	graphMu sync.Mutex
+	schema  *schemaGraph // граф внешних ключей, строится при первом удалении
 }
 
 var _ store.Store = (*Store)(nil)
