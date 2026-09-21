@@ -204,8 +204,8 @@ type Hit struct{ Type Type; ID ID; Label, Field string }
   строки, записи `search_index`/`source_links`, осиротевшие значения. Если на
   сущность ссылаются (RESTRICT) — `*InUseError` со списком ссылающихся.
 - `InTx(ctx, func(Store) error) error` — все методы порта внутри функции работают
-  в одной транзакции; ошибка — откат. Методы порта получают `ctx` (первым
-  аргументом) в том же этапе.
+  в одной транзакции; ошибка — откат. Методы порта получили `ctx` (первым
+  аргументом) на этапе S6.
 - `List*(ctx, Access, Page)` — пагинация везде; `AccessPublic` исключает
   сущности с `private = 1` на уровне SQL (для сущностей без флага — не влияет).
 - `Search(ctx, query, Access, Page) ([]Hit, error)` — по `search_index`, префикс

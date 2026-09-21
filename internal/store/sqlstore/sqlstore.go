@@ -46,7 +46,8 @@ func (s *Store) Close() error {
 	return s.st.Close()
 }
 
-// queryer — общий интерфейс чтения для runner.
+// queryer — то, что нужно помощникам чтения (scanRows, loadX, listIDs);
+// реализует runner.
 type queryer interface {
 	Query(query string, args ...any) (*sql.Rows, error)
 	QueryRow(query string, args ...any) *sql.Row
@@ -66,14 +67,17 @@ type runner struct {
 	x   sqlExecutor
 }
 
+// Exec — ExecContext с привязанным контекстом.
 func (r runner) Exec(query string, args ...any) (sql.Result, error) {
 	return r.x.ExecContext(r.ctx, query, args...)
 }
 
+// Query — QueryContext с привязанным контекстом.
 func (r runner) Query(query string, args ...any) (*sql.Rows, error) {
 	return r.x.QueryContext(r.ctx, query, args...)
 }
 
+// QueryRow — QueryRowContext с привязанным контекстом.
 func (r runner) QueryRow(query string, args ...any) *sql.Row {
 	return r.x.QueryRowContext(r.ctx, query, args...)
 }

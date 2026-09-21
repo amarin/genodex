@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sort"
 	"testing"
+	"time"
 )
 
 func openTestDB(t *testing.T) *DB {
@@ -382,5 +383,59 @@ func TestTxContextCommitAndRollback(t *testing.T) {
 
 	if n, _ := db.Count("persons"); n != 1 {
 		t.Fatalf("Count persons=%d, want 1 (p-1 закоммичена, p-2 откатана)", n)
+	}
+}
+
+// waitTxDone ждёт, пока database/sql откатит транзакцию после отмены ctx: откат
+// асинхронный, и без ожидания результат теста зависел бы от планировщика.
+func waitTxDone(t *testing.T, tx *sql.Tx) {
+	t.Helper()
+
+	for range 1000 {
+		if _, err := tx.Exec("SELECT 1"); errors.Is(err, sql.ErrTxDone) {
+			return
+		}
+
+		time.Sleep(time.Millisecond)
+	}
+
+	t.Fatal("транзакция не откатилась после отмены контекста")
+}
+
+// TestTxContextCancelInsideKeepsContextError: отмена ctx внутри транзакции
+// откатывает её и возвращает ошибку контекста, а не sql.ErrTxDone.
+func TestTxContextCancelInsideKeepsContextError(t *testing.T) {
+	cases := map[string]func(ctx context.Context, tx *sql.Tx) error{
+		"после отмены fn продолжает писать": func(ctx context.Context, tx *sql.Tx) error {
+			_, err := tx.Exec("INSERT INTO persons(id) VALUES ('p-2')")
+
+			return err
+		},
+		"fn завершается без ошибки, падает Commit": func(context.Context, *sql.Tx) error { return nil },
+	}
+
+	for name, after := range cases {
+		t.Run(name, func(t *testing.T) {
+			db := openTestDB(t)
+			ctx, cancel := context.WithCancel(t.Context())
+
+			err := db.TxContext(ctx, func(tx *sql.Tx) error {
+				if _, err := tx.Exec("INSERT INTO persons(id) VALUES ('p-1')"); err != nil {
+					return err
+				}
+
+				cancel()
+				waitTxDone(t, tx)
+
+				return after(ctx, tx)
+			})
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("TxContext = %v, want context.Canceled", err)
+			}
+
+			if n, _ := db.Count("persons"); n != 0 {
+				t.Fatalf("Count persons=%d после отмены внутри транзакции, want 0", n)
+			}
+		})
 	}
 }

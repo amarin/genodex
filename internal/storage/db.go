@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -98,9 +99,18 @@ func (d *DB) TxContext(ctx context.Context, fn func(tx *sql.Tx) error) error {
 	}
 	if err := fn(tx); err != nil {
 		_ = tx.Rollback()
-		return err
+		return ctxCause(ctx, err)
 	}
-	return tx.Commit()
+	return ctxCause(ctx, tx.Commit())
+}
+
+// ctxCause возвращает ошибку контекста вместо sql.ErrTxDone: при отмене ctx
+// database/sql откатывает транзакцию сам, и дальнейшие вызовы tx теряют причину.
+func ctxCause(ctx context.Context, err error) error {
+	if err != nil && errors.Is(err, sql.ErrTxDone) && ctx.Err() != nil {
+		return ctx.Err()
+	}
+	return err
 }
 
 // Tx выполняет fn в транзакции; при ошибке — откат.
