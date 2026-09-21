@@ -101,8 +101,15 @@ func TestSaveAndDeleteMethodsAreCoveredByChain(t *testing.T) {
 		}
 	}
 
-	if saves != len(kinds) || deletes != len(kinds) || len(kinds) != len(getters) {
-		t.Fatalf("Save*=%d Delete*=%d видов в fullChain=%d getters=%d — ожидалось поровну", saves, deletes, len(kinds), len(getters))
+	if saves != len(kinds) || deletes != len(kinds) || len(kinds) != len(getters) || len(deleters) != len(kinds) {
+		t.Fatalf("Save*=%d Delete*=%d видов в fullChain=%d getters=%d deleters=%d — ожидалось поровну",
+			saves, deletes, len(kinds), len(getters), len(deleters))
+	}
+
+	for kind := range kinds {
+		if getters[kind] == nil || deleters[kind] == nil {
+			t.Errorf("для вида %s нет записи в getters/deleters", kind)
+		}
 	}
 }
 
@@ -214,6 +221,10 @@ func TestListOrderSurvivesBackupAndRestore(t *testing.T) {
 	wantPeople, wantDivisions := order(s)
 	if want := []models.ID{"p-c", "p-b", "p-d", "p-e"}; !reflect.DeepEqual(wantPeople, want) {
 		t.Fatalf("порядок до бэкапа %v, ожидался %v", wantPeople, want)
+	}
+
+	if want := []models.ID{"ad-2", "ad-1", "ad-3"}; !reflect.DeepEqual(wantDivisions, want) {
+		t.Fatalf("порядок делений до бэкапа %v, ожидался %v", wantDivisions, want)
 	}
 
 	dir := t.TempDir()
