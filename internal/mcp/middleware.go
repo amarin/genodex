@@ -42,7 +42,7 @@ func RequireAPIToken(svc TokenResolver) func(http.Handler) http.Handler {
 			ownerID, err := svc.ResolveAPIToken(r.Context(), raw)
 			if err != nil {
 				// сбой инфраструктуры не маскируем под отказ по аутентификации — отличаем
-				// явную ошибку токена (404/revoked) от невозможности проверить
+				// явную ошибку токена (не найден/отозван) от невозможности проверить
 				if errors.Is(err, auth.ErrInvalidCredentials) {
 					writeUnauthorized(w)
 				} else {
@@ -61,16 +61,19 @@ func RequireAPIToken(svc TokenResolver) func(http.Handler) http.Handler {
 }
 
 // bearerToken разбирает заголовок Authorization: Bearer <token>; пусто после
-// префикса — тоже отсутствие токена.
+// префикса — тоже отсутствие токена. Схема case-insensitive по RFC 7235.
 func bearerToken(r *http.Request) (string, bool) {
-	const prefix = "Bearer "
-
 	h := r.Header.Get("Authorization")
-	if !strings.HasPrefix(h, prefix) {
+	if h == "" {
 		return "", false
 	}
 
-	token := strings.TrimSpace(strings.TrimPrefix(h, prefix))
+	scheme, token, ok := strings.Cut(h, " ")
+	if !ok || !strings.EqualFold(scheme, "Bearer") {
+		return "", false
+	}
+
+	token = strings.TrimSpace(token)
 	if token == "" {
 		return "", false
 	}
@@ -83,6 +86,7 @@ func bearerToken(r *http.Request) (string, bool) {
 // дословно, важен код и то, что тело — валидный JSON).
 func writeUnauthorized(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("WWW-Authenticate", "Bearer")
 	w.WriteHeader(http.StatusUnauthorized)
 	_, _ = w.Write([]byte(`{"error":"нужен валидный API-токен (Authorization: Bearer gnx_...)"}`))
 }

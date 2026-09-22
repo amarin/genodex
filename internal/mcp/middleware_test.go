@@ -46,10 +46,9 @@ func TestRequireAPITokenMalformedHeaderIs401(t *testing.T) {
 	h := RequireAPIToken(svc)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 
 	for _, header := range []string{"gnx_raw-no-bearer-prefix", "Bearer", "Bearer "} {
+		svc.gotRaw = "" // сбросить для каждого теста
 		req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
-		if header != "" {
-			req.Header.Set("Authorization", header)
-		}
+		req.Header.Set("Authorization", header)
 
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, req)
@@ -57,20 +56,25 @@ func TestRequireAPITokenMalformedHeaderIs401(t *testing.T) {
 		if rec.Code != http.StatusUnauthorized {
 			t.Errorf("Authorization=%q: code=%d, ожидался 401", header, rec.Code)
 		}
+		// резолвер не должен быть вызван для малформированного заголовка
+		if svc.gotRaw != "" {
+			t.Errorf("Authorization=%q: резолвер был вызван, gotRaw=%q", header, svc.gotRaw)
+		}
 	}
 }
 
 func TestRequireAPITokenInvalidTokenIs401(t *testing.T) {
+	called := false
 	svc := &fakeTokenResolver{err: auth.ErrInvalidCredentials}
-	h := RequireAPIToken(svc)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	h := RequireAPIToken(svc)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
 	req.Header.Set("Authorization", "Bearer gnx_revoked-or-unknown")
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("code=%d, ожидался 401", rec.Code)
+	if rec.Code != http.StatusUnauthorized || called {
+		t.Fatalf("code=%d called=%v, ожидался 401 без вызова next", rec.Code, called)
 	}
 	if svc.gotRaw != "gnx_revoked-or-unknown" {
 		t.Fatalf("gotRaw=%q", svc.gotRaw)
@@ -81,7 +85,7 @@ func TestRequireAPITokenValidTokenResolvesContext(t *testing.T) {
 	owner := auth.ID("OW-1")
 	svc := &fakeTokenResolver{ownerID: owner}
 
-	var gotAccess models.Access
+	gotAccess := models.AccessPublic // инициализация для проверки отличия от zero value
 	var gotOwner auth.ID
 	var called bool
 

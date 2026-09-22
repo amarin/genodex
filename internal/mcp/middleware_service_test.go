@@ -47,6 +47,26 @@ func TestRequireAPITokenOnRealService(t *testing.T) {
 		t.Fatalf("code=%d gotOwner=%v", rec.Code, gotOwner)
 	}
 
+	// проверить, что LastUsedAt обновлен после успешного запроса
+	// (ResolveAPIToken вызывает TouchAPIToken изнутри)
+	tokens, err := svc.ListAPITokens(ctx, reg.OwnerID)
+	if err != nil {
+		t.Fatalf("ListAPITokens для проверки LastUsedAt: %v", err)
+	}
+	var found *auth.APIToken
+	for i := range tokens {
+		if tokens[i].ID == tokenID {
+			found = &tokens[i]
+			break
+		}
+	}
+	if found == nil {
+		t.Fatal("токен не найден в списке после успешного запроса")
+	}
+	if found.LastUsedAt == nil {
+		t.Fatal("ожидалось, что LastUsedAt обновлен после успешного запроса (TouchAPIToken вызван)")
+	}
+
 	if err := svc.RevokeAPIToken(ctx, reg.OwnerID, tokenID); err != nil {
 		t.Fatalf("RevokeAPIToken: %v", err)
 	}
