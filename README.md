@@ -28,6 +28,7 @@ Flags:
 |------|---------|---------|
 | `-p`  | `9000`  | HTTP port |
 | `-web`| `prod`  | Web assets mode: `prod` (embedded in binary) or `dev` (read `web/dist` from disk) |
+| `-trust-proxy` | `false` | Trust `X-Forwarded-Proto` from a reverse proxy for the cookie `Secure` flag (enable only behind a TLS-terminating proxy you control) |
 
 ## Authentication
 

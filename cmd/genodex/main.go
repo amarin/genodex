@@ -77,6 +77,8 @@ func runServe(ctx context.Context, preDataDir string, args []string) error {
 	_ = dataDirFlag(fs)
 	port := fs.Int("p", 9000, "HTTP server port")
 	webMode := fs.String("web", web.ModeProd, "web assets mode: prod (embedded) or dev (from disk)")
+	trustProxy := fs.Bool("trust-proxy", false,
+		"trust X-Forwarded-Proto from a reverse proxy for the cookie Secure flag (enable only behind a TLS-terminating proxy you control)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -85,9 +87,10 @@ func runServe(ctx context.Context, preDataDir string, args []string) error {
 	}
 
 	a, err := app.New(app.Config{
-		DataDir: chooseDataDir(fs, preDataDir),
-		Port:    *port,
-		WebMode: *webMode,
+		DataDir:    chooseDataDir(fs, preDataDir),
+		Port:       *port,
+		WebMode:    *webMode,
+		TrustProxy: *trustProxy,
 	})
 	if err != nil {
 		return err

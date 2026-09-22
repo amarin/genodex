@@ -21,7 +21,7 @@ func newAuthHandler(t *testing.T) http.Handler {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	return httpapi.NewAuthHandler(auth.New(auth.NewSQLStore(st.DB())))
+	return httpapi.NewAuthHandler(auth.New(auth.NewSQLStore(st.DB())), false)
 }
 
 // TestAuthHTTPFullLifecycle: bootstrap-регистрация → логин → сессия →

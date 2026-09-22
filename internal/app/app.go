@@ -27,9 +27,10 @@ import (
 
 // Config — параметры запуска приложения.
 type Config struct {
-	DataDir string
-	Port    int
-	WebMode string
+	DataDir    string
+	Port       int
+	WebMode    string
+	TrustProxy bool
 }
 
 // App — корневой объект приложения: собирает хранилище, usecases и интерфейсы.
@@ -102,7 +103,7 @@ func New(cfg Config) (*App, error) {
 
 	mux := http.NewServeMux()
 	mux.Handle("/mcp", mcp.RequireAPIToken(authService)(server.NewStreamableHTTPServer(mcp.NewServer(divisions))))
-	mux.Handle("/api/", httpapi.NewAPIHandler(divisions, authService, genodex.DocsFS(cfg.WebMode)))
+	mux.Handle("/api/", httpapi.NewAPIHandler(divisions, authService, genodex.DocsFS(cfg.WebMode), cfg.TrustProxy))
 	mux.Handle("/static/", http.StripPrefix("/static/", web.StaticHandler(cfg.WebMode)))
 	mux.Handle("/", web.SPAHandler(cfg.WebMode))
 

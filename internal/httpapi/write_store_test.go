@@ -29,7 +29,7 @@ func TestDivisionWriteContractWithRealStore(t *testing.T) {
 	t.Cleanup(func() { _ = st.Close() })
 
 	authSvc := auth.New(auth.NewSQLStore(st.DB()))
-	h := httpapi.NewAPIHandler(newDivisionService(t, st), authSvc, fstest.MapFS{})
+	h := httpapi.NewAPIHandler(newDivisionService(t, st), authSvc, fstest.MapFS{}, false)
 
 	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
 	requireStatusS(t, regRec, http.StatusCreated)
@@ -115,7 +115,7 @@ func TestDivisionCreateWithoutCSRFHeaderIs400(t *testing.T) {
 	t.Cleanup(func() { _ = st.Close() })
 
 	authSvc := auth.New(auth.NewSQLStore(st.DB()))
-	h := httpapi.NewAPIHandler(newDivisionService(t, st), authSvc, fstest.MapFS{})
+	h := httpapi.NewAPIHandler(newDivisionService(t, st), authSvc, fstest.MapFS{}, false)
 
 	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
 	requireStatusS(t, regRec, http.StatusCreated)

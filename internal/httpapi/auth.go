@@ -14,33 +14,48 @@ import (
 // requireCSRFHeader — используется юнит-тестами этого пакета напрямую.
 // Реальное приложение монтирует весь /api/ через NewAPIHandler (api.go),
 // который вызывает registerAuthRoutes без повторного оборачивания.
-func NewAuthHandler(auth AuthService) http.Handler {
+// trustProxy — см. isSecureRequest.
+func NewAuthHandler(auth AuthService, trustProxy bool) http.Handler {
 	mux := http.NewServeMux()
-	registerAuthRoutes(mux, auth)
+	registerAuthRoutes(mux, auth, trustProxy)
 
 	return requireCSRFHeader(resolveAccess(auth)(mux))
 }
 
 // registerAuthRoutes регистрирует маршруты /api/auth/* на переданном mux.
-func registerAuthRoutes(mux *http.ServeMux, auth AuthService) {
+func registerAuthRoutes(mux *http.ServeMux, auth AuthService, trustProxy bool) {
 	mux.HandleFunc("GET /api/auth/status", handleAuthStatus(auth))
 	mux.HandleFunc("GET /api/auth/session", handleAuthSession(auth))
-	mux.HandleFunc("POST /api/auth/register", handleAuthRegister(auth))
-	mux.HandleFunc("POST /api/auth/login", handleAuthLogin(auth))
-	mux.HandleFunc("POST /api/auth/logout", handleAuthLogout(auth))
-	mux.HandleFunc("POST /api/auth/refresh", handleAuthRefresh(auth))
-	mux.HandleFunc("POST /api/auth/password", handleAuthPassword(auth))
+	mux.HandleFunc("POST /api/auth/register", handleAuthRegister(auth, trustProxy))
+	mux.HandleFunc("POST /api/auth/login", handleAuthLogin(auth, trustProxy))
+	mux.HandleFunc("POST /api/auth/logout", handleAuthLogout(auth, trustProxy))
+	mux.HandleFunc("POST /api/auth/refresh", handleAuthRefresh(auth, trustProxy))
+	mux.HandleFunc("POST /api/auth/password", handleAuthPassword(auth, trustProxy))
 	mux.HandleFunc("POST /api/auth/invites", handleAuthCreateInvite(auth))
 	mux.HandleFunc("POST /api/auth/tokens", handleAuthCreateToken(auth))
 	mux.HandleFunc("GET /api/auth/tokens", handleAuthListTokens(auth))
 	mux.HandleFunc("DELETE /api/auth/tokens/{id}", handleAuthRevokeToken(auth))
 }
 
+// isSecureRequest решает, ставить ли Secure на cookie: TLS терминирует сам
+// процесс (r.TLS != nil), либо явно включённое доверие к обратному прокси
+// (-trust-proxy) видит X-Forwarded-Proto: https. Без явного включения
+// заголовок никогда не учитывается: недоверенный клиент мог бы подделать
+// его сам, а без реального прокси перед этим процессом заголовку верить
+// нельзя (auth.md §4).
+func isSecureRequest(r *http.Request, trustProxy bool) bool {
+	if r.TLS != nil {
+		return true
+	}
+
+	return trustProxy && r.Header.Get("X-Forwarded-Proto") == "https"
+}
+
 // setSessionCookies выставляет пару access/refresh cookie (auth.md §4,
 // решение 8): access — Path=/, refresh — Path=/api/auth/refresh (уже, чем
-// сайт целиком). Secure — если запрос пришёл по HTTPS.
-func setSessionCookies(w http.ResponseWriter, r *http.Request, res authpkg.AuthResult) {
-	secure := r.TLS != nil
+// сайт целиком). Secure — см. isSecureRequest.
+func setSessionCookies(w http.ResponseWriter, r *http.Request, res authpkg.AuthResult, trustProxy bool) {
+	secure := isSecureRequest(r, trustProxy)
 
 	http.SetCookie(w, &http.Cookie{
 		Name: accessCookieName, Value: res.AccessToken, Path: "/",
@@ -55,9 +70,9 @@ func setSessionCookies(w http.ResponseWriter, r *http.Request, res authpkg.AuthR
 }
 
 // clearSessionCookies стирает обе cookie (логаут, смена пароля, просроченный
-// refresh).
-func clearSessionCookies(w http.ResponseWriter, r *http.Request) {
-	secure := r.TLS != nil
+// refresh). Secure — см. isSecureRequest.
+func clearSessionCookies(w http.ResponseWriter, r *http.Request, trustProxy bool) {
+	secure := isSecureRequest(r, trustProxy)
 
 	http.SetCookie(w, &http.Cookie{
 		Name: accessCookieName, Value: "", Path: "/",
@@ -142,7 +157,7 @@ func handleAuthSession(auth AuthService) http.HandlerFunc {
 
 // handleAuthRegister — POST /api/auth/register?invite=<raw>; тело
 // {login, password}. bootstrap (нет владельцев) — invite не нужен.
-func handleAuthRegister(auth AuthService) http.HandlerFunc {
+func handleAuthRegister(auth AuthService, trustProxy bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in transport.RegisterRequest
 		if err := decodeJSON(r, &in); err != nil {
@@ -163,7 +178,7 @@ func handleAuthRegister(auth AuthService) http.HandlerFunc {
 			return
 		}
 
-		setSessionCookies(w, r, res)
+		setSessionCookies(w, r, res, trustProxy)
 		// Логин в ответе — из тела запроса, не из GetOwner: Service.Register не
 		// нормализует login (без trim/case-fold) нигде, так что эхо входа
 		// вызывающего корректно само по себе и экономит лишнее чтение БД. Не
@@ -173,7 +188,7 @@ func handleAuthRegister(auth AuthService) http.HandlerFunc {
 }
 
 // handleAuthLogin — POST /api/auth/login; тело {login, password}.
-func handleAuthLogin(auth AuthService) http.HandlerFunc {
+func handleAuthLogin(auth AuthService, trustProxy bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var in transport.LoginRequest
 		if err := decodeJSON(r, &in); err != nil {
@@ -189,7 +204,7 @@ func handleAuthLogin(auth AuthService) http.HandlerFunc {
 			return
 		}
 
-		setSessionCookies(w, r, res)
+		setSessionCookies(w, r, res, trustProxy)
 		// См. комментарий в handleAuthRegister: логин — эхо входа, GetOwner тут
 		// не нужен.
 		writeJSON(w, http.StatusOK, transport.AuthSession{Login: in.Login})
@@ -197,7 +212,7 @@ func handleAuthLogin(auth AuthService) http.HandlerFunc {
 }
 
 // handleAuthLogout — POST /api/auth/logout: требует Full.
-func handleAuthLogout(auth AuthService) http.HandlerFunc {
+func handleAuthLogout(auth AuthService, trustProxy bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireFull(w, r); !ok {
 			return
@@ -211,14 +226,14 @@ func handleAuthLogout(auth AuthService) http.HandlerFunc {
 			}
 		}
 
-		clearSessionCookies(w, r)
+		clearSessionCookies(w, r, trustProxy)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
 // handleAuthRefresh — POST /api/auth/refresh: по refresh-cookie (не по
 // access — доступ проверяется отдельно от общего resolveAccess).
-func handleAuthRefresh(auth AuthService) http.HandlerFunc {
+func handleAuthRefresh(auth AuthService, trustProxy bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(refreshCookieName)
 		if err != nil {
@@ -229,7 +244,7 @@ func handleAuthRefresh(auth AuthService) http.HandlerFunc {
 
 		res, err := auth.Refresh(r.Context(), c.Value)
 		if err != nil {
-			clearSessionCookies(w, r)
+			clearSessionCookies(w, r, trustProxy)
 			writeAuthError(w, err)
 
 			return
@@ -240,7 +255,7 @@ func handleAuthRefresh(auth AuthService) http.HandlerFunc {
 		// если GetOwner ниже упадёт, браузер всё равно должен получить новые
 		// access/refresh — иначе он остался бы с мёртвой cookie без пути
 		// восстановления, кроме повторного логина.
-		setSessionCookies(w, r, res)
+		setSessionCookies(w, r, res, trustProxy)
 
 		owner, err := auth.GetOwner(r.Context(), res.OwnerID)
 		if err != nil {
@@ -258,7 +273,7 @@ func handleAuthRefresh(auth AuthService) http.HandlerFunc {
 // (эффект Service.ChangePassword, этап A2) включая сессию самого вызывающего
 // — обработчик поэтому сам чистит его cookies и отвечает 204 без тела; веб
 // (этап D) обязан отправить пользователя на /login.
-func handleAuthPassword(auth AuthService) http.HandlerFunc {
+func handleAuthPassword(auth AuthService, trustProxy bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ownerID, ok := requireFull(w, r)
 		if !ok {
@@ -278,7 +293,7 @@ func handleAuthPassword(auth AuthService) http.HandlerFunc {
 			return
 		}
 
-		clearSessionCookies(w, r)
+		clearSessionCookies(w, r, trustProxy)
 		w.WriteHeader(http.StatusNoContent)
 	}
 }

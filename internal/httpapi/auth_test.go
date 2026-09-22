@@ -152,7 +152,7 @@ func postAuth(t *testing.T, h http.Handler, target, body string, withCSRF bool) 
 
 func TestAuthStatusBootstrap(t *testing.T) {
 	svc := &fakeAuthService{bootstrap: true}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/status", nil))
@@ -166,7 +166,7 @@ func TestAuthRegisterBootstrap(t *testing.T) {
 	svc := &fakeAuthService{registerResult: authpkg.AuthResult{
 		OwnerID: "OW-1", AccessToken: "acc", RefreshToken: "ref",
 	}}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/register", `{"login":"first","password":"password123"}`, true)
 
@@ -197,7 +197,7 @@ func TestAuthRegisterBootstrap(t *testing.T) {
 // действительно дошёл).
 func TestAuthRegisterRequiresInviteAfterBootstrap(t *testing.T) {
 	svc := &fakeAuthService{registerErr: authpkg.ErrInviteRequired}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/register", `{"login":"second","password":"password123"}`, true)
 
@@ -206,7 +206,7 @@ func TestAuthRegisterRequiresInviteAfterBootstrap(t *testing.T) {
 	}
 
 	svc2 := &fakeAuthService{registerResult: authpkg.AuthResult{OwnerID: "OW-2"}}
-	h2 := NewAuthHandler(svc2)
+	h2 := NewAuthHandler(svc2, false)
 	postAuth(t, h2, "/api/auth/register?invite=raw-invite-token", `{"login":"second","password":"password123"}`, true)
 
 	if svc2.gotRegister.invite == nil || *svc2.gotRegister.invite != "raw-invite-token" {
@@ -218,7 +218,7 @@ func TestAuthLoginSetsCookies(t *testing.T) {
 	svc := &fakeAuthService{loginResult: authpkg.AuthResult{
 		OwnerID: "OW-1", AccessToken: "acc", RefreshToken: "ref",
 	}}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/login", `{"login":"user","password":"password123"}`, true)
 
@@ -244,7 +244,7 @@ func TestAuthLoginSetsCookies(t *testing.T) {
 
 func TestAuthLoginInvalidCredentialsIs401(t *testing.T) {
 	svc := &fakeAuthService{loginErr: authpkg.ErrInvalidCredentials}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/login", `{"login":"user","password":"wrong"}`, true)
 
@@ -256,7 +256,7 @@ func TestAuthLoginInvalidCredentialsIs401(t *testing.T) {
 func TestAuthLogoutClearsSession(t *testing.T) {
 	owner := authpkg.ID("OW-1")
 	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -284,7 +284,7 @@ func TestAuthLogoutClearsSession(t *testing.T) {
 
 func TestAuthLogoutAnonymousIs401(t *testing.T) {
 	svc := &fakeAuthService{access: models.AccessPublic}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/logout", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -301,7 +301,7 @@ func TestAuthRefreshRotates(t *testing.T) {
 		refreshResult: authpkg.AuthResult{OwnerID: "OW-1", AccessToken: "new-acc", RefreshToken: "new-ref"},
 		owner:         &authpkg.Owner{Login: "user"},
 	}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -332,7 +332,7 @@ func TestAuthRefreshRotates(t *testing.T) {
 // проверяем только HTTP-код и очистку cookies).
 func TestAuthRefreshReuseIsRejected(t *testing.T) {
 	svc := &fakeAuthService{refreshErr: authpkg.ErrSessionExpired}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -366,7 +366,7 @@ func TestAuthRefreshSetsSessionCookiesBeforeOwnerLookup(t *testing.T) {
 		refreshResult: authpkg.AuthResult{OwnerID: "OW-1", AccessToken: "new-acc", RefreshToken: "new-ref"},
 		ownerErr:      errors.New("хранилище недоступно"),
 	}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -394,7 +394,7 @@ func TestAuthRefreshSetsSessionCookiesBeforeOwnerLookup(t *testing.T) {
 
 func TestAuthRefreshNoCookieIs401(t *testing.T) {
 	svc := &fakeAuthService{}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -408,7 +408,7 @@ func TestAuthRefreshNoCookieIs401(t *testing.T) {
 
 func TestAuthSessionNoCookieIs401(t *testing.T) {
 	svc := &fakeAuthService{access: models.AccessPublic}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/auth/session", nil))
@@ -421,7 +421,7 @@ func TestAuthSessionNoCookieIs401(t *testing.T) {
 func TestAuthSessionReturnsLogin(t *testing.T) {
 	owner := authpkg.ID("OW-1")
 	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner, owner: &authpkg.Owner{Login: "user"}}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/session", nil)
 	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
@@ -435,7 +435,7 @@ func TestAuthSessionReturnsLogin(t *testing.T) {
 
 func TestMissingCSRFHeaderIs4xx(t *testing.T) {
 	svc := &fakeAuthService{}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/login", `{"login":"user","password":"x"}`, false)
 
@@ -446,7 +446,7 @@ func TestMissingCSRFHeaderIs4xx(t *testing.T) {
 
 func TestAuthPasswordChangeRequiresFull(t *testing.T) {
 	svc := &fakeAuthService{access: models.AccessPublic}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/password", `{"current_password":"a","new_password":"b"}`, true)
 
@@ -458,7 +458,7 @@ func TestAuthPasswordChangeRequiresFull(t *testing.T) {
 func TestAuthPasswordChangeSuccessClearsCookies(t *testing.T) {
 	owner := authpkg.ID("OW-1")
 	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/password",
 		strings.NewReader(`{"current_password":"old","new_password":"new-password456"}`))
@@ -494,7 +494,7 @@ func TestAuthPasswordChangeWrongCurrentPasswordIs401(t *testing.T) {
 		access: models.AccessFull, ownerID: &owner,
 		changePasswordErr: authpkg.ErrInvalidCredentials,
 	}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/password",
 		strings.NewReader(`{"current_password":"wrong","new_password":"new-password456"}`))
@@ -513,7 +513,7 @@ func TestAuthPasswordChangeWrongCurrentPasswordIs401(t *testing.T) {
 // handleAuthRegister, но логика общая для всех обработчиков.
 func TestAuthValidationErrorIncludesField(t *testing.T) {
 	svc := &fakeAuthService{registerErr: &authpkg.ValidationError{Field: "password", Reason: "слишком короткий"}}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/register", `{"login":"user","password":"x"}`, true)
 
@@ -532,7 +532,7 @@ func TestAuthValidationErrorIncludesField(t *testing.T) {
 
 func TestAuthCreateInviteRequiresFull(t *testing.T) {
 	svc := &fakeAuthService{access: models.AccessPublic}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	rec := postAuth(t, h, "/api/auth/invites", ``, true)
 
@@ -544,7 +544,7 @@ func TestAuthCreateInviteRequiresFull(t *testing.T) {
 func TestAuthCreateInviteReturnsToken(t *testing.T) {
 	owner := authpkg.ID("OW-1")
 	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner, invite: "raw-invite-value"}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/invites", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -563,7 +563,7 @@ func TestAuthCreateInviteReturnsToken(t *testing.T) {
 // TestAuthTokensCRUDRequiresFull: create/list/revoke все требуют Full.
 func TestAuthTokensCRUDRequiresFull(t *testing.T) {
 	svc := &fakeAuthService{access: models.AccessPublic}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	cases := []struct {
 		method, target, body string
@@ -591,7 +591,7 @@ func TestAuthCreateTokenReturnsRawOnce(t *testing.T) {
 		access: models.AccessFull, ownerID: &owner,
 		tokenRaw: "gnx_raw-value", tokenID: "AT-1",
 	}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/tokens", strings.NewReader(`{"label":"MCP"}`))
 	req.Header.Set("X-Requested-With", "genodex")
@@ -614,7 +614,7 @@ func TestAuthListTokensOmitsRawValue(t *testing.T) {
 		access: models.AccessFull, ownerID: &owner,
 		tokens: []authpkg.APIToken{{ID: "AT-1", Label: "MCP", TokenHash: "секрет"}},
 	}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/tokens", nil)
 	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
@@ -633,7 +633,7 @@ func TestAuthListTokensOmitsRawValue(t *testing.T) {
 func TestAuthRevokeToken(t *testing.T) {
 	owner := authpkg.ID("OW-1")
 	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/auth/tokens/AT-1", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -652,7 +652,7 @@ func TestAuthRevokeToken(t *testing.T) {
 func TestAuthRevokeTokenNotFoundIs404(t *testing.T) {
 	owner := authpkg.ID("OW-1")
 	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner, revokeErr: authpkg.ErrNotFound}
-	h := NewAuthHandler(svc)
+	h := NewAuthHandler(svc, false)
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/auth/tokens/AT-nonexistent", nil)
 	req.Header.Set("X-Requested-With", "genodex")
@@ -662,5 +662,56 @@ func TestAuthRevokeTokenNotFoundIs404(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status=%d", rec.Code)
+	}
+}
+
+// TestSetSessionCookiesSecureFlag: Secure зависит от TLS-терминации ИЛИ
+// явно включённого доверия к прокси (-trust-proxy) — заголовок
+// X-Forwarded-Proto сам по себе, без включения, ни на что не влияет
+// (недоверенный клиент мог бы его подделать).
+func TestSetSessionCookiesSecureFlag(t *testing.T) {
+	cases := []struct {
+		name       string
+		trustProxy bool
+		forwarded  string
+		want       bool
+	}{
+		{"trustProxy=false, заголовка нет — не secure", false, "", false},
+		{"trustProxy=false, заголовок лжёт https — не secure (не доверяем без включения)", false, "https", false},
+		{"trustProxy=true, заголовок https — secure", true, "https", true},
+		{"trustProxy=true, заголовок http — не secure", true, "http", false},
+		{"trustProxy=true, заголовка нет — не secure", true, "", false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			svc := &fakeAuthService{registerResult: authpkg.AuthResult{
+				OwnerID: "OW-1", AccessToken: "acc", RefreshToken: "ref",
+			}}
+			h := NewAuthHandler(svc, c.trustProxy)
+
+			req := httptest.NewRequest(http.MethodPost, "/api/auth/register", strings.NewReader(`{"login":"first","password":"password123"}`))
+			req.Header.Set("X-Requested-With", "genodex")
+			if c.forwarded != "" {
+				req.Header.Set("X-Forwarded-Proto", c.forwarded)
+			}
+
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, req)
+
+			var accessCookie *http.Cookie
+			for _, ck := range rec.Result().Cookies() {
+				if ck.Name == accessCookieName {
+					accessCookie = ck
+				}
+			}
+			if accessCookie == nil {
+				t.Fatal("access cookie не выставлена")
+			}
+
+			if accessCookie.Secure != c.want {
+				t.Errorf("Secure = %v, ожидалось %v", accessCookie.Secure, c.want)
+			}
+		})
 	}
 }
