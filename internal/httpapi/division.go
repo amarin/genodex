@@ -41,6 +41,50 @@ func parseDivisionQuery(v url.Values) (models.DivisionQuery, error) {
 		Type: models.AdminDivisionType(v.Get("type")),
 	}
 
+	if raw := v.Get("parent_id"); raw != "" {
+		pid := models.ID(raw)
+		q.ParentID = &pid
+	}
+
+	var err error
+
+	if q.Page.Limit, err = intParam(v, "limit"); err != nil {
+		return q, err
+	}
+
+	if q.Page.Offset, err = intParam(v, "offset"); err != nil {
+		return q, err
+	}
+
+	return q, nil
+}
+
+// handleDivisionSearch — GET /api/admin-divisions/search?q=&limit=&offset=.
+// Синтаксически неверный параметр — 400; неверное значение (отрицательное окно) — 422.
+func handleDivisionSearch(divisions DivisionService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		q, err := parseDivisionSearchQuery(r.URL.Query())
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+
+			return
+		}
+
+		list, err := divisions.SearchDivisions(r.Context(), q)
+		if err != nil {
+			writeError(w, err)
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, transport.AdminDivisionsFromModels(list))
+	}
+}
+
+// parseDivisionSearchQuery разбирает параметры поиска.
+func parseDivisionSearchQuery(v url.Values) (models.DivisionSearchQuery, error) {
+	q := models.DivisionSearchQuery{Text: v.Get("q")}
+
 	var err error
 
 	if q.Page.Limit, err = intParam(v, "limit"); err != nil {

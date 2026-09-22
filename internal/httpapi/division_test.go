@@ -26,12 +26,22 @@ type fakeDivisions struct {
 	updated   models.AdministrativeDivision
 	gotIDs    []models.ID
 	deleteErr error
+
+	search    []models.AdministrativeDivision
+	searchErr error
+	gotSearch models.DivisionSearchQuery
 }
 
 func (f *fakeDivisions) ListDivisions(_ context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
 	f.got = q
 
 	return f.list, f.err
+}
+
+func (f *fakeDivisions) SearchDivisions(_ context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+	f.gotSearch = q
+
+	return f.search, f.searchErr
 }
 
 func (f *fakeDivisions) GetDivision(_ context.Context, id models.ID) (models.AdministrativeDivision, error) {
@@ -160,6 +170,81 @@ func TestDivisionListServiceErrorIs500(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Body.String(), "хранилище недоступно") {
 		t.Fatalf("status = %d, body = %s; ожидался 500 с текстом ошибки", rec.Code, rec.Body)
+	}
+}
+
+// TestDivisionListPassesParentID: parent_id доходит до сценария.
+func TestDivisionListPassesParentID(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions?parent_id=ad-root")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
+	}
+
+	want := models.ID("ad-root")
+	if svc.got.ParentID == nil || *svc.got.ParentID != want {
+		t.Fatalf("got.ParentID = %v, ожидался %s", svc.got.ParentID, want)
+	}
+}
+
+func TestDivisionSearch(t *testing.T) {
+	svc := &fakeDivisions{search: []models.AdministrativeDivision{
+		{ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo},
+	}}
+
+	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы")
+
+	want := `[{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":null}]`
+	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != want {
+		t.Fatalf("status = %d, body = %s; ожидалось 200 и %s", rec.Code, got, want)
+	}
+
+	if svc.gotSearch.Text != "давы" {
+		t.Fatalf("gotSearch.Text = %q, ожидалось %q", svc.gotSearch.Text, "давы")
+	}
+}
+
+// TestDivisionSearchRouteDoesNotHitID: литеральный маршрут /search побеждает {id};
+// пустой фейк отвечает 200 пустым массивом, не 422 «неверный формат id».
+func TestDivisionSearchRouteDoesNotHitID(t *testing.T) {
+	rec := get(t, NewHandler(&fakeDivisions{}, fstest.MapFS{}), "/api/admin-divisions/search?q=давы")
+
+	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != `[]` {
+		t.Fatalf("status = %d, body = %s; ожидалось 200 []", rec.Code, got)
+	}
+}
+
+// TestDivisionSearchBadNumberIs400: limit/offset — не число.
+func TestDivisionSearchBadNumberIs400(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы&limit=abc")
+
+	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"error"`) {
+		t.Fatalf("status = %d, body = %s; ожидался 400 с error", rec.Code, rec.Body)
+	}
+}
+
+// TestDivisionSearchNegativeLimitIs422: отрицательное окно — ошибка валидации сценария.
+func TestDivisionSearchNegativeLimitIs422(t *testing.T) {
+	svc := &fakeDivisions{searchErr: &models.ValidationError{Field: "limit", Reason: "не может быть отрицательным"}}
+
+	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы&limit=-1")
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, body = %s; ожидался 422", rec.Code, rec.Body)
+	}
+}
+
+// TestDivisionSearchServiceErrorIs500: прочая ошибка сценария — 500.
+func TestDivisionSearchServiceErrorIs500(t *testing.T) {
+	svc := &fakeDivisions{searchErr: errors.New("хранилище недоступно")}
+
+	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы")
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, body = %s; ожидался 500", rec.Code, rec.Body)
 	}
 }
 

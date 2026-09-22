@@ -16,6 +16,7 @@ func NewHandler(divisions DivisionService, docsFS fs.FS) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", handleHealth)
 	mux.HandleFunc("GET /api/admin-divisions", handleDivisionList(divisions))
+	mux.HandleFunc("GET /api/admin-divisions/search", handleDivisionSearch(divisions))
 	mux.HandleFunc("GET /api/admin-divisions/{id}", handleDivisionGet(divisions))
 	mux.HandleFunc("POST /api/admin-divisions", handleDivisionCreate(divisions))
 	mux.HandleFunc("PUT /api/admin-divisions/{id}", handleDivisionUpdate(divisions))

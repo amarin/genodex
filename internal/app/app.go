@@ -19,6 +19,7 @@ import (
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
+	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
 	"github.com/amarin/genodex/web"
 )
@@ -40,6 +41,7 @@ type App struct {
 // divisionService — фасад всех сценариев делений, отдаваемых HTTP и MCP.
 type divisionService struct {
 	list   *list_divisions.Scenario
+	search *search_divisions.Scenario
 	get    *get_division.Scenario
 	create *create_division.Scenario
 	update *update_division.Scenario
@@ -48,6 +50,10 @@ type divisionService struct {
 
 func (s *divisionService) ListDivisions(ctx context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
 	return s.list.ListDivisions(ctx, q)
+}
+
+func (s *divisionService) SearchDivisions(ctx context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+	return s.search.SearchDivisions(ctx, q)
 }
 
 func (s *divisionService) GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error) {
@@ -80,6 +86,7 @@ func New(cfg Config) (*App, error) {
 
 	divisions := &divisionService{
 		list:   list_divisions.New(st),
+		search: search_divisions.New(st),
 		get:    get_division.New(st),
 		create: create_division.New(st, idgen.New()),
 		update: update_division.New(st),
