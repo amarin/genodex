@@ -3,6 +3,7 @@ package httpapi
 import (
 	"errors"
 	"net/http"
+	"strings"
 
 	authpkg "github.com/amarin/genodex/internal/auth"
 	"github.com/amarin/genodex/internal/models"
@@ -19,6 +20,11 @@ func NewAuthHandler(auth AuthService) http.Handler {
 	mux.HandleFunc("POST /api/auth/login", handleAuthLogin(auth))
 	mux.HandleFunc("POST /api/auth/logout", handleAuthLogout(auth))
 	mux.HandleFunc("POST /api/auth/refresh", handleAuthRefresh(auth))
+	mux.HandleFunc("POST /api/auth/password", handleAuthPassword(auth))
+	mux.HandleFunc("POST /api/auth/invites", handleAuthCreateInvite(auth))
+	mux.HandleFunc("POST /api/auth/tokens", handleAuthCreateToken(auth))
+	mux.HandleFunc("GET /api/auth/tokens", handleAuthListTokens(auth))
+	mux.HandleFunc("DELETE /api/auth/tokens/{id}", handleAuthRevokeToken(auth))
 
 	return requireCSRFHeader(resolveAccess(auth)(mux))
 }
@@ -225,5 +231,124 @@ func handleAuthRefresh(auth AuthService) http.HandlerFunc {
 
 		setSessionCookies(w, r, res)
 		writeJSON(w, http.StatusOK, transport.AuthSessionFromOwner(owner))
+	}
+}
+
+// handleAuthPassword — POST /api/auth/password: требует Full; тело
+// {current_password, new_password}. Успех гасит ВСЕ сессии владельца
+// (эффект Service.ChangePassword, этап A2) включая сессию самого вызывающего
+// — обработчик поэтому сам чистит его cookies и отвечает 204 без тела; веб
+// (этап D) обязан отправить пользователя на /login.
+func handleAuthPassword(auth AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ownerID, ok := requireFull(w, r)
+		if !ok {
+			return
+		}
+
+		var in transport.PasswordChangeRequest
+		if err := decodeJSON(r, &in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "не удалось разобрать тело: " + err.Error()})
+
+			return
+		}
+
+		if err := auth.ChangePassword(r.Context(), ownerID, in.CurrentPassword, in.NewPassword); err != nil {
+			writeAuthError(w, err)
+
+			return
+		}
+
+		clearSessionCookies(w, r)
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// handleAuthCreateInvite — POST /api/auth/invites: требует Full; тело не
+// нужно. Сырое значение ссылки — только в этом ответе.
+func handleAuthCreateInvite(auth AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ownerID, ok := requireFull(w, r)
+		if !ok {
+			return
+		}
+
+		raw, err := auth.CreateInvite(r.Context(), ownerID)
+		if err != nil {
+			writeAuthError(w, err)
+
+			return
+		}
+
+		writeJSON(w, http.StatusCreated, transport.Invite{Token: raw})
+	}
+}
+
+// handleAuthCreateToken — POST /api/auth/tokens: требует Full; тело
+// {label}. Сырое значение токена — только в этом ответе.
+func handleAuthCreateToken(auth AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ownerID, ok := requireFull(w, r)
+		if !ok {
+			return
+		}
+
+		var in transport.CreateAPITokenRequest
+		if err := decodeJSON(r, &in); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "не удалось разобрать тело: " + err.Error()})
+
+			return
+		}
+
+		raw, id, err := auth.CreateAPIToken(r.Context(), ownerID, in.Label)
+		if err != nil {
+			writeAuthError(w, err)
+
+			return
+		}
+
+		writeJSON(w, http.StatusCreated, transport.NewAPIToken{ID: string(id), Token: raw, Label: in.Label})
+	}
+}
+
+// handleAuthListTokens — GET /api/auth/tokens: требует Full; метаданные без
+// сырых значений.
+func handleAuthListTokens(auth AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ownerID, ok := requireFull(w, r)
+		if !ok {
+			return
+		}
+
+		list, err := auth.ListAPITokens(r.Context(), ownerID)
+		if err != nil {
+			writeAuthError(w, err)
+
+			return
+		}
+
+		writeJSON(w, http.StatusOK, transport.APITokensFromModels(list))
+	}
+}
+
+// handleAuthRevokeToken — DELETE /api/auth/tokens/{id}: требует Full;
+// сценарий проверяет владельца токена (чужой — ErrNotFound → 404, не
+// подтверждаем существование).
+func handleAuthRevokeToken(auth AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ownerID, ok := requireFull(w, r)
+		if !ok {
+			return
+		}
+
+		tokenID := authpkg.ID(strings.TrimPrefix(r.PathValue("id"), "/"))
+
+		if err := auth.RevokeAPIToken(r.Context(), ownerID, tokenID); err != nil {
+			writeAuthError(w, err)
+
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

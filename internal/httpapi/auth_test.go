@@ -405,3 +405,179 @@ func TestMissingCSRFHeaderIs4xx(t *testing.T) {
 		t.Fatalf("status=%d, ожидался 400 без X-Requested-With", rec.Code)
 	}
 }
+
+func TestAuthPasswordChangeRequiresFull(t *testing.T) {
+	svc := &fakeAuthService{access: models.AccessPublic}
+	h := NewAuthHandler(svc)
+
+	rec := postAuth(t, h, "/api/auth/password", `{"current_password":"a","new_password":"b"}`, true)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d, ожидался 401 для анонима", rec.Code)
+	}
+}
+
+func TestAuthPasswordChangeSuccessClearsCookies(t *testing.T) {
+	owner := authpkg.ID("OW-1")
+	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/password",
+		strings.NewReader(`{"current_password":"old","new_password":"new-password456"}`))
+	req.Header.Set("X-Requested-With", "genodex")
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body)
+	}
+	if svc.gotChangePassword.ownerID != owner || svc.gotChangePassword.current != "old" {
+		t.Fatalf("gotChangePassword=%+v", svc.gotChangePassword)
+	}
+
+	cleared := false
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == accessCookieName && c.MaxAge < 0 {
+			cleared = true
+		}
+	}
+	if !cleared {
+		t.Fatal("cookies не очищены после смены пароля")
+	}
+}
+
+func TestAuthCreateInviteRequiresFull(t *testing.T) {
+	svc := &fakeAuthService{access: models.AccessPublic}
+	h := NewAuthHandler(svc)
+
+	rec := postAuth(t, h, "/api/auth/invites", ``, true)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d", rec.Code)
+	}
+}
+
+func TestAuthCreateInviteReturnsToken(t *testing.T) {
+	owner := authpkg.ID("OW-1")
+	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner, invite: "raw-invite-value"}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/invites", nil)
+	req.Header.Set("X-Requested-With", "genodex")
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusCreated || strings.TrimSpace(rec.Body.String()) != `{"token":"raw-invite-value"}` {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body)
+	}
+	if svc.gotInviteOwner != owner {
+		t.Fatalf("gotInviteOwner=%v", svc.gotInviteOwner)
+	}
+}
+
+// TestAuthTokensCRUDRequiresFull: create/list/revoke все требуют Full.
+func TestAuthTokensCRUDRequiresFull(t *testing.T) {
+	svc := &fakeAuthService{access: models.AccessPublic}
+	h := NewAuthHandler(svc)
+
+	cases := []struct {
+		method, target, body string
+	}{
+		{http.MethodPost, "/api/auth/tokens", `{"label":"MCP"}`},
+		{http.MethodGet, "/api/auth/tokens", ""},
+		{http.MethodDelete, "/api/auth/tokens/AT-1", ""},
+	}
+
+	for _, c := range cases {
+		req := httptest.NewRequest(c.method, c.target, strings.NewReader(c.body))
+		req.Header.Set("X-Requested-With", "genodex")
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s %s: status=%d, ожидался 401 для анонима", c.method, c.target, rec.Code)
+		}
+	}
+}
+
+func TestAuthCreateTokenReturnsRawOnce(t *testing.T) {
+	owner := authpkg.ID("OW-1")
+	svc := &fakeAuthService{
+		access: models.AccessFull, ownerID: &owner,
+		tokenRaw: "gnx_raw-value", tokenID: "AT-1",
+	}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/tokens", strings.NewReader(`{"label":"MCP"}`))
+	req.Header.Set("X-Requested-With", "genodex")
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	want := `{"id":"AT-1","token":"gnx_raw-value","label":"MCP"}`
+	if rec.Code != http.StatusCreated || strings.TrimSpace(rec.Body.String()) != want {
+		t.Fatalf("status=%d body=%s, want %s", rec.Code, rec.Body, want)
+	}
+	if svc.gotCreateToken.ownerID != owner || svc.gotCreateToken.label != "MCP" {
+		t.Fatalf("gotCreateToken=%+v", svc.gotCreateToken)
+	}
+}
+
+func TestAuthListTokensOmitsRawValue(t *testing.T) {
+	owner := authpkg.ID("OW-1")
+	svc := &fakeAuthService{
+		access: models.AccessFull, ownerID: &owner,
+		tokens: []authpkg.APIToken{{ID: "AT-1", Label: "MCP", TokenHash: "секрет"}},
+	}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/tokens", nil)
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	body := rec.Body.String()
+	if rec.Code != http.StatusOK || strings.Contains(body, "секрет") || !strings.Contains(body, `"id":"AT-1"`) {
+		t.Fatalf("status=%d body=%s", rec.Code, body)
+	}
+	if svc.gotListOwner != owner {
+		t.Fatalf("gotListOwner=%v", svc.gotListOwner)
+	}
+}
+
+func TestAuthRevokeToken(t *testing.T) {
+	owner := authpkg.ID("OW-1")
+	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/auth/tokens/AT-1", nil)
+	req.Header.Set("X-Requested-With", "genodex")
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body)
+	}
+	if svc.gotRevoke.ownerID != owner || svc.gotRevoke.tokenID != "AT-1" {
+		t.Fatalf("gotRevoke=%+v", svc.gotRevoke)
+	}
+}
+
+func TestAuthRevokeTokenNotFoundIs404(t *testing.T) {
+	owner := authpkg.ID("OW-1")
+	svc := &fakeAuthService{access: models.AccessFull, ownerID: &owner, revokeErr: authpkg.ErrNotFound}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodDelete, "/api/auth/tokens/AT-nonexistent", nil)
+	req.Header.Set("X-Requested-With", "genodex")
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status=%d", rec.Code)
+	}
+}
