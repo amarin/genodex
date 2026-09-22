@@ -29,6 +29,14 @@ Flags:
 | `-p`  | `9000`  | HTTP port |
 | `-web`| `prod`  | Web assets mode: `prod` (embedded in binary) or `dev` (read `web/dist` from disk) |
 
+## Authentication
+
+Writes to `/api` and all of `/mcp` require an authenticated owner — anonymous
+requests get `401`. On first run, open `/register` in a browser to create the
+first owner (no invite needed on a fresh database). Owners can invite others
+from `/settings`, which also mints long-lived API tokens for MCP clients:
+create one on `/settings`, then send it as `Authorization: Bearer gnx_...`.
+
 ## Endpoints
 
 | Path | Purpose |

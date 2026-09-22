@@ -7,6 +7,12 @@
 
 ### Added
 
+- Аутентификация владельцев: логин/пароль со скользящей cookie-сессией
+  (access 15 минут / refresh 30 дней), приглашения для новых владельцев,
+  долгоживущие API-токены для MCP-клиентов (`gnx_...`, показываются один
+  раз). Веб-страницы `/login`, `/register`, `/settings`
+  (`internal/auth`, `internal/httpapi/auth.go`, `internal/mcp/middleware.go`,
+  `web/src/auth.ts`, `web/src/pages/{Login,Register,Settings}.tsx`).
 - Административное деление — вертикальный срез, полный контракт HTTP и MCP:
   список с фильтрами (`kind`, `type`), список прямых детей (`parent_id`),
   префиксный поиск по названию и вариантам названия (`division_search`,
@@ -35,6 +41,12 @@
 
 ### Changed
 
+- **Ломает совместимость:** запись в `/api` (`POST`/`PUT`/`DELETE
+  /api/admin-divisions...`) и весь `/mcp` теперь требуют аутентификации
+  владельца — анонимные запросы получают `401`. При первом запуске сервер
+  переходит в режим bootstrap: откройте `/register` в браузере, чтобы
+  создать первого владельца; для MCP-клиентов создайте API-токен на
+  `/settings` и передайте его как `Authorization: Bearer gnx_...`.
 - Переименован единственный публичный контракт, существовавший до этого
   прохода: `settlement_list` / `GET /api/settlements` → `division_list` /
   `GET /api/admin-divisions`; DTO `Settlement` → `AdminDivision`. Фильтр
