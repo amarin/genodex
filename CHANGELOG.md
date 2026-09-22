@@ -13,6 +13,11 @@
   раз). Веб-страницы `/login`, `/register`, `/settings`
   (`internal/auth`, `internal/httpapi/auth.go`, `internal/mcp/middleware.go`,
   `web/src/auth.ts`, `web/src/pages/{Login,Register,Settings}.tsx`).
+- Флаг `-trust-proxy` (по умолчанию выключен): за TLS-терминирующим
+  реверс-прокси (nginx, Caddy, Cloudflare) позволяет `Secure`-флагу
+  cookie учитывать `X-Forwarded-Proto: https` от прокси — без флага
+  `Secure` следует только за `r.TLS` (`internal/httpapi/auth.go`,
+  `cmd/genodex/main.go`).
 - Административное деление — вертикальный срез, полный контракт HTTP и MCP:
   список с фильтрами (`kind`, `type`), список прямых детей (`parent_id`),
   префиксный поиск по названию и вариантам названия (`division_search`,
