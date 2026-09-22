@@ -157,6 +157,10 @@ func handleAuthRegister(auth AuthService) http.HandlerFunc {
 		}
 
 		setSessionCookies(w, r, res)
+		// Логин в ответе — из тела запроса, не из GetOwner: Service.Register не
+		// нормализует login (без trim/case-fold) нигде, так что эхо входа
+		// вызывающего корректно само по себе и экономит лишнее чтение БД. Не
+		// «чинить» на GetOwner ради единообразия с handleAuthSession/Refresh.
 		writeJSON(w, http.StatusCreated, transport.AuthSession{Login: in.Login})
 	}
 }
@@ -179,6 +183,8 @@ func handleAuthLogin(auth AuthService) http.HandlerFunc {
 		}
 
 		setSessionCookies(w, r, res)
+		// См. комментарий в handleAuthRegister: логин — эхо входа, GetOwner тут
+		// не нужен.
 		writeJSON(w, http.StatusOK, transport.AuthSession{Login: in.Login})
 	}
 }
@@ -222,6 +228,13 @@ func handleAuthRefresh(auth AuthService) http.HandlerFunc {
 			return
 		}
 
+		// Cookies ставим сразу после успешной ротации, ДО GetOwner: Refresh уже
+		// необратимо заменил сессию в БД (старый refresh теперь мёртв), поэтому
+		// если GetOwner ниже упадёт, браузер всё равно должен получить новые
+		// access/refresh — иначе он остался бы с мёртвой cookie без пути
+		// восстановления, кроме повторного логина.
+		setSessionCookies(w, r, res)
+
 		owner, err := auth.GetOwner(r.Context(), res.OwnerID)
 		if err != nil {
 			writeAuthError(w, err)
@@ -229,7 +242,6 @@ func handleAuthRefresh(auth AuthService) http.HandlerFunc {
 			return
 		}
 
-		setSessionCookies(w, r, res)
 		writeJSON(w, http.StatusOK, transport.AuthSessionFromOwner(owner))
 	}
 }

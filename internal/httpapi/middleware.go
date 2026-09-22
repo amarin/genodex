@@ -33,6 +33,13 @@ func resolveAccess(svc AuthService) func(http.Handler) http.Handler {
 
 			access, ownerID, err := svc.ResolveAccess(r.Context(), raw)
 			if err != nil {
+				// Fail-closed 500 — намеренно, не «упростить» до AccessPublic:
+				// Service.ResolveAccess уже возвращает (AccessPublic, nil, nil) без
+				// ошибки для обычных случаев анонима/просроченной/не найденной
+				// сессии, так что ошибка здесь означает настоящий сбой
+				// инфраструктуры (например, БД недоступна) — в этом состоянии
+				// запрос не должен молча деградировать до AccessPublic, это было
+				// бы неотличимо от успешной атаки на доступность.
 				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 
 				return

@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -354,6 +355,43 @@ func TestAuthRefreshReuseIsRejected(t *testing.T) {
 	}
 }
 
+// TestAuthRefreshSetsSessionCookiesBeforeOwnerLookup: регрессия на баг из
+// финального ревью этапа B — если Refresh успешно ротирует сессию, но
+// последующий GetOwner падает, браузер всё равно должен получить новые
+// cookies (иначе он остался бы с мёртвым refresh без восстановления). Без
+// реордера setSessionCookies после GetOwner в handleAuthRefresh этот тест не
+// пройдёт: обработчик вернулся бы с ошибкой до вызова setSessionCookies.
+func TestAuthRefreshSetsSessionCookiesBeforeOwnerLookup(t *testing.T) {
+	svc := &fakeAuthService{
+		refreshResult: authpkg.AuthResult{OwnerID: "OW-1", AccessToken: "new-acc", RefreshToken: "new-ref"},
+		ownerErr:      errors.New("хранилище недоступно"),
+	}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/refresh", nil)
+	req.Header.Set("X-Requested-With", "genodex")
+	req.AddCookie(&http.Cookie{Name: refreshCookieName, Value: "old-ref"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code == http.StatusOK {
+		t.Fatalf("ожидалась ошибка после сбоя GetOwner, status=%d", rec.Code)
+	}
+
+	var newAccess, newRefresh bool
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == accessCookieName && c.Value == "new-acc" {
+			newAccess = true
+		}
+		if c.Name == refreshCookieName && c.Value == "new-ref" {
+			newRefresh = true
+		}
+	}
+	if !newAccess || !newRefresh {
+		t.Fatalf("новые cookies не выставлены после успешной ротации: cookies=%v", rec.Result().Cookies())
+	}
+}
+
 func TestAuthRefreshNoCookieIs401(t *testing.T) {
 	svc := &fakeAuthService{}
 	h := NewAuthHandler(svc)
@@ -444,6 +482,51 @@ func TestAuthPasswordChangeSuccessClearsCookies(t *testing.T) {
 	}
 	if !cleared {
 		t.Fatal("cookies не очищены после смены пароля")
+	}
+}
+
+// TestAuthPasswordChangeWrongCurrentPasswordIs401: сентинел
+// ErrInvalidCredentials, который Service.ChangePassword реально возвращает
+// при неверном текущем пароле, должен мапиться в 401 (writeAuthError).
+func TestAuthPasswordChangeWrongCurrentPasswordIs401(t *testing.T) {
+	owner := authpkg.ID("OW-1")
+	svc := &fakeAuthService{
+		access: models.AccessFull, ownerID: &owner,
+		changePasswordErr: authpkg.ErrInvalidCredentials,
+	}
+	h := NewAuthHandler(svc)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/password",
+		strings.NewReader(`{"current_password":"wrong","new_password":"new-password456"}`))
+	req.Header.Set("X-Requested-With", "genodex")
+	req.AddCookie(&http.Cookie{Name: accessCookieName, Value: "raw-access"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status=%d body=%s, ожидался 401 для неверного текущего пароля", rec.Code, rec.Body)
+	}
+}
+
+// TestAuthValidationErrorIncludesField: любой *auth.ValidationError от
+// AuthService — 422 с полем "field" в теле (writeAuthError); проверяем на
+// handleAuthRegister, но логика общая для всех обработчиков.
+func TestAuthValidationErrorIncludesField(t *testing.T) {
+	svc := &fakeAuthService{registerErr: &authpkg.ValidationError{Field: "password", Reason: "слишком короткий"}}
+	h := NewAuthHandler(svc)
+
+	rec := postAuth(t, h, "/api/auth/register", `{"login":"user","password":"x"}`, true)
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status=%d body=%s, ожидался 422", rec.Code, rec.Body)
+	}
+
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("не удалось разобрать тело: %v, body=%s", err, rec.Body)
+	}
+	if body["field"] != "password" {
+		t.Fatalf(`body["field"]=%q, want "password" (body=%s)`, body["field"], rec.Body)
 	}
 }
 

@@ -208,19 +208,75 @@ DELETE CASCADE` на сущность — раз у auth-таблиц везде
 | `GET` | `/api/auth/tokens` | Full | список метаданных |
 | `DELETE` | `/api/auth/tokens/{id}` | Full | отзыв |
 
-Middleware `resolveAccess` оборачивает весь `/api/`, включая `/api/auth/*`
-(эти эндпоинты сами решают, что делать с `Access`/сессией — `resolveAccess`
-лишь читает cookie и кладёт результат в контекст, не блокирует): читает
-`genodex_access`, при валидной активной сессии кладёт в контекст запроса
-`models.AccessFull` + `OwnerID`, иначе `models.AccessPublic`. Хелпер
-`httpapi.AccessFromContext(ctx) models.Access` и
-`httpapi.OwnerFromContext(ctx) (auth.ID, bool)`.
+Коды ответов по маршрутам (успех):
+
+| Маршрут | Код |
+|---|---|
+| `GET /api/auth/status` | `200` |
+| `GET /api/auth/session` | `200` |
+| `POST /api/auth/register` | `201` |
+| `POST /api/auth/login` | `200` |
+| `POST /api/auth/logout` | `204` |
+| `POST /api/auth/refresh` | `200` |
+| `POST /api/auth/password` | `204` |
+| `POST /api/auth/invites` | `201` |
+| `POST /api/auth/tokens` | `201` |
+| `GET /api/auth/tokens` | `200` |
+| `DELETE /api/auth/tokens/{id}` | `204` |
+
+`POST /api/auth/password` (успешная смена пароля) чистит cookies самого
+вызывающего и отвечает `204` без тела — новую сессию для него обработчик не
+выпускает: `Service.ChangePassword` (этап A2) и так гасит все сессии
+владельца на уровне хранилища, включая сессию вызывающего, так что
+`handleAuthPassword` лишь синхронно чистит его cookies этим же ответом,
+вместо того чтобы оставить его с мёртвыми cookies до следующего обращения.
+Реиссью новой сессии сразу после смены пароля — намеренно не реализовано; веб
+(этап D) обязан после `204` отправить пользователя на `/login`.
+
+Middleware `resolveAccess` по замыслу дизайна оборачивает весь `/api/`,
+включая `/api/auth/*` (эти эндпоинты сами решают, что делать с
+`Access`/сессией — `resolveAccess` лишь читает cookie и кладёт результат в
+контекст, не блокирует): читает `genodex_access`, при валидной активной
+сессии кладёт в контекст запроса `models.AccessFull` + `OwnerID`, иначе
+`models.AccessPublic`. Хелпер `httpapi.AccessFromContext(ctx) models.Access`
+и `httpapi.OwnerFromContext(ctx) (auth.ID, bool)`.
+
+В реализации этапа B `resolveAccess`/`requireCSRFHeader` оборачивают не весь
+`/api/`, а только поддерево `NewAuthHandler` (`internal/httpapi/auth.go`):
+`return requireCSRFHeader(resolveAccess(auth)(mux))`, где `mux` — внутренний
+`http.ServeMux` из 11 маршрутов `/api/auth/*`. Это сделано, чтобы
+`NewAuthHandler` был самодостаточным и тестируемым независимо от остального
+`/api/`. Открытый вопрос для этапа C (`internal/app`, где собирается общий
+mux): либо не оборачивать `NewAuthHandler` вторым слоем `resolveAccess`/
+`requireCSRFHeader` снаружи (двойная обёртка не ломает поведение, но
+удваивает работу на каждый auth-запрос — два резолва сессии, две проверки
+CSRF), либо перестроить так, чтобы оборачивание происходило ровно один раз.
+Дополнительное жёсткое ограничение монтирования: маршруты `NewAuthHandler`
+зарегистрированы АБСОЛЮТНЫМИ путями (`GET /api/auth/status`, а не
+относительными) — подключать нужно как `mux.Handle("/api/auth/",
+httpapi.NewAuthHandler(...))`, БЕЗ `http.StripPrefix`: срезание префикса
+молча превратит все 11 маршрутов в `404`.
 
 Отдельный middleware `requireCSRFHeader` — на **любой** `POST/PUT/DELETE` под
 `/api/` без исключений (включая `/api/auth/login|register`: они тоже вызываются
 JS-клиентом того же origin, а не только по cookie, так что заголовок им
 доступен так же, как остальным) требует `X-Requested-With: genodex`, иначе
 `400` до чтения тела.
+
+Известный пробел: `setSessionCookies`/`clearSessionCookies` ставят флаг
+`Secure` только когда `r.TLS != nil` — верно, если этот процесс сам
+терминирует TLS, но ложно, если TLS терминирует реверс-прокси (nginx, Caddy,
+Cloudflare — обычная схема деплоя одного Go-бинарника) и пробрасывает внутрь
+обычный HTTP: тогда cookies уйдут без `Secure`, хотя сайт снаружи и правда
+доступен только по HTTPS — реальное ослабление (cookie без `Secure` может
+утечь по случайному plain-HTTP запросу к тому же хосту). Не эксплуатируемо
+сейчас (обработчик ещё нигде не подключен к реальному mux), но должно быть
+закрыто до того, как более поздний этап (после C) реально задеплоит это за
+прокси. Правильное решение зависит от конфигурации деплоя, которой в проекте
+пока нет (например, флаг «доверять `X-Forwarded-Proto`», который нельзя
+честно включать безусловно по заголовку от недоверенного клиента) — в этом
+проходе фикс не делается, принимается как известное ограничение; закрывает
+тот, кто подключает сервис к реальному деплою за прокси.
 
 Существующие обработчики (`handleDivisionList`, `handleDivisionSearch`)
 передают `Access` из контекста в сценарий вместо хардкода. Обработчики

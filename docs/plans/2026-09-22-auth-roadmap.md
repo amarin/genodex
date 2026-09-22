@@ -59,6 +59,8 @@
 
 ## B. HTTP-контракт auth
 
+- **Статус:** выполнено (5 задач-коммитов + консолидированный проход по
+  итогам финального ревью — см. `2026-09-22-auth-b-http.md`).
 - **Файлы:** `internal/httpapi/auth.go` (+тесты), `internal/httpapi/deps.go`
   (интерфейс `AuthService`), `internal/httpapi/middleware.go`
   (`resolveAccess`, `AccessFromContext`, `OwnerFromContext`),
