@@ -70,6 +70,10 @@ func (s *Service) Register(ctx context.Context, login, password string, invite *
 		return AuthResult{}, err
 	}
 
+	if err := validatePassword("password", password); err != nil {
+		return AuthResult{}, err
+	}
+
 	hash, err := hashPassword(password)
 	if err != nil {
 		return AuthResult{}, err
@@ -213,12 +217,24 @@ func (s *Service) ChangePassword(ctx context.Context, ownerID ID, current, newPa
 		return ErrInvalidCredentials
 	}
 
+	if err := validatePassword("new_password", newPassword); err != nil {
+		return err
+	}
+
 	hash, err := hashPassword(newPassword)
 	if err != nil {
 		return err
 	}
 
-	return s.store.UpdateOwnerPassword(ctx, ownerID, hash)
+	if err := s.store.UpdateOwnerPassword(ctx, ownerID, hash); err != nil {
+		return err
+	}
+
+	// Смена пароля — сигнал «мог быть скомпрометирован доступ»: инвалидируем
+	// все живые сессии владельца (иначе украденная сессия жила бы ещё до
+	// 30 дней скользящего refresh). Пароль уже сохранён на этом этапе —
+	// откатывать его при ошибке здесь не пытаемся (осознанный компромисс).
+	return s.store.DeleteSessionsByOwner(ctx, ownerID)
 }
 
 // CreateInvite создаёт одноразовую ссылку (срок — inviteTTL) и возвращает
@@ -311,9 +327,10 @@ func (s *Service) ResolveAPIToken(ctx context.Context, raw string) (ID, error) {
 		return "", ErrInvalidCredentials
 	}
 
-	if err := s.store.TouchAPIToken(ctx, token.ID); err != nil {
-		return "", err
-	}
+	// Best-effort: обновление last_used_at — учёт, а не проверка подлинности.
+	// Сбой записи метаданных не должен отклонять валидный, неотозванный
+	// токен как ошибку аутентификации.
+	_ = s.store.TouchAPIToken(ctx, token.ID)
 
 	return token.OwnerID, nil
 }

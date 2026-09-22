@@ -9,7 +9,7 @@ import (
 type Owner struct {
 	ID           ID
 	Login        string
-	PasswordHash string
+	PasswordHash string `json:"-"`
 	CreatedAt    time.Time
 }
 

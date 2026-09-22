@@ -85,13 +85,19 @@ type Invite struct {
 Сервис (`internal/auth`, пакет-фасад над портом, аналог `usecases/*`, но один
 пакет на весь маленький домен — сценариев мало и они плотно связаны):
 
-- `Register(ctx, login, password string, invite *string) (Session, error)` —
+`Register`, `Login` и `Refresh` возвращают `AuthResult{OwnerID, AccessToken,
+AccessExpiresAt, RefreshToken, RefreshExpiresAt}` — сырые токены (не только
+`Session`, которая хранит лишь их хеши): вызывающая сторона (`httpapi`)
+кладёт `AccessToken`/`RefreshToken` в cookie, а `Session` в БД не годится для
+этого — там нет значений, которые можно отдать клиенту.
+
+- `Register(ctx, login, password string, invite *string) (AuthResult, error)` —
   без владельцев в БД `invite` игнорируется (bootstrap); иначе обязателен и
   должен быть валиден/не использован/не истёк.
-- `Login(ctx, login, password string) (Session, error)`.
-- `Refresh(ctx, refreshToken string) (Session, error)` — ротация.
+- `Login(ctx, login, password string) (AuthResult, error)`.
+- `Refresh(ctx, refreshToken string) (AuthResult, error)` — ротация.
 - `Logout(ctx, accessToken string) error`.
-- `ResolveAccess(ctx, accessToken string) (models.Access, *OwnerID, error)` —
+- `ResolveAccess(ctx, accessToken string) (models.Access, *ID, error)` —
   читает `internal/models` только здесь, в точке пересечения с портом
   `httpapi`/`mcp` ожидают.
 - `ChangePassword(ctx, ownerID ID, current, new string) error`.
@@ -114,7 +120,11 @@ type Invite struct {
 граф внешних ключей generic-порта (`sqlstore/fkgraph.go`) и не пишут в
 `search_index`. FK внутри своих четырёх таблиц (`sessions.owner_id` →
 `owners.id` и т. д.) — обычные, для целостности, просто не участвуют в
-общей машинерии `Delete*`.
+общей машинерии `Delete*`. `owners.login` обязан быть `UNIQUE` на уровне
+хранилища: `Service.Register` сначала проверяет `GetOwnerByLogin`, потом
+вызывает `CreateOwner` — это check-then-act, и только constraint в БД
+реально закрывает гонку двух параллельных регистраций с одним логином (сам
+сервис лишь даёт быстрый и дружелюбный `ErrLoginTaken` в обычном случае).
 
 Узкий порт (`internal/auth/deps.go`, `//go:generate mockgen`):
 
@@ -144,6 +154,12 @@ type Store interface {
     MarkInviteUsed(ctx context.Context, id ID, by ID) error
 }
 ```
+
+Контракт ошибок: каждый метод `Get*` обязан возвращать пакетный сентинел
+`auth.ErrNotFound` (не `sql.ErrNoRows` и не любой другой драйверный сигнал
+«нет строки»), когда запрошенная строка не найдена — `Service` везде
+проверяет именно `errors.Is(err, auth.ErrNotFound)`, чтобы отличить
+нормальный путь «не найдено» от настоящего сбоя хранилища.
 
 Просроченные `Session`/`Invite` не чистятся активно в этом проходе (истёкшая
 запись просто не проходит проверку срока при чтении) — периодическая уборка,
@@ -259,3 +275,13 @@ Middleware на `/mcp` (пакет — `internal/mcp` или `internal/app`, г�
 - Веб-CRUD для делений (кнопки создания/изменения/удаления в
   `SettlementsTab`) — отдельный проход; этот дизайн только даёт API `401`
   для анонимной записи.
+- Полноценное обнаружение повторного использования refresh-токена (OAuth
+  BCP-style reuse detection). Решение #7 верно в узком смысле: повтор уже
+  ротированного refresh-токена отклоняется (`ErrSessionExpired`) — но
+  reuse неотличим от «сессия просто не найдена», так что при краже
+  refresh-токена и его ротации злоумышленником раньше владельца именно
+  владелец при следующей попытке `Refresh` получит ошибку и будет
+  разлогинен, а не наоборот — украденная сессия у злоумышленника при этом
+  останется живой (revoke всей «семьи» сессий по факту reuse не
+  реализован). Приемлемо для текущей модели угроз (хобби-сервер на
+  одного-двух владельцев); пересмотреть, если модель угроз изменится.

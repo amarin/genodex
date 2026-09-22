@@ -125,6 +125,20 @@ func (mr *MockStoreMockRecorder) DeleteSession(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSession", reflect.TypeOf((*MockStore)(nil).DeleteSession), ctx, id)
 }
 
+// DeleteSessionsByOwner mocks base method.
+func (m *MockStore) DeleteSessionsByOwner(ctx context.Context, ownerID ID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteSessionsByOwner", ctx, ownerID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteSessionsByOwner indicates an expected call of DeleteSessionsByOwner.
+func (mr *MockStoreMockRecorder) DeleteSessionsByOwner(ctx, ownerID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSessionsByOwner", reflect.TypeOf((*MockStore)(nil).DeleteSessionsByOwner), ctx, ownerID)
+}
+
 // GetAPIToken mocks base method.
 func (m *MockStore) GetAPIToken(ctx context.Context, id ID) (*APIToken, error) {
 	m.ctrl.T.Helper()

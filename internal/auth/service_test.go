@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -108,6 +109,16 @@ func (f *fakeStore) ReplaceSession(_ context.Context, id ID, s Session) error {
 
 func (f *fakeStore) DeleteSession(_ context.Context, id ID) error {
 	delete(f.sessions, id)
+
+	return nil
+}
+
+func (f *fakeStore) DeleteSessionsByOwner(_ context.Context, ownerID ID) error {
+	for id, s := range f.sessions {
+		if s.OwnerID == ownerID {
+			delete(f.sessions, id)
+		}
+	}
 
 	return nil
 }
@@ -506,5 +517,384 @@ func TestServiceBootstrap(t *testing.T) {
 	boot, err = svc.Bootstrap(ctx)
 	if err != nil || boot {
 		t.Fatalf("после первого владельца: boot=%v err=%v", boot, err)
+	}
+}
+
+// --- Валидация пароля (находка 1) ---
+
+func TestServiceRegisterEmptyPasswordFails(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	ctx := context.Background()
+
+	_, err := svc.Register(ctx, "user", "", nil)
+
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("err = %v, ожидался *ValidationError", err)
+	}
+	if verr.Field != "password" {
+		t.Fatalf("Field = %q, ожидалось %q", verr.Field, "password")
+	}
+}
+
+func TestServiceRegisterPasswordTooLongFails(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	ctx := context.Background()
+
+	_, err := svc.Register(ctx, "user", strings.Repeat("a", 73), nil)
+
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("err = %v, ожидался *ValidationError", err)
+	}
+	if verr.Field != "password" {
+		t.Fatalf("Field = %q, ожидалось %q", verr.Field, "password")
+	}
+}
+
+func TestServiceChangePasswordEmptyNewPasswordFails(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	ctx := context.Background()
+
+	res, err := svc.Register(ctx, "user", "password123", nil)
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	err = svc.ChangePassword(ctx, res.OwnerID, "password123", "")
+
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("err = %v, ожидался *ValidationError", err)
+	}
+	if verr.Field != "new_password" {
+		t.Fatalf("Field = %q, ожидалось %q", verr.Field, "new_password")
+	}
+}
+
+func TestServiceChangePasswordNewPasswordTooLongFails(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	ctx := context.Background()
+
+	res, err := svc.Register(ctx, "user", "password123", nil)
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	err = svc.ChangePassword(ctx, res.OwnerID, "password123", strings.Repeat("a", 73))
+
+	var verr *ValidationError
+	if !errors.As(err, &verr) {
+		t.Fatalf("err = %v, ожидался *ValidationError", err)
+	}
+	if verr.Field != "new_password" {
+		t.Fatalf("Field = %q, ожидалось %q", verr.Field, "new_password")
+	}
+}
+
+// --- ChangePassword инвалидирует прочие сессии (находка 4) ---
+
+func TestServiceChangePasswordInvalidatesOtherSessions(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	ctx := context.Background()
+
+	session1, err := svc.Register(ctx, "user", "old-password", nil)
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	session2, err := svc.Login(ctx, "user", "old-password")
+	if err != nil {
+		t.Fatalf("Login: %v", err)
+	}
+
+	for name, res := range map[string]AuthResult{"session1": session1, "session2": session2} {
+		access, owner, err := svc.ResolveAccess(ctx, res.AccessToken)
+		if err != nil || access != models.AccessFull || owner == nil {
+			t.Fatalf("%s до ChangePassword: access=%v owner=%v err=%v", name, access, owner, err)
+		}
+	}
+
+	if err := svc.ChangePassword(ctx, session1.OwnerID, "old-password", "new-password"); err != nil {
+		t.Fatalf("ChangePassword: %v", err)
+	}
+
+	for name, res := range map[string]AuthResult{"session1": session1, "session2": session2} {
+		access, owner, err := svc.ResolveAccess(ctx, res.AccessToken)
+		if err != nil || access != models.AccessPublic || owner != nil {
+			t.Fatalf("%s после ChangePassword: access=%v owner=%v err=%v (ожидался AccessPublic)", name, access, owner, err)
+		}
+	}
+}
+
+// --- errStore: инъекция сбоев Store поверх fakeStore (находка 5) ---
+
+// errStore embeds *fakeStore and lets a test force any named Store method to
+// fail, to exercise the Service's non-ErrNotFound error-propagation paths
+// that fakeStore alone can never reach.
+type errStore struct {
+	*fakeStore
+	fail map[string]error
+}
+
+func newErrStore() *errStore {
+	return &errStore{fakeStore: newFakeStore(), fail: map[string]error{}}
+}
+
+func (e *errStore) CreateOwner(ctx context.Context, o Owner) error {
+	if err := e.fail["CreateOwner"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.CreateOwner(ctx, o)
+}
+
+func (e *errStore) GetOwnerByLogin(ctx context.Context, login string) (*Owner, error) {
+	if err := e.fail["GetOwnerByLogin"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.GetOwnerByLogin(ctx, login)
+}
+
+func (e *errStore) GetOwner(ctx context.Context, id ID) (*Owner, error) {
+	if err := e.fail["GetOwner"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.GetOwner(ctx, id)
+}
+
+func (e *errStore) UpdateOwnerPassword(ctx context.Context, id ID, hash string) error {
+	if err := e.fail["UpdateOwnerPassword"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.UpdateOwnerPassword(ctx, id, hash)
+}
+
+func (e *errStore) CountOwners(ctx context.Context) (int, error) {
+	if err := e.fail["CountOwners"]; err != nil {
+		return 0, err
+	}
+
+	return e.fakeStore.CountOwners(ctx)
+}
+
+func (e *errStore) CreateSession(ctx context.Context, s Session) error {
+	if err := e.fail["CreateSession"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.CreateSession(ctx, s)
+}
+
+func (e *errStore) GetSessionByAccessHash(ctx context.Context, hash string) (*Session, error) {
+	if err := e.fail["GetSessionByAccessHash"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.GetSessionByAccessHash(ctx, hash)
+}
+
+func (e *errStore) GetSessionByRefreshHash(ctx context.Context, hash string) (*Session, error) {
+	if err := e.fail["GetSessionByRefreshHash"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.GetSessionByRefreshHash(ctx, hash)
+}
+
+func (e *errStore) ReplaceSession(ctx context.Context, id ID, s Session) error {
+	if err := e.fail["ReplaceSession"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.ReplaceSession(ctx, id, s)
+}
+
+func (e *errStore) DeleteSession(ctx context.Context, id ID) error {
+	if err := e.fail["DeleteSession"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.DeleteSession(ctx, id)
+}
+
+func (e *errStore) DeleteSessionsByOwner(ctx context.Context, ownerID ID) error {
+	if err := e.fail["DeleteSessionsByOwner"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.DeleteSessionsByOwner(ctx, ownerID)
+}
+
+func (e *errStore) CreateAPIToken(ctx context.Context, t APIToken) error {
+	if err := e.fail["CreateAPIToken"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.CreateAPIToken(ctx, t)
+}
+
+func (e *errStore) GetAPIToken(ctx context.Context, id ID) (*APIToken, error) {
+	if err := e.fail["GetAPIToken"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.GetAPIToken(ctx, id)
+}
+
+func (e *errStore) GetAPITokenByHash(ctx context.Context, hash string) (*APIToken, error) {
+	if err := e.fail["GetAPITokenByHash"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.GetAPITokenByHash(ctx, hash)
+}
+
+func (e *errStore) ListAPITokens(ctx context.Context, ownerID ID) ([]APIToken, error) {
+	if err := e.fail["ListAPITokens"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.ListAPITokens(ctx, ownerID)
+}
+
+func (e *errStore) RevokeAPIToken(ctx context.Context, id ID) error {
+	if err := e.fail["RevokeAPIToken"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.RevokeAPIToken(ctx, id)
+}
+
+func (e *errStore) TouchAPIToken(ctx context.Context, id ID) error {
+	if err := e.fail["TouchAPIToken"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.TouchAPIToken(ctx, id)
+}
+
+func (e *errStore) CreateInvite(ctx context.Context, i Invite) error {
+	if err := e.fail["CreateInvite"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.CreateInvite(ctx, i)
+}
+
+func (e *errStore) GetInviteByHash(ctx context.Context, hash string) (*Invite, error) {
+	if err := e.fail["GetInviteByHash"]; err != nil {
+		return nil, err
+	}
+
+	return e.fakeStore.GetInviteByHash(ctx, hash)
+}
+
+func (e *errStore) MarkInviteUsed(ctx context.Context, id, by ID) error {
+	if err := e.fail["MarkInviteUsed"]; err != nil {
+		return err
+	}
+
+	return e.fakeStore.MarkInviteUsed(ctx, id, by)
+}
+
+var _ Store = (*errStore)(nil)
+
+func TestServiceResolveAccessPropagatesStoreError(t *testing.T) {
+	store := newErrStore()
+	injected := errors.New("db down")
+	store.fail["GetSessionByAccessHash"] = injected
+
+	svc := newTestService(store)
+
+	_, _, err := svc.ResolveAccess(context.Background(), "some-token")
+	if err == nil {
+		t.Fatal("err = nil, ожидалась распространённая ошибка store")
+	}
+	if !errors.Is(err, injected) {
+		t.Fatalf("err = %v, ожидался %v", err, injected)
+	}
+}
+
+func TestServiceLoginPropagatesStoreError(t *testing.T) {
+	store := newErrStore()
+	injected := errors.New("db down")
+	store.fail["GetOwnerByLogin"] = injected
+
+	svc := newTestService(store)
+
+	_, err := svc.Login(context.Background(), "user", "password123")
+	if !errors.Is(err, injected) {
+		t.Fatalf("err = %v, ожидался %v", err, injected)
+	}
+	if errors.Is(err, ErrInvalidCredentials) {
+		t.Fatal("сбой store не должен маскироваться под ErrInvalidCredentials")
+	}
+}
+
+func TestServiceRegisterPropagatesCountOwnersError(t *testing.T) {
+	store := newErrStore()
+	injected := errors.New("db down")
+	store.fail["CountOwners"] = injected
+
+	svc := newTestService(store)
+
+	_, err := svc.Register(context.Background(), "user", "password123", nil)
+	if !errors.Is(err, injected) {
+		t.Fatalf("err = %v, ожидался %v", err, injected)
+	}
+}
+
+func TestServiceRevokeAPITokenPropagatesGetError(t *testing.T) {
+	store := newErrStore()
+	svc := newTestService(store)
+	ctx := context.Background()
+
+	owner, err := svc.Register(ctx, "user", "password123", nil)
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	_, id, err := svc.CreateAPIToken(ctx, owner.OwnerID, "MCP")
+	if err != nil {
+		t.Fatalf("CreateAPIToken: %v", err)
+	}
+
+	injected := errors.New("db down")
+	store.fail["GetAPIToken"] = injected
+
+	if err := svc.RevokeAPIToken(ctx, owner.OwnerID, id); !errors.Is(err, injected) {
+		t.Fatalf("err = %v, ожидался %v", err, injected)
+	} else if errors.Is(err, ErrNotFound) {
+		t.Fatal("сбой store не должен маскироваться под ErrNotFound")
+	}
+}
+
+func TestServiceResolveAPITokenIgnoresTouchError(t *testing.T) {
+	store := newErrStore()
+	svc := newTestService(store)
+	ctx := context.Background()
+
+	owner, err := svc.Register(ctx, "user", "password123", nil)
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	raw, _, err := svc.CreateAPIToken(ctx, owner.OwnerID, "MCP")
+	if err != nil {
+		t.Fatalf("CreateAPIToken: %v", err)
+	}
+
+	store.fail["TouchAPIToken"] = errors.New("touch failed")
+
+	resolved, err := svc.ResolveAPIToken(ctx, raw)
+	if err != nil {
+		t.Fatalf("ResolveAPIToken: err = %v, ожидался nil (сбой touch не должен отклонять валидный токен)", err)
+	}
+	if resolved != owner.OwnerID {
+		t.Fatalf("OwnerID = %v, ожидался %v", resolved, owner.OwnerID)
 	}
 }

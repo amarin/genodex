@@ -5,6 +5,14 @@ import "context"
 // Store — узкий порт auth: свои таблицы, не пересекается с internal/store
 // (см. auth.md §3 — не входит в generic 21-сущностную систему).
 //
+// Контракт ErrNotFound: каждый метод Get* обязан возвращать пакетный
+// сентинел ErrNotFound (не sql.ErrNoRows и не любой другой драйверный сигнал
+// "нет строки"), когда запрошенная строка не найдена. Service полагается на
+// errors.Is(err, ErrNotFound) в Login, ResolveAccess, Refresh, RevokeAPIToken
+// и т. д., чтобы отличить «не найдено» (не ошибка запроса) от настоящего
+// сбоя хранилища — реализация Store на другом сигнале ломает эту логику
+// молча.
+//
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package auth
 type Store interface {
 	CreateOwner(ctx context.Context, o Owner) error
@@ -18,6 +26,7 @@ type Store interface {
 	GetSessionByRefreshHash(ctx context.Context, hash string) (*Session, error)
 	ReplaceSession(ctx context.Context, id ID, s Session) error
 	DeleteSession(ctx context.Context, id ID) error
+	DeleteSessionsByOwner(ctx context.Context, ownerID ID) error
 
 	CreateAPIToken(ctx context.Context, t APIToken) error
 	GetAPIToken(ctx context.Context, id ID) (*APIToken, error)

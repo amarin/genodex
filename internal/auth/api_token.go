@@ -7,7 +7,7 @@ type APIToken struct {
 	ID         ID
 	OwnerID    ID
 	Label      string
-	TokenHash  string
+	TokenHash  string `json:"-"`
 	CreatedAt  time.Time
 	LastUsedAt *time.Time
 	RevokedAt  *time.Time
