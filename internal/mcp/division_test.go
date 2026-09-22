@@ -24,6 +24,10 @@ type fakeDivisions struct {
 	updated   models.AdministrativeDivision
 	gotIDs    []models.ID
 	deleteErr error
+
+	search    []models.AdministrativeDivision
+	searchErr error
+	gotSearch models.DivisionSearchQuery
 }
 
 func (f *fakeDivisions) ListDivisions(_ context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
@@ -31,6 +35,13 @@ func (f *fakeDivisions) ListDivisions(_ context.Context, q models.DivisionQuery)
 	f.call++
 
 	return f.list, f.err
+}
+
+func (f *fakeDivisions) SearchDivisions(_ context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+	f.gotSearch = q
+	f.call++
+
+	return f.search, f.searchErr
 }
 
 func (f *fakeDivisions) GetDivision(_ context.Context, id models.ID) (models.AdministrativeDivision, error) {
@@ -171,6 +182,81 @@ func TestDivisionListToolErrorsAreToolErrors(t *testing.T) {
 		if !res.IsError || !strings.Contains(resultText(t, res), err.Error()) {
 			t.Errorf("%s: isError=%v text=%s; ожидалась ошибка тула с текстом %q", name, res.IsError, resultText(t, res), err)
 		}
+	}
+}
+
+func callDivisionSearch(t *testing.T, svc *fakeDivisions, args map[string]any) *mcp.CallToolResult {
+	t.Helper()
+
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = args
+
+	res, err := divisionSearchHandler(svc)(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return res
+}
+
+func TestDivisionSearchTool(t *testing.T) {
+	svc := &fakeDivisions{search: []models.AdministrativeDivision{
+		{ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo},
+	}}
+
+	res := callDivisionSearch(t, svc, map[string]any{"q": "давы"})
+
+	want := `[{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":null}]`
+	if res.IsError || resultText(t, res) != want {
+		t.Fatalf("isError=%v text=%s, want %s", res.IsError, resultText(t, res), want)
+	}
+
+	if svc.gotSearch.Text != "давы" {
+		t.Fatalf("gotSearch.Text = %q, ожидалось %q", svc.gotSearch.Text, "давы")
+	}
+}
+
+func TestDivisionSearchToolEmptyText(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	res := callDivisionSearch(t, svc, map[string]any{"q": ""})
+
+	if res.IsError || resultText(t, res) != `[]` {
+		t.Fatalf("isError=%v text=%s, want []", res.IsError, resultText(t, res))
+	}
+}
+
+func TestDivisionSearchToolInvalidLimitIsError(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	res := callDivisionSearch(t, svc, map[string]any{"q": "давы", "limit": "abc"})
+
+	if !res.IsError || svc.call != 0 {
+		t.Fatalf("isError=%v calls=%d; ожидалась ошибка тула без вызова сценария", res.IsError, svc.call)
+	}
+}
+
+// TestDivisionListToolWithParent: parent_id доходит до сценария.
+func TestDivisionListToolWithParent(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	res := callDivisionList(t, svc, map[string]any{"parent_id": "ad-root"})
+	if res.IsError {
+		t.Fatalf("неожиданная ошибка тула: %s", resultText(t, res))
+	}
+
+	want := models.ID("ad-root")
+	if svc.got.ParentID == nil || *svc.got.ParentID != want {
+		t.Fatalf("got.ParentID = %v, ожидался %s", svc.got.ParentID, want)
+	}
+}
+
+// TestNewServerRegistersDivisionSearchTool: тул division_search зарегистрирован.
+func TestNewServerRegistersDivisionSearchTool(t *testing.T) {
+	tools := NewServer(&fakeDivisions{}).ListTools()
+
+	if _, ok := tools["division_search"]; !ok {
+		t.Errorf("тул division_search не зарегистрирован: %v", tools)
 	}
 }
 

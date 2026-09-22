@@ -10,6 +10,7 @@ import (
 // MCP-тулы: список, чтение, создание, изменение, удаление.
 type DivisionService interface {
 	ListDivisions(ctx context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error)
+	SearchDivisions(ctx context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error)
 	GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error)
 	CreateDivision(ctx context.Context, d models.AdministrativeDivision) (models.AdministrativeDivision, error)
 	UpdateDivision(ctx context.Context, d models.AdministrativeDivision) error

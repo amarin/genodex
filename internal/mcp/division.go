@@ -24,9 +24,20 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 			"derevnya, hutor, pogost, stanitsa, mestechko, other; пусто — без фильтра")),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
+		mcp.WithString("parent_id", mcp.Description("id родительской единицы; пусто — корень (весь список)")),
 	)
 
 	s.AddTool(tool, divisionListHandler(divisions))
+
+	tool = mcp.NewTool(
+		"division_search",
+		mcp.WithDescription("Поиск единиц административного деления по началу названия (включая варианты "+
+			"названий); результат — JSON-массив единиц. Пустой q — пустой результат"),
+		mcp.WithString("q", mcp.Required(), mcp.Description("Начало названия или варианта")),
+		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
+		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
+	)
+	s.AddTool(tool, divisionSearchHandler(divisions))
 
 	tool = mcp.NewTool(
 		"division_get",
@@ -91,8 +102,9 @@ func divisionListHandler(divisions DivisionService) server.ToolHandlerFunc {
 // аргумент — нулевое значение, неверный тип числа — ошибка.
 func divisionQueryFromRequest(req mcp.CallToolRequest) (models.DivisionQuery, error) {
 	q := models.DivisionQuery{
-		Kind: models.DivisionKind(req.GetString("kind", "")),
-		Type: models.AdminDivisionType(req.GetString("type", "")),
+		Kind:     models.DivisionKind(req.GetString("kind", "")),
+		Type:     models.AdminDivisionType(req.GetString("type", "")),
+		ParentID: optionalParentID(req),
 	}
 
 	var err error
@@ -106,6 +118,31 @@ func divisionQueryFromRequest(req mcp.CallToolRequest) (models.DivisionQuery, er
 	}
 
 	return q, nil
+}
+
+// divisionSearchHandler — тул division_search: ищет единицы по началу названия
+// (включая варианты); результат — JSON-массив transport.AdminDivision.
+func divisionSearchHandler(divisions DivisionService) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		q := models.DivisionSearchQuery{Text: req.GetString("q", "")}
+
+		var err error
+
+		if q.Page.Limit, err = optionalInt(req, "limit"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		if q.Page.Offset, err = optionalInt(req, "offset"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		list, err := divisions.SearchDivisions(ctx, q)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("не удалось выполнить поиск: %v", err)), nil
+		}
+
+		return toolJSONResult(transport.AdminDivisionsFromModels(list))
+	}
 }
 
 // optionalInt читает необязательный целочисленный аргумент.
