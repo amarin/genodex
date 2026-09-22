@@ -1,6 +1,7 @@
 package httpapi_test
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -8,10 +9,58 @@ import (
 	"testing/fstest"
 
 	"github.com/amarin/genodex/internal/httpapi"
+	"github.com/amarin/genodex/internal/idgen"
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
-	"github.com/amarin/genodex/internal/usecases/list_divisions"
+	create_division "github.com/amarin/genodex/internal/usecases/create_division"
+	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
+	get_division "github.com/amarin/genodex/internal/usecases/get_division"
+	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
+	update_division "github.com/amarin/genodex/internal/usecases/update_division"
 )
+
+// divisionService — сборка httpapi.DivisionService на настоящих сценариях
+// (так же собран internal/app).
+type divisionService struct {
+	list   *list_divisions.Scenario
+	get    *get_division.Scenario
+	create *create_division.Scenario
+	update *update_division.Scenario
+	del    *delete_division.Scenario
+}
+
+func (s *divisionService) ListDivisions(ctx context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
+	return s.list.ListDivisions(ctx, q)
+}
+
+func (s *divisionService) GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error) {
+	return s.get.GetDivision(ctx, id)
+}
+
+func (s *divisionService) CreateDivision(ctx context.Context, d models.AdministrativeDivision) (models.AdministrativeDivision, error) {
+	return s.create.CreateDivision(ctx, d)
+}
+
+func (s *divisionService) UpdateDivision(ctx context.Context, d models.AdministrativeDivision) error {
+	return s.update.UpdateDivision(ctx, d)
+}
+
+func (s *divisionService) DeleteDivision(ctx context.Context, id models.ID) error {
+	return s.del.DeleteDivision(ctx, id)
+}
+
+// newDivisionService собирает фасад на настоящем хранилище.
+func newDivisionService(t *testing.T, st *sqlstore.Store) *divisionService {
+	t.Helper()
+
+	return &divisionService{
+		list:   list_divisions.New(st),
+		get:    get_division.New(st),
+		create: create_division.New(st, idgen.New()),
+		update: update_division.New(st),
+		del:    delete_division.New(st),
+	}
+}
 
 // TestAdminDivisionsWithRealStore: сквозной путь «хранилище → сценарий → HTTP»
 // на настоящей БД (так же собран internal/app): фильтры, окно после фильтра,
@@ -37,7 +86,7 @@ func TestAdminDivisionsWithRealStore(t *testing.T) {
 		}
 	}
 
-	h := httpapi.NewHandler(list_divisions.New(st), fstest.MapFS{})
+	h := httpapi.NewHandler(newDivisionService(t, st), fstest.MapFS{})
 
 	cases := []struct {
 		target string

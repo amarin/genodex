@@ -18,12 +18,52 @@ type fakeDivisions struct {
 	list []models.AdministrativeDivision
 	err  error
 	got  models.DivisionQuery
+	call int
+
+	getDiv    models.AdministrativeDivision
+	created   models.AdministrativeDivision
+	gotCreate models.AdministrativeDivision
+	updated   models.AdministrativeDivision
+	gotIDs    []models.ID
+	deleteErr error
 }
 
 func (f *fakeDivisions) ListDivisions(_ context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
 	f.got = q
 
 	return f.list, f.err
+}
+
+func (f *fakeDivisions) GetDivision(_ context.Context, id models.ID) (models.AdministrativeDivision, error) {
+	f.gotIDs = append(f.gotIDs, id)
+
+	if f.err != nil {
+		return models.AdministrativeDivision{}, f.err
+	}
+
+	return f.getDiv, nil
+}
+
+func (f *fakeDivisions) CreateDivision(_ context.Context, d models.AdministrativeDivision) (models.AdministrativeDivision, error) {
+	f.gotCreate = d
+
+	if f.err != nil {
+		return models.AdministrativeDivision{}, f.err
+	}
+
+	return f.created, nil
+}
+
+func (f *fakeDivisions) UpdateDivision(_ context.Context, d models.AdministrativeDivision) error {
+	f.updated = d
+
+	return f.err
+}
+
+func (f *fakeDivisions) DeleteDivision(_ context.Context, id models.ID) error {
+	f.gotIDs = append(f.gotIDs, id)
+
+	return f.deleteErr
 }
 
 func get(t *testing.T, h http.Handler, target string) *httptest.ResponseRecorder {
