@@ -6,6 +6,7 @@ require (
 	github.com/amarin/logging v0.1.2
 	github.com/mark3labs/mcp-go v0.58.0
 	go.uber.org/mock v0.6.0
+	golang.org/x/crypto v0.56.0
 	golang.org/x/text v0.41.0
 	modernc.org/sqlite v1.57.0
 )
