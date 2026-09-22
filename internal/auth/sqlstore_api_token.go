@@ -54,6 +54,12 @@ func (s *SQLStore) ListAPITokens(ctx context.Context, ownerID ID) ([]APIToken, e
 }
 
 // RevokeAPIToken отмечает токен отозванным; нет такого — ErrNotFound.
+//
+// Использует time.Now() напрямую, а не инжектируемые часы Service.now:
+// RevokedAt/LastUsedAt (TouchAPIToken) только nil-проверяются или сравниваются
+// через Before/After с интервалами в минуты-дни, точное значение нигде не
+// проверяется — так что это нормально сегодня, но будет иметь значение, если
+// когда-нибудь понадобится детерминированное время на уровне хранилища.
 func (s *SQLStore) RevokeAPIToken(ctx context.Context, id ID) error {
 	res, err := s.db.ExecContext(ctx, `UPDATE api_tokens SET revoked_at = ? WHERE id = ?`,
 		timeToSQL(time.Now()), string(id))
@@ -65,6 +71,9 @@ func (s *SQLStore) RevokeAPIToken(ctx context.Context, id ID) error {
 }
 
 // TouchAPIToken обновляет last_used_at; нет такого токена — ErrNotFound.
+//
+// Как и RevokeAPIToken, использует time.Now() напрямую, а не Service.now —
+// см. комментарий у RevokeAPIToken.
 func (s *SQLStore) TouchAPIToken(ctx context.Context, id ID) error {
 	res, err := s.db.ExecContext(ctx, `UPDATE api_tokens SET last_used_at = ? WHERE id = ?`,
 		timeToSQL(time.Now()), string(id))

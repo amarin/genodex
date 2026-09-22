@@ -56,10 +56,24 @@ func (s *SQLStore) GetInviteByHash(ctx context.Context, hash string) (*Invite, e
 	return inv, nil
 }
 
-// MarkInviteUsed отмечает приглашение использованным; нет такого — ErrNotFound.
+// MarkInviteUsed отмечает приглашение использованным; нет такого приглашения
+// ИЛИ оно уже использовано — ErrNotFound.
+//
+// Условие "used_at IS NULL" в UPDATE — единственный уровень, на котором
+// одноразовость invite реально гарантируется на данных: Service.checkInvite
+// проверяет "уже использован" в коде приложения ДО этого вызова, а это
+// check-then-act. Два параллельных Register с одним invite-токеном могут оба
+// пройти checkInvite; без условия в WHERE второй UPDATE тихо перезаписал бы
+// used_at/used_by первого. С условием второй вызов затрагивает 0 строк, и
+// checkRowsAffected превращает это в ErrNotFound. Это не закрывает гонку
+// целиком — см. auth.md §9 про остаточный риск двух Owner-строк.
+//
+// Как и RevokeAPIToken/TouchAPIToken, использует time.Now() напрямую, а не
+// Service.now — UsedAt здесь только nil-проверяется, точное значение нигде
+// не сравнивается, так что это не мешает сегодняшним тестам.
 func (s *SQLStore) MarkInviteUsed(ctx context.Context, id ID, by ID) error {
 	res, err := s.db.ExecContext(ctx,
-		`UPDATE invites SET used_at = ?, used_by = ? WHERE id = ?`,
+		`UPDATE invites SET used_at = ?, used_by = ? WHERE id = ? AND used_at IS NULL`,
 		timeToSQL(time.Now()), string(by), string(id))
 	if err != nil {
 		return err

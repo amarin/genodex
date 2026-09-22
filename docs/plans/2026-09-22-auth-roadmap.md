@@ -40,6 +40,8 @@
 
 ## A2. Хранилище `internal/auth`
 
+- **Статус:** выполнено (6 задач-коммитов + консолидированный проход по
+  итогам финального ревью — см. `2026-09-22-auth-a2-storage.md`).
 - **Файлы:** таблицы в `internal/storage/schema.go` (или отдельный файл
   схемы, вне generic-графа), `internal/auth/sqlstore.go` (+тесты), реализация
   порта `Store` из фазы A.
@@ -47,9 +49,13 @@
   сессии/приглашения — как отсутствующей; `RevokeAPIToken` — токен больше не
   резолвится; `TouchAPIToken` обновляет `last_used_at`; FK
   `sessions.owner_id`/`api_tokens.owner_id`/`invites.created_by` — обычные,
-  не участвуют в `sqlstore/fkgraph.go`; `TestTypeRegistryIsConsistent`,
-  `TestFKGraph…`, `TestSearch…` (существующие generic-тесты) не меняются и не
-  видят auth-таблицы.
+  не участвуют в `sqlstore/fkgraph.go`; `TestTypeRegistryIsConsistent` и
+  тесты `Search` (существующие generic-тесты) не меняются и не видят
+  auth-таблицы; `fkgraph_test.go` не меняет тестовую *логику*, но его
+  data-список `serviceTables` получает четыре имени auth-таблиц — это не
+  нарушение изоляции auth от generic-графа, а ровно тот механизм, для
+  которого `serviceTables` заведена (см. `2026-09-22-auth-a2-storage.md`,
+  «Предпосылка из этапа A», для полного обоснования RESTRICT/SET NULL FK).
 
 ## B. HTTP-контракт auth
 

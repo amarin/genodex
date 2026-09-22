@@ -123,6 +123,10 @@ func TestServiceOnSQLStorePersistsAcrossInstances(t *testing.T) {
 		t.Fatalf("Register: %v", err)
 	}
 
+	// svc1 stays open (cleanup deferred via t.Cleanup) while a second
+	// *storage.Storage is opened on the same on-disk dir below — safe because
+	// internal/storage's DSN already sets WAL journal mode, a 5s busy_timeout
+	// pragma, and SetMaxOpenConns(1) per *sql.DB, not a real concurrency hazard.
 	svc2 := open(t)
 
 	access, owner, err := svc2.ResolveAccess(context.Background(), res.AccessToken)

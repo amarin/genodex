@@ -108,6 +108,10 @@ func (f *fakeStore) ReplaceSession(_ context.Context, id ID, s Session) error {
 }
 
 func (f *fakeStore) DeleteSession(_ context.Context, id ID) error {
+	if _, ok := f.sessions[id]; !ok {
+		return ErrNotFound
+	}
+
 	delete(f.sessions, id)
 
 	return nil
@@ -151,7 +155,7 @@ func (f *fakeStore) GetAPITokenByHash(_ context.Context, hash string) (*APIToken
 }
 
 func (f *fakeStore) ListAPITokens(_ context.Context, ownerID ID) ([]APIToken, error) {
-	var out []APIToken
+	out := []APIToken{}
 
 	for _, t := range f.tokens {
 		if t.OwnerID == ownerID {

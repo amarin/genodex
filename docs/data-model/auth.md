@@ -141,6 +141,7 @@ type Store interface {
     GetSessionByRefreshHash(ctx context.Context, hash string) (*Session, error)
     ReplaceSession(ctx context.Context, id ID, s Session) error // ротация
     DeleteSession(ctx context.Context, id ID) error
+    DeleteSessionsByOwner(ctx context.Context, ownerID ID) error // ChangePassword гасит все сессии
 
     CreateAPIToken(ctx context.Context, t APIToken) error
     GetAPIToken(ctx context.Context, id ID) (*APIToken, error) // для RevokeAPIToken: проверить владельца
@@ -159,11 +160,37 @@ type Store interface {
 `auth.ErrNotFound` (не `sql.ErrNoRows` и не любой другой драйверный сигнал
 «нет строки»), когда запрошенная строка не найдена — `Service` везде
 проверяет именно `errors.Is(err, auth.ErrNotFound)`, чтобы отличить
-нормальный путь «не найдено» от настоящего сбоя хранилища.
+нормальный путь «не найдено» от настоящего сбоя хранилища. Тот же контракт —
+и на однострочных целевых операциях (`UpdateOwnerPassword`, `ReplaceSession`,
+`DeleteSession`, `RevokeAPIToken`, `TouchAPIToken`, `MarkInviteUsed`): нет
+затронутой строки — `ErrNotFound`. Массовая `DeleteSessionsByOwner` —
+исключение: ноль затронутых строк для неё не ошибка. `ListAPITokens` никогда
+не возвращает nil-срез — владелец без токенов получает `[]APIToken{}`.
 
 Просроченные `Session`/`Invite` не чистятся активно в этом проходе (истёкшая
 запись просто не проходит проверку срока при чтении) — периодическая уборка,
 если понадобится, — отдельная задача.
+
+FK-дизайн — `RESTRICT`/`SET NULL`, не `CASCADE`: `sessions.owner_id` и
+`api_tokens.owner_id` (→ `owners.id`) и `invites.created_by` (→ `owners.id`)
+объявлены `ON DELETE RESTRICT`, а `invites.used_by` (→ `owners.id`) — `ON
+DELETE SET NULL`. Это не только предметное решение (владельца с активными
+сессиями/токенами нельзя молча «утащить» за собой при удалении — сейчас
+удаления `Owner` вообще нет, но контракт уже на будущее), но и то, что
+удерживает `owners` вне generic-графа `internal/store/sqlstore`: та система
+(`schemaGraph.owner()`) считает «дочерней» только таблицу со связью `ON
+DELETE CASCADE` на сущность — раз у auth-таблиц везде `RESTRICT`/`SET NULL`,
+она их не подхватывает как часть 21-сущностного графа. Цена — одна строка в
+тестовом data-списке `serviceTables` (`internal/store/sqlstore/fkgraph_test.go`)
+с четырьмя именами auth-таблиц. Полное обоснование —
+`docs/plans/2026-09-22-auth-a2-storage.md`, раздел «Предпосылка из этапа A».
+
+Бэкапы: `internal/storage`'s backup/restore копирует файл SQLite целиком, так
+что auth-таблицы восстанавливаются вместе с остальными данными корректно; но
+манифест бэкапа считает строки только по 21 «родной» generic-сущности —
+`owners`/`sessions`/`api_tokens`/`invites` в отчёт о числе строк не попадают.
+Известный пробел в отчётности, не в корректности (байты забэкаплены в любом
+случае).
 
 ## 4. HTTP-контракт (`internal/httpapi`)
 
@@ -285,3 +312,16 @@ Middleware на `/mcp` (пакет — `internal/mcp` или `internal/app`, г�
   останется живой (revoke всей «семьи» сессий по факту reuse не
   реализован). Приемлемо для текущей модели угроз (хобби-сервер на
   одного-двух владельцев); пересмотреть, если модель угроз изменится.
+- Одноразовость invite гарантируется только на уровне одной строки
+  хранилища (`MarkInviteUsed` — условный `UPDATE ... WHERE id = ? AND
+  used_at IS NULL`, закрыто в проходе A2-fix-1). Это не устраняет гонку
+  целиком: два параллельных `Register` с одним и тем же invite-токеном
+  могут оба пройти `Service.checkInvite` (check-then-act в коде приложения)
+  и оба успеть создать строку `Owner`, прежде чем хотя бы один из них
+  дойдёт до guard'а в `MarkInviteUsed` — тогда получаются два владельца по
+  одному приглашению вместо `ErrNotFound` у второго. Полное закрытие
+  требует либо переупорядочить `Service.Register` (пытаться
+  `MarkInviteUsed` раньше `CreateOwner`), либо реальную кросс-табличную
+  транзакционность, которой в этой фазе порта нет. Риск низкий для текущей
+  модели угроз (хобби-сервер на одного-двух владельцев, invite не выдаётся
+  посторонним массово).

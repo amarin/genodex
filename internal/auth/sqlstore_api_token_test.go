@@ -113,7 +113,12 @@ func TestSQLStoreListAPITokensOrderAndOwnerFilter(t *testing.T) {
 		t.Fatalf("CreateAPIToken 1: %v", err)
 	}
 
-	time.Sleep(10 * time.Millisecond) // Ensure distinct timestamps
+	// created_at is RFC3339, second-granular, so rows created within the same
+	// second can share it; ORDER BY created_at, id then falls back to id as
+	// the tiebreaker. id is a time-ordered ULID, so the sleep exists to force
+	// distinct millisecond-resolution ULID prefixes between rows, not
+	// distinct created_at values (which it would not reliably do anyway).
+	time.Sleep(10 * time.Millisecond)
 
 	token2ID, _ := newID(KindAPIToken)
 	token2 := testAPIToken(token2ID, owner1ID)
@@ -122,7 +127,9 @@ func TestSQLStoreListAPITokensOrderAndOwnerFilter(t *testing.T) {
 		t.Fatalf("CreateAPIToken 2: %v", err)
 	}
 
-	time.Sleep(10 * time.Millisecond) // Ensure distinct timestamps
+	// See comment above the first sleep: forces a distinct ULID prefix, not a
+	// distinct created_at.
+	time.Sleep(10 * time.Millisecond)
 
 	// Create 2 tokens for owner2
 	token3ID, _ := newID(KindAPIToken)
@@ -132,7 +139,9 @@ func TestSQLStoreListAPITokensOrderAndOwnerFilter(t *testing.T) {
 		t.Fatalf("CreateAPIToken 3: %v", err)
 	}
 
-	time.Sleep(10 * time.Millisecond) // Ensure distinct timestamps
+	// See comment above the first sleep: forces a distinct ULID prefix, not a
+	// distinct created_at.
+	time.Sleep(10 * time.Millisecond)
 
 	token4ID, _ := newID(KindAPIToken)
 	token4 := testAPIToken(token4ID, owner2ID)

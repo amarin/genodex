@@ -13,6 +13,18 @@ import "context"
 // сбоя хранилища — реализация Store на другом сигнале ломает эту логику
 // молча.
 //
+// Тот же контракт распространяется на однострочные целевые операции —
+// UpdateOwnerPassword, ReplaceSession, DeleteSession, RevokeAPIToken,
+// TouchAPIToken, MarkInviteUsed: если строка с указанным id не найдена (или,
+// для MarkInviteUsed, уже использована), метод обязан вернуть ErrNotFound, а
+// не тихо завершиться успехом. Массовые операции (DeleteSessionsByOwner) —
+// исключение: ноль затронутых строк для них законный, не-ошибочный результат
+// (владелец без активных сессий — обычное дело), ErrNotFound не возвращается.
+//
+// ListAPITokens никогда не возвращает nil-срез: владелец без токенов
+// получает ненулевой срез нулевой длины ([]APIToken{}), чтобы сериализация
+// в JSON давала "[]", а не "null", независимо от того, откуда идут данные.
+//
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package auth
 type Store interface {
 	CreateOwner(ctx context.Context, o Owner) error
