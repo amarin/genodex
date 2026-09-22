@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,45 +8,6 @@ import (
 	authpkg "github.com/amarin/genodex/internal/auth"
 	"github.com/amarin/genodex/internal/models"
 )
-
-// fakeAuthService — минимальный фейк для тестов middleware (полный фейк —
-// в задаче 3, с реализацией всех методов интерфейса).
-type fakeAuthService struct {
-	access  models.Access
-	ownerID *authpkg.ID
-	err     error
-}
-
-func (f *fakeAuthService) Bootstrap(context.Context) (bool, error) { return false, nil }
-func (f *fakeAuthService) Register(context.Context, string, string, *string) (authpkg.AuthResult, error) {
-	return authpkg.AuthResult{}, nil
-}
-func (f *fakeAuthService) Login(context.Context, string, string) (authpkg.AuthResult, error) {
-	return authpkg.AuthResult{}, nil
-}
-func (f *fakeAuthService) Refresh(context.Context, string) (authpkg.AuthResult, error) {
-	return authpkg.AuthResult{}, nil
-}
-func (f *fakeAuthService) Logout(context.Context, string) error { return nil }
-func (f *fakeAuthService) ResolveAccess(context.Context, string) (models.Access, *authpkg.ID, error) {
-	return f.access, f.ownerID, f.err
-}
-func (f *fakeAuthService) ChangePassword(context.Context, authpkg.ID, string, string) error {
-	return nil
-}
-func (f *fakeAuthService) CreateInvite(context.Context, authpkg.ID) (string, error) { return "", nil }
-func (f *fakeAuthService) CreateAPIToken(context.Context, authpkg.ID, string) (string, authpkg.ID, error) {
-	return "", "", nil
-}
-func (f *fakeAuthService) ListAPITokens(context.Context, authpkg.ID) ([]authpkg.APIToken, error) {
-	return nil, nil
-}
-func (f *fakeAuthService) RevokeAPIToken(context.Context, authpkg.ID, authpkg.ID) error { return nil }
-func (f *fakeAuthService) GetOwner(context.Context, authpkg.ID) (*authpkg.Owner, error) {
-	return nil, nil
-}
-
-var _ AuthService = (*fakeAuthService)(nil)
 
 func TestResolveAccessPublicWithoutCookie(t *testing.T) {
 	svc := &fakeAuthService{access: models.AccessPublic}
