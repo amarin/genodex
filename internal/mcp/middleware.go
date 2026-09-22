@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -39,7 +40,13 @@ func RequireAPIToken(svc TokenResolver) func(http.Handler) http.Handler {
 
 			ownerID, err := svc.ResolveAPIToken(r.Context(), raw)
 			if err != nil {
-				writeUnauthorized(w)
+				// сбой инфраструктуры не маскируем под отказ по аутентификации — отличаем
+				// явную ошибку токена (404/revoked) от невозможности проверить
+				if errors.Is(err, auth.ErrInvalidCredentials) {
+					writeUnauthorized(w)
+				} else {
+					writeInternalError(w, err)
+				}
 
 				return
 			}
@@ -77,6 +84,16 @@ func writeUnauthorized(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusUnauthorized)
 	_, _ = w.Write([]byte(`{"error":"нужен валидный API-токен (Authorization: Bearer gnx_...)"}`))
+}
+
+// writeInternalError — JSON-ответ 500 для сбоев инфраструктуры (например, БД недоступна).
+// Отражает реальную причину вместо молчаливого маскирования под отказ по аутентификации.
+func writeInternalError(w http.ResponseWriter, err error) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusInternalServerError)
+	errMsg := err.Error()
+	// простой escape JSON-строки (достаточно для логирования, полный уход от сложной зависимости)
+	_, _ = w.Write([]byte(`{"error":"внутренняя ошибка сервера: ` + errMsg + `"}`))
 }
 
 // AccessFromContext возвращает режим доступа; models.AccessPublic, если

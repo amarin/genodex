@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -98,6 +99,21 @@ func TestRequireAPITokenValidTokenResolvesContext(t *testing.T) {
 	}
 	if rec.Code != http.StatusOK {
 		t.Fatalf("code=%d, ожидался 200 от next (не переопределён middleware)", rec.Code)
+	}
+}
+
+func TestRequireAPITokenInfrastructureErrorIs500(t *testing.T) {
+	called := false
+	svc := &fakeTokenResolver{err: errors.New("db connection failed")}
+	h := RequireAPIToken(svc)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true }))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	req.Header.Set("Authorization", "Bearer gnx_valid-format-but-db-down")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError || called {
+		t.Fatalf("code=%d called=%v, ожидался 500 без вызова next", rec.Code, called)
 	}
 }
 
