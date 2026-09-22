@@ -48,7 +48,9 @@ func isSecureRequest(r *http.Request, trustProxy bool) bool {
 		return true
 	}
 
-	return trustProxy && r.Header.Get("X-Forwarded-Proto") == "https"
+	proto, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ",")
+
+	return trustProxy && strings.EqualFold(strings.TrimSpace(proto), "https")
 }
 
 // setSessionCookies выставляет пару access/refresh cookie (auth.md §4,

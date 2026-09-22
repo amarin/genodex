@@ -681,6 +681,7 @@ func TestSetSessionCookiesSecureFlag(t *testing.T) {
 		{"trustProxy=true, заголовок https — secure", true, "https", true},
 		{"trustProxy=true, заголовок http — не secure", true, "http", false},
 		{"trustProxy=true, заголовка нет — не secure", true, "", false},
+		{"trustProxy=true, цепочка прокси https, http — secure (берём первое значение)", true, "https, http", true},
 	}
 
 	for _, c := range cases {

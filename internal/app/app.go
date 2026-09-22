@@ -124,6 +124,7 @@ func (a *App) Run(ctx context.Context) error {
 	log.Printf("  MCP:      http://localhost:%d/mcp", a.cfg.Port)
 	log.Printf("  API:      http://localhost:%d/api", a.cfg.Port)
 	log.Printf("  Web:      http://localhost:%d/ (web mode: %s)", a.cfg.Port, a.cfg.WebMode)
+	log.Printf("  Trust proxy (X-Forwarded-Proto): %v", a.cfg.TrustProxy)
 
 	go func() {
 		<-ctx.Done()
