@@ -524,6 +524,25 @@ func TestServiceBootstrap(t *testing.T) {
 	}
 }
 
+func TestServiceGetOwner(t *testing.T) {
+	svc := newTestService(newFakeStore())
+	ctx := context.Background()
+
+	res, err := svc.Register(ctx, "user", "password123", nil)
+	if err != nil {
+		t.Fatalf("Register: %v", err)
+	}
+
+	owner, err := svc.GetOwner(ctx, res.OwnerID)
+	if err != nil || owner.Login != "user" {
+		t.Fatalf("GetOwner: %+v, %v", owner, err)
+	}
+
+	if _, err := svc.GetOwner(ctx, "OW-nonexistent"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("err = %v, ожидался ErrNotFound", err)
+	}
+}
+
 // --- Валидация пароля (находка 1) ---
 
 func TestServiceRegisterEmptyPasswordFails(t *testing.T) {

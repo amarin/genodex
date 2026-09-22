@@ -206,6 +206,13 @@ func (s *Service) ResolveAccess(ctx context.Context, rawAccess string) (models.A
 	return models.AccessFull, &owner, nil
 }
 
+// GetOwner читает владельца по id; нет такого — ErrNotFound. Нужен
+// обработчикам HTTP/MCP, которым известен только OwnerID (из ResolveAccess
+// или AuthResult), а не логин.
+func (s *Service) GetOwner(ctx context.Context, id ID) (*Owner, error) {
+	return s.store.GetOwner(ctx, id)
+}
+
 // ChangePassword проверяет текущий пароль и сохраняет новый хеш.
 func (s *Service) ChangePassword(ctx context.Context, ownerID ID, current, newPassword string) error {
 	owner, err := s.store.GetOwner(ctx, ownerID)
