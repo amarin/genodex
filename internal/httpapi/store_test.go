@@ -32,12 +32,12 @@ type divisionService struct {
 	del    *delete_division.Scenario
 }
 
-func (s *divisionService) ListDivisions(ctx context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
-	return s.list.ListDivisions(ctx, q)
+func (s *divisionService) ListDivisions(ctx context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
+	return s.list.ListDivisions(ctx, access, q)
 }
 
-func (s *divisionService) SearchDivisions(ctx context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
-	return s.search.SearchDivisions(ctx, q)
+func (s *divisionService) SearchDivisions(ctx context.Context, access models.Access, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+	return s.search.SearchDivisions(ctx, access, q)
 }
 
 func (s *divisionService) GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error) {

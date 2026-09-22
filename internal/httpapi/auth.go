@@ -11,9 +11,18 @@ import (
 )
 
 // NewAuthHandler строит обработчики /api/auth/*, обёрнутые resolveAccess и
-// requireCSRFHeader. Подключается в общий mux на этапе C.
+// requireCSRFHeader — используется юнит-тестами этого пакета напрямую.
+// Реальное приложение монтирует весь /api/ через NewAPIHandler (api.go),
+// который вызывает registerAuthRoutes без повторного оборачивания.
 func NewAuthHandler(auth AuthService) http.Handler {
 	mux := http.NewServeMux()
+	registerAuthRoutes(mux, auth)
+
+	return requireCSRFHeader(resolveAccess(auth)(mux))
+}
+
+// registerAuthRoutes регистрирует маршруты /api/auth/* на переданном mux.
+func registerAuthRoutes(mux *http.ServeMux, auth AuthService) {
 	mux.HandleFunc("GET /api/auth/status", handleAuthStatus(auth))
 	mux.HandleFunc("GET /api/auth/session", handleAuthSession(auth))
 	mux.HandleFunc("POST /api/auth/register", handleAuthRegister(auth))
@@ -25,8 +34,6 @@ func NewAuthHandler(auth AuthService) http.Handler {
 	mux.HandleFunc("POST /api/auth/tokens", handleAuthCreateToken(auth))
 	mux.HandleFunc("GET /api/auth/tokens", handleAuthListTokens(auth))
 	mux.HandleFunc("DELETE /api/auth/tokens/{id}", handleAuthRevokeToken(auth))
-
-	return requireCSRFHeader(resolveAccess(auth)(mux))
 }
 
 // setSessionCookies выставляет пару access/refresh cookie (auth.md §4,

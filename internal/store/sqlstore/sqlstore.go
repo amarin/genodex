@@ -64,6 +64,13 @@ func (s *Store) Close() error {
 	return s.st.Close()
 }
 
+// DB возвращает соединение хранилища — нужно, чтобы построить
+// internal/auth.SQLStore на том же соединении, не открывая файл БД дважды
+// (auth.md §6, этап C).
+func (s *Store) DB() *storage.DB {
+	return s.db
+}
+
 // queryer — то, что нужно помощникам чтения (scanRows, loadX, listIDs);
 // реализует runner.
 type queryer interface {

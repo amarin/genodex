@@ -10,10 +10,20 @@ import (
 	"github.com/amarin/genodex/internal/transport"
 )
 
-// NewHandler возвращает http.Handler с маршрутами /api.
-// docsFS — файловая система папки docs для раздела «Документация».
+// NewHandler возвращает http.Handler с маршрутами /api (без auth-
+// оборачивания) — используется юнит-тестами этого пакета напрямую.
+// Реальное приложение монтирует NewAPIHandler (api.go).
 func NewHandler(divisions DivisionService, docsFS fs.FS) http.Handler {
 	mux := http.NewServeMux()
+	registerDivisionRoutes(mux, divisions, docsFS)
+
+	return mux
+}
+
+// registerDivisionRoutes регистрирует маршруты /api/admin-divisions,
+// /api/docs, /api/health на переданном mux — общий код NewHandler и
+// NewAPIHandler.
+func registerDivisionRoutes(mux *http.ServeMux, divisions DivisionService, docsFS fs.FS) {
 	mux.HandleFunc("GET /api/health", handleHealth)
 	mux.HandleFunc("GET /api/admin-divisions", handleDivisionList(divisions))
 	mux.HandleFunc("GET /api/admin-divisions/search", handleDivisionSearch(divisions))
@@ -23,7 +33,6 @@ func NewHandler(divisions DivisionService, docsFS fs.FS) http.Handler {
 	mux.HandleFunc("DELETE /api/admin-divisions/{id}", handleDivisionDelete(divisions))
 	mux.HandleFunc("GET /api/docs", handleDocList(docsFS))
 	mux.HandleFunc("GET /api/docs/{path}", handleDocContent(docsFS))
-	return mux
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
