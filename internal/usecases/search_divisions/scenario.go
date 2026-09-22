@@ -24,8 +24,9 @@ func New(adminDivisions DivisionRepo) *Scenario {
 // (размер и сдвиг) применяется после отбора хитов по типу деления: хиты других
 // сущностей не расходуют окно. Пустой текст (после обрезки) — пустой результат
 // без обращения к репозиторию. Хит, чья единица удалена между поиском и чтением
-// (ErrNotFound), пропускается; прочие ошибки пробрасываются.
-func (s *Scenario) SearchDivisions(ctx context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+// (ErrNotFound), пропускается; прочие ошибки пробрасываются. access
+// прокидывается в Search как получен (см. list_divisions.ListDivisions).
+func (s *Scenario) SearchDivisions(ctx context.Context, access models.Access, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
 	if err := q.Validate(); err != nil {
 		return nil, err
 	}
@@ -41,7 +42,7 @@ func (s *Scenario) SearchDivisions(ctx context.Context, q models.DivisionSearchQ
 
 	// репозиторий отдаёт окна хитов: обходим их до пустого или до заполнения окна.
 	for offset := 0; ; offset += models.MaxPageLimit {
-		hits, err := s.adminDivisions.Search(ctx, text, models.AccessFull,
+		hits, err := s.adminDivisions.Search(ctx, text, access,
 			models.Page{Limit: models.MaxPageLimit, Offset: offset})
 		if err != nil {
 			return nil, err

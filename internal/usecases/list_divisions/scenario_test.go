@@ -103,26 +103,26 @@ func sample() *fakeRepo {
 }
 
 func TestListDivisionsWithoutFiltersReturnsAll(t *testing.T) {
-	got, err := New(sample()).ListDivisions(context.Background(), models.DivisionQuery{})
+	got, err := New(sample()).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{})
 	if err != nil || !sameIDs(ids(got), "ad-1", "ad-2", "ad-3", "ad-4", "ad-5") {
 		t.Fatalf("got %v, %v; ожидались все пять единиц", ids(got), err)
 	}
 }
 
 func TestListDivisionsKindSettlement(t *testing.T) {
-	got, err := New(sample()).ListDivisions(context.Background(), models.DivisionQuery{Kind: models.DivisionKindSettlement})
+	got, err := New(sample()).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{Kind: models.DivisionKindSettlement})
 	if err != nil || !sameIDs(ids(got), "ad-1", "ad-3", "ad-4") {
 		t.Fatalf("got %v, %v; ожидались ad-1, ad-3, ad-4 (волость и губерния отфильтрованы)", ids(got), err)
 	}
 }
 
 func TestListDivisionsTypeFilter(t *testing.T) {
-	got, err := New(sample()).ListDivisions(context.Background(), models.DivisionQuery{Type: models.AdminDivisionSelo})
+	got, err := New(sample()).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{Type: models.AdminDivisionSelo})
 	if err != nil || !sameIDs(ids(got), "ad-1", "ad-4") {
 		t.Fatalf("got %v, %v; ожидались ad-1 и ad-4", ids(got), err)
 	}
 
-	got, err = New(sample()).ListDivisions(context.Background(),
+	got, err = New(sample()).ListDivisions(context.Background(), models.AccessFull,
 		models.DivisionQuery{Kind: models.DivisionKindSettlement, Type: models.AdminDivisionVolost})
 	if err != nil || len(got) != 0 {
 		t.Fatalf("вид и тип пересекаются: got %v, %v; ожидался пустой результат", ids(got), err)
@@ -134,28 +134,30 @@ func TestListDivisionsTypeFilter(t *testing.T) {
 func TestListDivisionsWindowIsAppliedAfterFilter(t *testing.T) {
 	q := models.DivisionQuery{Kind: models.DivisionKindSettlement, Page: models.Page{Limit: 1, Offset: 1}}
 
-	got, err := New(sample()).ListDivisions(context.Background(), q)
+	got, err := New(sample()).ListDivisions(context.Background(), models.AccessFull, q)
 	if err != nil || !sameIDs(ids(got), "ad-3") {
 		t.Fatalf("got %v, %v; ожидалась одна ad-3 (второй населённый пункт)", ids(got), err)
 	}
 
 	q.Page = models.Page{Limit: 5, Offset: 2}
 
-	got, err = New(sample()).ListDivisions(context.Background(), q)
+	got, err = New(sample()).ListDivisions(context.Background(), models.AccessFull, q)
 	if err != nil || !sameIDs(ids(got), "ad-4") {
 		t.Fatalf("got %v, %v; ожидалась одна ad-4 (короткое окно — конец списка)", ids(got), err)
 	}
 
 	q.Page = models.Page{Offset: 10}
 
-	got, err = New(sample()).ListDivisions(context.Background(), q)
+	got, err = New(sample()).ListDivisions(context.Background(), models.AccessFull, q)
 	if err != nil || got == nil || len(got) != 0 {
 		t.Fatalf("сдвиг за пределами набора: got %#v, %v; ожидался пустой не-nil срез", got, err)
 	}
 }
 
 // TestListDivisionsWalksAllRepositoryWindows: единицы за первым окном репозитория
-// не теряются, окна запрашиваются подряд с полным доступом.
+// не теряются, окна запрашиваются подряд; access, переданный вызывающим,
+// доходит до каждого окна репозитория как есть (не захардкожен на AccessFull —
+// подмена на AccessPublic здесь и есть доказательство).
 func TestListDivisionsWalksAllRepositoryWindows(t *testing.T) {
 	total := 2*models.MaxPageLimit + 7
 
@@ -170,7 +172,7 @@ func TestListDivisionsWalksAllRepositoryWindows(t *testing.T) {
 		repo.list = append(repo.list, division("ad-"+strconv.Itoa(i), typ))
 	}
 
-	got, err := New(repo).ListDivisions(context.Background(),
+	got, err := New(repo).ListDivisions(context.Background(), models.AccessPublic,
 		models.DivisionQuery{Kind: models.DivisionKindSettlement, Page: models.Page{Limit: models.MaxPageLimit}})
 	if err != nil || len(got) != models.MaxPageLimit {
 		t.Fatalf("got %d, %v; ожидалось %d", len(got), err, models.MaxPageLimit)
@@ -183,14 +185,14 @@ func TestListDivisionsWalksAllRepositoryWindows(t *testing.T) {
 	}
 
 	for i, a := range repo.accesses {
-		if a != models.AccessFull {
-			t.Errorf("вызов %d: доступ %v, ожидался AccessFull", i+1, a)
+		if a != models.AccessPublic {
+			t.Errorf("вызов %d: доступ %v, ожидался AccessPublic (переданный вызывающим, не захардкоженный AccessFull)", i+1, a)
 		}
 	}
 
 	all := &fakeRepo{list: repo.list}
 
-	got, err = New(all).ListDivisions(context.Background(), models.DivisionQuery{Kind: models.DivisionKindSettlement,
+	got, err = New(all).ListDivisions(context.Background(), models.AccessPublic, models.DivisionQuery{Kind: models.DivisionKindSettlement,
 		Page: models.Page{Limit: models.MaxPageLimit, Offset: models.MaxPageLimit}})
 	if err != nil || len(got) != (total+1)/2-models.MaxPageLimit {
 		t.Fatalf("второе окно: %d, %v; ожидалось %d", len(got), err, (total+1)/2-models.MaxPageLimit)
@@ -205,7 +207,7 @@ func TestListDivisionsInvalidQueryDoesNotTouchRepo(t *testing.T) {
 	for _, q := range []models.DivisionQuery{
 		{Kind: "village"}, {Type: "castle"}, {Page: models.Page{Limit: -1}}, {Page: models.Page{Offset: -1}},
 	} {
-		_, err := New(repo).ListDivisions(context.Background(), q)
+		_, err := New(repo).ListDivisions(context.Background(), models.AccessFull, q)
 
 		var ve *models.ValidationError
 		if !errors.As(err, &ve) {
@@ -219,7 +221,7 @@ func TestListDivisionsInvalidQueryDoesNotTouchRepo(t *testing.T) {
 }
 
 func TestListDivisionsEmptyRepoGivesEmptyNotNil(t *testing.T) {
-	got, err := New(&fakeRepo{}).ListDivisions(context.Background(), models.DivisionQuery{})
+	got, err := New(&fakeRepo{}).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{})
 	if err != nil {
 		t.Fatalf("ListDivisions: %v", err)
 	}
@@ -232,7 +234,7 @@ func TestListDivisionsEmptyRepoGivesEmptyNotNil(t *testing.T) {
 func TestListDivisionsPropagatesRepoError(t *testing.T) {
 	wantErr := errors.New("repo down")
 
-	if _, err := New(&fakeRepo{err: wantErr}).ListDivisions(context.Background(), models.DivisionQuery{}); !errors.Is(err, wantErr) {
+	if _, err := New(&fakeRepo{err: wantErr}).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{}); !errors.Is(err, wantErr) {
 		t.Errorf("err=%v, want %v", err, wantErr)
 	}
 }
@@ -254,7 +256,7 @@ func TestListDivisionsPropagatesErrorFromLaterWindow(t *testing.T) {
 		repo.list = append(repo.list, division("ad-"+strconv.Itoa(i), typ))
 	}
 
-	got, err := New(repo).ListDivisions(context.Background(),
+	got, err := New(repo).ListDivisions(context.Background(), models.AccessFull,
 		models.DivisionQuery{Kind: models.DivisionKindSettlement, Page: models.Page{Limit: models.MaxPageLimit}})
 	if !errors.Is(err, wantErr) || got != nil {
 		t.Fatalf("got %v, %v; ожидалась ошибка %v без результата", ids(got), err, wantErr)
@@ -265,7 +267,7 @@ func TestListDivisionsPassesContextToRepo(t *testing.T) {
 	repo := &fakeRepo{}
 	ctx := context.WithValue(context.Background(), ctxKey{}, "marker")
 
-	if _, err := New(repo).ListDivisions(ctx, models.DivisionQuery{}); err != nil {
+	if _, err := New(repo).ListDivisions(ctx, models.AccessFull, models.DivisionQuery{}); err != nil {
 		t.Fatalf("ListDivisions: %v", err)
 	}
 
@@ -286,7 +288,7 @@ func TestListDivisionsFromParentReturnsChildren(t *testing.T) {
 	}
 	parent := validParent
 
-	got, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{ParentID: &parent})
+	got, err := New(repo).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{ParentID: &parent})
 	if err != nil || !sameIDs(ids(got), "ad-1", "ad-2") {
 		t.Fatalf("got %v, %v; ожидались ad-1, ad-2", ids(got), err)
 	}
@@ -308,7 +310,7 @@ func TestListDivisionsFromParentAppliesFiltersAndWindow(t *testing.T) {
 	}
 	parent := validParent
 
-	got, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{
+	got, err := New(repo).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{
 		Kind:     models.DivisionKindSettlement,
 		ParentID: &parent,
 		Page:     models.Page{Limit: 1, Offset: 1},
@@ -324,7 +326,7 @@ func TestListDivisionsFromMissingParentIsNotFound(t *testing.T) {
 	repo := &fakeRepo{err: models.ErrNotFound}
 	parent := validParent
 
-	_, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{ParentID: &parent})
+	_, err := New(repo).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{ParentID: &parent})
 	if !errors.Is(err, models.ErrNotFound) {
 		t.Fatalf("err = %v, ожидался ErrNotFound", err)
 	}
@@ -336,7 +338,7 @@ func TestListDivisionsInvalidParentDoesNotTouchRepo(t *testing.T) {
 	repo := sample()
 	bad := models.ID("not-an-id")
 
-	_, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{ParentID: &bad})
+	_, err := New(repo).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{ParentID: &bad})
 
 	var ve *models.ValidationError
 	if !errors.As(err, &ve) || ve.Field != "parent_id" {

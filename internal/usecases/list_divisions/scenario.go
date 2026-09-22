@@ -20,14 +20,16 @@ func New(adminDivisions AdminDivisionRepo) *Scenario {
 // сохранения; окно (размер и сдвиг) применяется после фильтра. С ParentID —
 // только прямые дети этой единицы. Некорректный запрос — *models.ValidationError,
 // репозиторий не вызывается. Короткий результат (меньше размера окна) означает
-// конец списка.
-func (s *Scenario) ListDivisions(ctx context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
+// конец списка. access прокидывается в репозиторий как получен — сейчас не
+// влияет на результат (у AdministrativeDivision нет Private), задел для
+// будущих срезов, где Private есть (auth.md §6).
+func (s *Scenario) ListDivisions(ctx context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
 	if err := q.Validate(); err != nil {
 		return nil, err
 	}
 
 	if q.ParentID != nil {
-		return s.listChildren(ctx, q, *q.ParentID)
+		return s.listChildren(ctx, access, q, *q.ParentID)
 	}
 
 	page := q.Page.Normalized()
@@ -36,7 +38,7 @@ func (s *Scenario) ListDivisions(ctx context.Context, q models.DivisionQuery) ([
 
 	// репозиторий отдаёт окна: обходим их до пустого или до заполнения окна запроса
 	for offset := 0; ; offset += models.MaxPageLimit {
-		divisions, err := s.adminDivisions.ListAdministrativeDivisions(ctx, models.AccessFull,
+		divisions, err := s.adminDivisions.ListAdministrativeDivisions(ctx, access,
 			models.Page{Limit: models.MaxPageLimit, Offset: offset})
 		if err != nil {
 			return nil, err
@@ -54,13 +56,13 @@ func (s *Scenario) ListDivisions(ctx context.Context, q models.DivisionQuery) ([
 }
 
 // listChildren — ветка «дети родителя»: тот же обход окон, но по ChildrenOfDivision.
-func (s *Scenario) listChildren(ctx context.Context, q models.DivisionQuery, parent models.ID) ([]models.AdministrativeDivision, error) {
+func (s *Scenario) listChildren(ctx context.Context, access models.Access, q models.DivisionQuery, parent models.ID) ([]models.AdministrativeDivision, error) {
 	page := q.Page.Normalized()
 	out := []models.AdministrativeDivision{}
 	matched := 0
 
 	for offset := 0; ; offset += models.MaxPageLimit {
-		divisions, err := s.adminDivisions.ChildrenOfDivision(ctx, parent, models.AccessFull,
+		divisions, err := s.adminDivisions.ChildrenOfDivision(ctx, parent, access,
 			models.Page{Limit: models.MaxPageLimit, Offset: offset})
 		if err != nil {
 			return nil, err

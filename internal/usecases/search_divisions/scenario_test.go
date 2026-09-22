@@ -54,12 +54,14 @@ type fakeRepo struct {
 	gotQuery string
 	calls    []models.Page
 	getCalls []models.ID
+	accesses []models.Access
 }
 
 func (f *fakeRepo) Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error) {
 	f.gotCtx = ctx
 	f.gotQuery = query
 	f.calls = append(f.calls, page)
+	f.accesses = append(f.accesses, access)
 
 	if f.err != nil && (f.errAt == 0 || f.errAt == len(f.calls)) {
 		return nil, f.err
@@ -92,7 +94,7 @@ func (f *fakeRepo) GetAdministrativeDivision(ctx context.Context, id models.ID) 
 func TestEmptyTextDoesNotTouchRepo(t *testing.T) {
 	repo := &fakeRepo{}
 
-	got, err := New(repo).SearchDivisions(context.Background(), models.DivisionSearchQuery{Text: "   "})
+	got, err := New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{Text: "   "})
 	if err != nil || len(got) != 0 {
 		t.Fatalf("got %v, %v; ожидался пустой результат", got, err)
 	}
@@ -113,7 +115,7 @@ func TestSearchReturnsFullDivisionsFromHits(t *testing.T) {
 		},
 	}
 
-	got, err := New(repo).SearchDivisions(context.Background(), models.DivisionSearchQuery{Text: "давыд"})
+	got, err := New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{Text: "давыд"})
 	if err != nil || !sameIDs(ids(got), "AD-1002", "AD-1004") {
 		t.Fatalf("got %v, %v; ожидались AD-1002, AD-1004", ids(got), err)
 	}
@@ -134,7 +136,7 @@ func TestSearchAppliesWindowAmongDivisionHits(t *testing.T) {
 		},
 	}
 
-	got, err := New(repo).SearchDivisions(context.Background(), models.DivisionSearchQuery{
+	got, err := New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{
 		Text: "п",
 		Page: models.Page{Limit: 1, Offset: 1},
 	})
@@ -154,7 +156,7 @@ func TestSearchSkipsDeletedDivision(t *testing.T) {
 		getErr: map[models.ID]error{"AD-1002": models.ErrNotFound},
 	}
 
-	got, err := New(repo).SearchDivisions(context.Background(), models.DivisionSearchQuery{Text: "п"})
+	got, err := New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{Text: "п"})
 	if err != nil {
 		t.Fatalf("SearchDivisions: %v", err)
 	}
@@ -175,7 +177,7 @@ func TestSearchPropagatesGetError(t *testing.T) {
 		getErr: map[models.ID]error{"AD-1002": boom},
 	}
 
-	_, err := New(repo).SearchDivisions(context.Background(), models.DivisionSearchQuery{Text: "п"})
+	_, err := New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{Text: "п"})
 	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v, ожидался boom", err)
 	}
@@ -186,7 +188,7 @@ func TestSearchPropagatesSearchError(t *testing.T) {
 	boom := errors.New("search boom")
 	repo := &fakeRepo{err: boom}
 
-	_, err := New(repo).SearchDivisions(context.Background(), models.DivisionSearchQuery{Text: "п"})
+	_, err := New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{Text: "п"})
 	if !errors.Is(err, boom) {
 		t.Fatalf("err = %v, ожидался boom", err)
 	}
@@ -197,7 +199,7 @@ func TestSearchPropagatesSearchError(t *testing.T) {
 func TestSearchInvalidQueryDoesNotTouchRepo(t *testing.T) {
 	repo := &fakeRepo{}
 
-	_, err := New(repo).SearchDivisions(context.Background(), models.DivisionSearchQuery{Page: models.Page{Limit: -1}})
+	_, err := New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{Page: models.Page{Limit: -1}})
 
 	var ve *models.ValidationError
 	if !errors.As(err, &ve) || ve.Field != "limit" {
@@ -205,5 +207,28 @@ func TestSearchInvalidQueryDoesNotTouchRepo(t *testing.T) {
 	}
 	if len(repo.calls) != 0 {
 		t.Fatalf("Search вызван %d раз при некорректном запросе", len(repo.calls))
+	}
+}
+
+// TestSearchDivisionsPassesAccessToRepo: access, переданный вызывающим,
+// доходит до Search как есть (не захардкожен на AccessFull).
+func TestSearchDivisionsPassesAccessToRepo(t *testing.T) {
+	repo := &fakeRepo{hits: []models.Hit{
+		hit("AD-1002", models.TypeAdministrativeDivision),
+	}}
+
+	if _, err := New(repo).SearchDivisions(context.Background(), models.AccessPublic,
+		models.DivisionSearchQuery{Text: "п"}); err != nil {
+		t.Fatalf("SearchDivisions: %v", err)
+	}
+
+	if len(repo.accesses) == 0 {
+		t.Fatalf("accesses пуст, ожидались вызовы с AccessPublic")
+	}
+
+	for i, a := range repo.accesses {
+		if a != models.AccessPublic {
+			t.Errorf("вызов %d: доступ %v, ожидался AccessPublic (переданный вызывающим, не захардкоженный AccessFull)", i+1, a)
+		}
 	}
 }
