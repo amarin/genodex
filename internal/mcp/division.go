@@ -84,7 +84,7 @@ func divisionListHandler(divisions DivisionService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		list, err := divisions.ListDivisions(ctx, q)
+		list, err := divisions.ListDivisions(ctx, AccessFromContext(ctx), q)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить список: %v", err)), nil
 		}
@@ -136,7 +136,7 @@ func divisionSearchHandler(divisions DivisionService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		list, err := divisions.SearchDivisions(ctx, q)
+		list, err := divisions.SearchDivisions(ctx, AccessFromContext(ctx), q)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось выполнить поиск: %v", err)), nil
 		}

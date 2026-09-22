@@ -28,17 +28,22 @@ type fakeDivisions struct {
 	search    []models.AdministrativeDivision
 	searchErr error
 	gotSearch models.DivisionSearchQuery
+
+	gotListAccess   models.Access
+	gotSearchAccess models.Access
 }
 
-func (f *fakeDivisions) ListDivisions(_ context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
+func (f *fakeDivisions) ListDivisions(_ context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
 	f.got = q
+	f.gotListAccess = access
 	f.call++
 
 	return f.list, f.err
 }
 
-func (f *fakeDivisions) SearchDivisions(_ context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+func (f *fakeDivisions) SearchDivisions(_ context.Context, access models.Access, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
 	f.gotSearch = q
+	f.gotSearchAccess = access
 	f.call++
 
 	return f.search, f.searchErr
@@ -271,5 +276,40 @@ func TestNewServerRegistersDivisionListOnly(t *testing.T) {
 
 	if _, ok := tools["settlement_list"]; ok {
 		t.Error("прежний тул settlement_list всё ещё зарегистрирован")
+	}
+}
+
+// TestDivisionListToolPassesAccessFromContext: Access, положенный
+// RequireAPIToken в контекст запроса, доходит до сценария как есть (не
+// захардкожен на AccessFull).
+func TestDivisionListToolPassesAccessFromContext(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	ctx := context.WithValue(context.Background(), accessCtxKey, models.AccessPublic)
+	req := mcp.CallToolRequest{}
+
+	if _, err := divisionListHandler(svc)(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+
+	if svc.gotListAccess != models.AccessPublic {
+		t.Fatalf("gotListAccess = %v, ожидался AccessPublic", svc.gotListAccess)
+	}
+}
+
+// TestDivisionSearchToolPassesAccessFromContext: аналогично для поиска.
+func TestDivisionSearchToolPassesAccessFromContext(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	ctx := context.WithValue(context.Background(), accessCtxKey, models.AccessPublic)
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{"q": "давы"}
+
+	if _, err := divisionSearchHandler(svc)(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+
+	if svc.gotSearchAccess != models.AccessPublic {
+		t.Fatalf("gotSearchAccess = %v, ожидался AccessPublic", svc.gotSearchAccess)
 	}
 }
