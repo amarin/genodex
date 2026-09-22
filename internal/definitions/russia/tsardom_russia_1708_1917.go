@@ -2,15 +2,15 @@ package russia
 
 import "github.com/amarin/genodex/internal/models"
 
-// Словарь временный, до блока D в docs/todo.md: значения — слова для показа,
-// а не канонические значения перечисления models.AdminDivisionType.
-const (
-	Governorate models.AdminDivisionType = "губерния"
-	Uyezd       models.AdminDivisionType = "уезд"
-	Volost      models.AdminDivisionType = "волость"
-)
-
+// TsardomRussiaGovernorateSystem — административное деление Российской империи
+// после губернской реформы (1708–1917): губерния → уезд → волость. Значения —
+// канонические models.AdminDivisionType (решение #17); соответствие
+// историческим названиям — в docs/models/places.md.
 var TsardomRussiaGovernorateSystem = models.AdministrativeDivisionSystem{
-	Name:      "Административное деление Европейской Части Российской Империи 19 века",
-	Relations: []models.AdminDivisionType{Governorate, Uyezd, Volost},
+	Name: "Административное деление Европейской Части Российской Империи 19 века",
+	Relations: []models.AdminDivisionType{
+		models.AdminDivisionGovernorate, // губерния
+		models.AdminDivisionDistrict,    // уезд
+		models.AdminDivisionVolost,      // волость
+	},
 }

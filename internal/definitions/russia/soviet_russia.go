@@ -2,15 +2,16 @@ package russia
 
 import "github.com/amarin/genodex/internal/models"
 
-// Словарь временный, до блока D в docs/todo.md: значения — слова для показа,
-// а не канонические значения перечисления models.AdminDivisionType.
-const (
-	Republic models.AdminDivisionType = "республика"
-	Oblast   models.AdminDivisionType = "область"
-	Rayon    models.AdminDivisionType = "район"
-)
-
+// UnitedSovietSocialistRepublicsSystem — административное деление СССР:
+// республика → область → район (три уровня, позиционно соответствующие
+// губернии/уезду/волости Российской империи). Значения — канонические
+// models.AdminDivisionType (решение #17); соответствие историческим
+// названиям — в docs/models/places.md.
 var UnitedSovietSocialistRepublicsSystem = models.AdministrativeDivisionSystem{
-	Name:      "Административное деление СССР",
-	Relations: []models.AdminDivisionType{Republic, Oblast, Rayon},
+	Name: "Административное деление СССР",
+	Relations: []models.AdminDivisionType{
+		models.AdminDivisionGovernorate, // республика
+		models.AdminDivisionDistrict,    // область
+		models.AdminDivisionVolost,      // район
+	},
 }
