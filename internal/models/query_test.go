@@ -85,6 +85,71 @@ func TestDivisionQueryValidate(t *testing.T) {
 	}
 }
 
+func TestDivisionQueryValidateParentID(t *testing.T) {
+	validAD := testID(TypeAdministrativeDivision)
+	validPerson := testID(TypePerson)
+
+	cases := []struct {
+		name  string
+		q     DivisionQuery
+		field string // "" — запрос корректен
+	}{
+		{"parent_id валиден", DivisionQuery{ParentID: &validAD}, ""},
+		{"parent_id неверный формат", DivisionQuery{ParentID: idPtr("nope")}, "parent_id"},
+		{"parent_id не того типа", DivisionQuery{ParentID: &validPerson}, "parent_id"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := c.q.Validate()
+			if c.field == "" {
+				if err != nil {
+					t.Fatalf("Validate() = %v, ожидалось nil", err)
+				}
+
+				return
+			}
+
+			var ve *ValidationError
+			if !errors.As(err, &ve) || ve.Field != c.field {
+				t.Fatalf("Validate() = %v, ожидалась *ValidationError по полю %q", err, c.field)
+			}
+		})
+	}
+}
+
+func TestDivisionSearchQueryValidate(t *testing.T) {
+	cases := []struct {
+		name  string
+		q     DivisionSearchQuery
+		field string // "" — запрос корректен
+	}{
+		{"пустой запрос", DivisionSearchQuery{}, ""},
+		{"текст с пробелами", DivisionSearchQuery{Text: " давыд "}, ""},
+		{"окно больше предела — не ошибка", DivisionSearchQuery{Page: Page{Limit: 10 * MaxPageLimit}}, ""},
+		{"отрицательный размер окна", DivisionSearchQuery{Page: Page{Limit: -1}}, "limit"},
+		{"отрицательный сдвиг", DivisionSearchQuery{Page: Page{Offset: -5}}, "offset"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := c.q.Validate()
+			if c.field == "" {
+				if err != nil {
+					t.Fatalf("Validate() = %v, ожидалось nil", err)
+				}
+
+				return
+			}
+
+			var ve *ValidationError
+			if !errors.As(err, &ve) || ve.Field != c.field {
+				t.Fatalf("Validate() = %v, ожидалась *ValidationError по полю %q", err, c.field)
+			}
+		})
+	}
+}
+
 func TestDivisionQueryMatches(t *testing.T) {
 	selo := AdministrativeDivision{Type: AdminDivisionSelo}
 	volost := AdministrativeDivision{Type: AdminDivisionVolost}

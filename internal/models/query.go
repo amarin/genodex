@@ -63,16 +63,18 @@ const DivisionKindSettlement DivisionKind = "settlement"
 func (k DivisionKind) Valid() bool { return k == "" || k == DivisionKindSettlement }
 
 // DivisionQuery — запрос списка единиц административного деления: необязательные
-// фильтры по виду и типу (пересекаются) и окно. Окно применяется после фильтра.
+// фильтры по виду и типу (пересекаются), прямой родитель и окно. Окно применяется
+// после фильтра. ParentID — список прямых детей единицы; nil — корень списка.
 type DivisionQuery struct {
-	Kind DivisionKind      // "" — без фильтра; settlement — только населённые пункты
-	Type AdminDivisionType // "" — без фильтра; иначе точное совпадение типа
-	Page Page
+	Kind     DivisionKind      // "" — без фильтра; settlement — только населённые пункты
+	Type     AdminDivisionType // "" — без фильтра; иначе точное совпадение типа
+	ParentID *ID               // nil — корень; иначе только прямые дети этой единицы
+	Page     Page
 }
 
 // Validate проверяет запрос: неизвестные вид и тип, отрицательные размер и
-// сдвиг окна — *ValidationError (поля названы как параметры контракта).
-// Размер окна больше MaxPageLimit не ошибка: Page.Normalized сужает его.
+// сдвиг окна, неверный parent_id — *ValidationError (поля названы как параметры
+// контракта). Размер окна больше MaxPageLimit не ошибка: Page.Normalized сужает его.
 func (q DivisionQuery) Validate() error {
 	switch {
 	case !q.Kind.Valid():
@@ -85,6 +87,12 @@ func (q DivisionQuery) Validate() error {
 		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
 	}
 
+	if q.ParentID != nil {
+		if err := idErr("parent_id", *q.ParentID, TypeAdministrativeDivision); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -95,4 +103,24 @@ func (q DivisionQuery) Matches(d AdministrativeDivision) bool {
 	}
 
 	return q.Type == "" || d.Type == q.Type
+}
+
+// DivisionSearchQuery — запрос поиска единиц административного деления по началу
+// названия (включая варианты). Окно применяется после отбора единиц.
+type DivisionSearchQuery struct {
+	Text string // начало названия или варианта; пустое (после обрезки) — пустой результат
+	Page Page
+}
+
+// Validate проверяет запрос: отрицательные размер и сдвиг окна — *ValidationError.
+// Пустой текст не ошибка.
+func (q DivisionSearchQuery) Validate() error {
+	switch {
+	case q.Page.Limit < 0:
+		return fieldErr("limit", "не может быть отрицательным: %d", q.Page.Limit)
+	case q.Page.Offset < 0:
+		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
+	}
+
+	return nil
 }
