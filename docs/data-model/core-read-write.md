@@ -271,6 +271,16 @@ type Hit struct{ Type Type; ID ID; Label, Field string }
   единицы — `ErrNotFound`. Проверка родителя/циклов и сохранение — в одной
   транзакции (`InTx`); цикл ищется обходом цепочки родителей вверх с защитой от
   замыкания на испорченных данных.
+- Контракты записи делений (S15): `POST /api/admin-divisions` → `201` + единица,
+  `GET/PUT/DELETE /api/admin-divisions/{id}` → `200`/`200`/`204`; MCP —
+  `division_create|get|update|delete`. Тело `409` для занятой единицы —
+  `{error, referrers:[{type,id}…]}` (без `total`/`truncated`, список до 20);
+  неверный формат `id` в пути — `422` (не `404`); PUT — полная замена
+  `name/type/parent_id` (отсутствие `parent_id`/`null` — корень), прочие поля
+  модели сохраняются (обработчик читает текущую версию через `get_division`).
+  `DivisionService` (httpapi и mcp) — единый интерфейс пяти методов, в
+  `internal/app` его собирает фасад `divisionService` (пять сценариев,
+  `idgen.New()` для `create`).
 - Соглашение об именах контрактов: MCP-тулы `<entity>_list|get|create|update|delete|search`,
   HTTP `GET/POST /api/<множественное>`, `GET/PUT/DELETE /api/<множественное>/{id}`.
   DTO и запросы — в `transport`; ошибки сценариев в статусы: `ErrNotFound` → 404,

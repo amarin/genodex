@@ -75,7 +75,7 @@ genodex verify [--data DIR] [--backup DIR]             # проверка цел
 |------|-----------|
 | `/mcp` | MCP-сервер, транспорт Streamable HTTP. Для AI-ассистентов и MCP-клиентов. |
 | `/api/health` | Проверка живости: `{"status":"ok"}`. |
-| `/api/admin-divisions` | Единицы административного деления (JSON): массив `[{"id", "name", "type", "parent_id"}]`; параметры — ниже. |
+| `/api/admin-divisions` | Единицы административного деления (JSON): `GET` — список `[{"id", "name", "type", "parent_id"}]` (параметры — ниже); `POST` — создание; `GET/PUT/DELETE /api/admin-divisions/{id}` — чтение/изменение/удаление единицы. |
 | `/static/` | Собранные ассеты SPA (JS/CSS). |
 | `/` | Веб-интерфейс (SPA): `index.html`, для неизвестных путей — fallback на неё. |
 
@@ -95,6 +95,10 @@ curl -s -X POST http://localhost:9000/mcp \
 | Тул | Описание |
 |-----|---------|
 | `division_list` | Список единиц административного деления; аргументы `kind`, `type`, `limit`, `offset` (как параметры HTTP, см. ниже) |
+| `division_get` | Единица по `id` (JSON контракта) |
+| `division_create` | Создание единицы: `name`, `type`, `parent_id` (пусто — корень); id генерирует сервер |
+| `division_update` | Изменение `name`/`type`/`parent_id` (пустой `parent_id` — корень), прочие поля сохраняются; результат — обновлённая единица |
+| `division_delete` | Удаление единицы по `id`; занятая другая единицей — ошибка тула |
 
 ### HTTP API
 
@@ -119,6 +123,51 @@ curl -s 'http://localhost:9000/api/admin-divisions?kind=settlement&limit=20'
 единиц. Ошибки HTTP: `400` — `limit`/`offset` не целое число; `422` — неизвестные
 `kind`/`type` или отрицательное окно (тело `{"error": "…", "field": "kind"}`);
 `500` — сбой хранилища. Ошибки MCP-тула приходят в результате вызова с признаком ошибки.
+
+### Запись единиц делений
+
+Полный CRUD единицы административного деления (S14+S15). id генерирует сервер
+(`AD-…`); `parent_id` — `null`/пусто → корень. PUT полностью заменяет
+`name`/`type`/`parent_id`: обработчик читает текущую версию, накладывает поля
+запроса и сохраняет; прочие поля модели не затрагиваются.
+
+```bash
+# Создать губернию
+curl -s -X POST http://localhost:9000/api/admin-divisions \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Московская","type":"governorate"}'
+# → 201 {"id":"AD-…","name":"Московская","type":"governorate","parent_id":null}
+
+# Создать село в губернии (возвращённый id — в кавычках JSON)
+curl -s -X POST http://localhost:9000/api/admin-divisions \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Давыдово","type":"selo","parent_id":"AD-…"}'
+# → 201 {"id":"AD-…","name":"Давыдово","type":"selo","parent_id":"AD-…"}
+
+# Прочитать единицу по id (неверный формат id — 422)
+curl -s http://localhost:9000/api/admin-divisions/AD-…
+# → 200 {"id":"AD-…","name":"Давыдово","type":"selo","parent_id":"AD-…"}
+
+# Изменить: parent_id:null переводит в корень
+curl -s -X PUT http://localhost:9000/api/admin-divisions/AD-… \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Давыдова","type":"selo","parent_id":null}'
+# → 200 {"id":"AD-…","name":"Давыдова","type":"selo","parent_id":null}
+
+# Удалить (занятая единица — 409 со списком ссылающихся)
+curl -s -X DELETE http://localhost:9000/api/admin-divisions/AD-…
+# → 204 (успех, без тела)
+```
+
+Ошибки HTTP записи: `400` — тело не JSON (строки записаны неверно);
+`404` — отсутствующая единица с корректным id; `409` — единица занята, тело
+`{"error": "administrative_division \"AD-…\" используется: …", "referrers":
+[{"type":"administrative_division","id":"AD-…"}, …]}` (список ссылающихся, до 20);
+`422` — неверное значение (`name`, неизвестный `type`, несуществующий/циклический
+`parent_id`, неверный формат `id` в пути; тело `{"error": "…", "field": "…"}`);
+`500` — сбой хранилища. MCP-тулы `division_get|create|update|delete` принимают те
+же значения: ошибки — результат тула с признаком ошибки, успехи `get/create/update`
+— JSON контракта, `delete` — текст `деление "<id>" удалено`.
 
 ### Веб
 
