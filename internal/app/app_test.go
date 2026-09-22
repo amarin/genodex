@@ -32,4 +32,14 @@ func TestAppRejectsUnauthenticatedWrites(t *testing.T) {
 	if rec.Code != http.StatusUnauthorized {
 		t.Errorf("POST /mcp без токена = %d, ожидался 401", rec.Code)
 	}
+
+	// Позитивный ассерт: чтение по-прежнему доступно анонимно — полный
+	// misroute внутри NewAPIHandler (например, requireFull по ошибке
+	// накрывший весь /api/) тоже был бы пойман здесь, на уровне сборки
+	// приложения, а не только в юнит-тестах пакета httpapi.
+	rec = httptest.NewRecorder()
+	a.http.Handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/health", nil))
+	if rec.Code != http.StatusOK {
+		t.Errorf("GET /api/health = %d, ожидался 200", rec.Code)
+	}
 }

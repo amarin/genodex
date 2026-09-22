@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,6 +9,14 @@ import (
 	authpkg "github.com/amarin/genodex/internal/auth"
 	"github.com/amarin/genodex/internal/models"
 )
+
+// TestAccessFromContextDefaultsToPublic: без resolveAccess в контексте —
+// AccessPublic по умолчанию (fail-closed), не zero-value AccessFull.
+func TestAccessFromContextDefaultsToPublic(t *testing.T) {
+	if got := AccessFromContext(context.Background()); got != models.AccessPublic {
+		t.Fatalf("got=%v, ожидался AccessPublic по умолчанию", got)
+	}
+}
 
 func TestResolveAccessPublicWithoutCookie(t *testing.T) {
 	svc := &fakeAuthService{access: models.AccessPublic}

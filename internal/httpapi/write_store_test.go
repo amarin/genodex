@@ -76,7 +76,7 @@ func TestDivisionWriteContractWithRealStore(t *testing.T) {
 	}
 
 	// Удаление дочерней, затем корня.
-	delReq(t, h, owner, "/api/admin-divisions/"+string(child.ID))
+	requireStatusS(t, delReq(t, h, owner, "/api/admin-divisions/"+string(child.ID)), http.StatusNoContent)
 	requireStatusS(t, delReq(t, h, owner, "/api/admin-divisions/"+string(root.ID)), http.StatusNoContent)
 
 	// Несуществующая — 404.
@@ -92,9 +92,43 @@ func TestDivisionWriteContractWithRealStore(t *testing.T) {
 		t.Fatalf("body = %s", rec.Body)
 	}
 
+	// Logout инвалидирует сессию: та же cookie больше не проходит requireFull.
+	logoutRec := postAuthReq(t, h, "/api/auth/logout", "", owner)
+	requireStatusS(t, logoutRec, http.StatusNoContent)
+
+	staleRec := postReq(t, h, owner, `{"name":"После логаута","type":"selo"}`)
+	requireStatusS(t, staleRec, http.StatusUnauthorized)
+
 	// Анонимная попытка создать — 401, до разбора тела.
 	anonRec := postReq(t, h, nil, `{"name":"Аноним","type":"selo"}`)
 	requireStatusS(t, anonRec, http.StatusUnauthorized)
+}
+
+// TestDivisionCreateWithoutCSRFHeaderIs400: валидная сессия владельца, но без
+// X-Requested-With — 400 (requireCSRFHeader), сценарий не вызывается. Пин на
+// то, что NewAPIHandler реально оборачивает division-записи, не только auth.
+func TestDivisionCreateWithoutCSRFHeaderIs400(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(newDivisionService(t, st), authSvc, fstest.MapFS{})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/admin-divisions", strings.NewReader(`{"name":"x","type":"selo"}`))
+	req.AddCookie(accessCookie)
+	// нарочно без X-Requested-With
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	requireStatusS(t, rec, http.StatusBadRequest)
 }
 
 func createDivision(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.AdminDivision {
