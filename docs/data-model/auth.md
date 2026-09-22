@@ -301,6 +301,19 @@ Middleware на `/mcp` (пакет — `internal/mcp` или `internal/app`, г�
 Успешная проверка — `Access=AccessFull`, `OwnerID` в контекст запроса (тот же
 путь, что у httpapi, дальше сценарии не отличают источник).
 
+**Решение: размещение middleware.** Middleware живёт в `internal/mcp` как новый
+файл `middleware.go` (`RequireAPIToken`, `AccessFromContext`, `OwnerFromContext`),
+не изменяя существующие файлы пакета (`division.go`, `deps.go`, `server.go`).
+Контекстные хелперы `mcp.AccessFromContext` и `mcp.OwnerFromContext` —
+собственные реализации пакета `mcp`, отдельные от `httpapi.AccessFromContext`
+и `httpapi.OwnerFromContext`, потому что вывести общий приватный код между
+пакетами невозможно без цикла импорта (`internal/app` → `internal/mcp`, но не
+наоборот). Хелперы будут использованы обработчиками MCP-тулов (`division.go` и
+будущие) на этапе C для извлечения реквизитов запроса из контекста. На этапе
+B2 middleware и хелперы реализованы и протестированы сквозным e2e-тестом на
+реальном `auth.Service`, но не подключены к `internal/app.New` (подключение —
+часть этапа C вместе с httpapi-стороной).
+
 ## 6. Проброс `Access` через существующие контракты (закрывает исходный долг)
 
 - `internal/usecases/list_divisions.Scenario.ListDivisions` и

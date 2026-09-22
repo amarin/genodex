@@ -78,6 +78,7 @@
 
 ## B2. MCP-контракт auth
 
+- **Статус:** выполнено (2 коммита: middleware `RequireAPIToken` и e2e-тест на реальном `auth.Service` — см. `2026-09-22-auth-b2-mcp.md`).
 - **Файлы:** `internal/mcp` или `internal/app` — где регистрируется `/mcp`
   (уточняется в плане этапа: миддлварь может жить в `internal/app`, раз она
   оборачивает `http.Handler` до `server.NewStreamableHTTPServer`, без
