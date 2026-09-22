@@ -50,6 +50,7 @@ func OpenDB(path string) (*DB, error) {
 		[]string{`CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)`},
 		schemaDDL...,
 	)
+	ddl = append(ddl, authSchemaDDL...)
 	for _, q := range ddl {
 		if _, err := d.Exec(q); err != nil {
 			d.Close()

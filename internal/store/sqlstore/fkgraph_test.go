@@ -14,6 +14,7 @@ import (
 var serviceTables = map[string]bool{
 	"meta": true, "dates": true, "text_refs": true, "anchors": true,
 	"source_links": true, "search_index": true,
+	"owners": true, "sessions": true, "api_tokens": true, "invites": true,
 }
 
 // TestEntityTablesMatchSchema: entityTables описывает ровно корневые таблицы

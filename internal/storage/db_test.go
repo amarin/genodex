@@ -29,6 +29,8 @@ func openTestDB(t *testing.T) *DB {
 var wantTables = []string{
 	// служебные и общие
 	"meta", "dates", "text_refs", "anchors", "source_links", "search_index",
+	// auth
+	"owners", "sessions", "api_tokens", "invites",
 	// персоны
 	"persons", "person_names", "person_estates", "person_titles",
 	"person_nicknames", "person_notes",
