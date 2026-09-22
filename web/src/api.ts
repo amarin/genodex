@@ -8,6 +8,13 @@ export interface AdminDivision {
 export interface AdminDivisionQuery {
   kind?: "settlement";
   type?: string;
+  parent_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface DivisionSearchQuery {
+  q: string;
   limit?: number;
   offset?: number;
 }
@@ -26,6 +33,23 @@ export async function fetchAdminDivisions(
   }
   const qs = params.toString();
   const resp = await fetch(`/api/admin-divisions${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchAdminDivisions(
+  query: DivisionSearchQuery,
+): Promise<AdminDivision[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/admin-divisions/search${qs ? `?${qs}` : ""}`);
   if (!resp.ok) {
     throw new Error(`API error: ${resp.status}`);
   }

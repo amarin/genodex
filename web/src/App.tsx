@@ -1,43 +1,99 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Alert, Card, Layout, List, Spin, Tabs, Typography } from "antd";
+import { Alert, Button, Card, Input, Layout, List, Spin, Tabs, Typography } from "antd";
 import { BookOutlined, HomeOutlined } from "@ant-design/icons";
-import { fetchAdminDivisions, MAX_PAGE_LIMIT, type AdminDivision } from "./api";
+import {
+  fetchAdminDivisions,
+  searchAdminDivisions,
+  MAX_PAGE_LIMIT,
+  type AdminDivision,
+  type AdminDivisionQuery,
+} from "./api";
 import DocsPanel from "./docs-panel";
 
 const { Header, Content } = Layout;
 
 function SettlementsTab() {
-  const [settlements, setSettlements] = useState<AdminDivision[]>([]);
+  const [items, setItems] = useState<AdminDivision[]>([]);
+  const [parent, setParent] = useState<AdminDivision | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
 
-  useEffect(() => {
-    fetchAdminDivisions({ kind: "settlement", limit: MAX_PAGE_LIMIT })
-      .then(setSettlements)
+  const load = (q: AdminDivisionQuery) => {
+    setLoading(true);
+    setError(null);
+    fetchAdminDivisions(q)
+      .then(setItems)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load({ kind: "settlement", limit: MAX_PAGE_LIMIT });
   }, []);
 
+  const onSearch = (value: string) => {
+    const q = value.trim();
+    if (!q) {
+      return;
+    }
+    setParent(null);
+    setSearching(true);
+    setError(null);
+    searchAdminDivisions({ q, limit: MAX_PAGE_LIMIT })
+      .then(setItems)
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setSearching(false));
+  };
+
+  const openChildren = (node: AdminDivision) => {
+    setParent(node);
+    load({ parent_id: node.id, limit: MAX_PAGE_LIMIT });
+  };
+
+  const toRoot = () => {
+    setParent(null);
+    load({ kind: "settlement", limit: MAX_PAGE_LIMIT });
+  };
+
   return (
-    <Card title="Населённые пункты">
+    <Card
+      title={
+        <>
+          Населённые пункты
+          {parent != null && (
+            <Button type="link" onClick={toRoot} style={{ marginLeft: 12 }}>
+              ← к корню
+            </Button>
+          )}
+        </>
+      }
+    >
+      <Input.Search
+        placeholder="Поиск по названию…"
+        allowClear
+        enterButton
+        loading={searching}
+        onSearch={onSearch}
+        style={{ marginBottom: 16 }}
+      />
       {loading && <Spin />}
       {error != null && <Alert type="error" showIcon message={error} />}
-      {settlements.length >= MAX_PAGE_LIMIT && (
-        <Alert
-          type="info"
-          showIcon
-          message={`Показаны первые ${MAX_PAGE_LIMIT} населённых пунктов`}
-        />
+      {items.length >= MAX_PAGE_LIMIT && (
+        <Alert type="info" showIcon message={`Показаны первые ${MAX_PAGE_LIMIT}`} />
       )}
       {!loading && error == null && (
         <List
-          dataSource={settlements}
-          locale={{ emptyText: "Населённых пунктов пока нет" }}
+          dataSource={items}
+          locale={{ emptyText: "Найдено пусто" }}
           renderItem={(s) => (
             <List.Item>
               <Typography.Text strong>{s.name}</Typography.Text>
               <Typography.Text type="secondary">{s.id}</Typography.Text>
+              <Button type="link" onClick={() => openChildren(s)}>
+                дети
+              </Button>
             </List.Item>
           )}
         />
