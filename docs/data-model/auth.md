@@ -291,15 +291,14 @@ Cloudflare — обычная схема деплоя одного Go-бинар
 
 ## 5. MCP-контракт
 
-Middleware на `/mcp` (пакет — `internal/mcp` или `internal/app`, где
-регистрируется маршрут; конкретное место решает план фазы B2 — маршрут `/mcp`
-сейчас собирается в `internal/app.New`, так что миддлварь естественно
-оборачивает `http.Handler` там, без изменений в `internal/mcp`): читает
-`Authorization: Bearer gnx_...`, резолвит через
-`auth.Service.ResolveAPIToken`; нет заголовка, неверный или отозванный токен
-— `401` до того, как запрос дойдёт до `server.NewStreamableHTTPServer`.
-Успешная проверка — `Access=AccessFull`, `OwnerID` в контекст запроса (тот же
-путь, что у httpapi, дальше сценарии не отличают источник).
+Middleware на `/mcp` оборачивает `http.Handler` и проверяет аутентификацию
+перед входом в протокол MCP (детали размещения и архитектуры — см.
+«Решение: размещение middleware» ниже): читает `Authorization: Bearer gnx_...`,
+резолвит через `auth.Service.ResolveAPIToken`; нет заголовка, неверный или
+отозванный токен — `401` до того, как запрос дойдёт до
+`server.NewStreamableHTTPServer`. Успешная проверка — `Access=AccessFull`,
+`OwnerID` в контекст запроса (тот же путь, что у httpapi, дальше сценарии не
+отличают источник).
 
 **Решение: размещение middleware.** Middleware живёт в `internal/mcp` как новый
 файл `middleware.go` (`RequireAPIToken`, `AccessFromContext`, `OwnerFromContext`),

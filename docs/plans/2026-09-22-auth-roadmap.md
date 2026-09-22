@@ -79,10 +79,9 @@
 ## B2. MCP-контракт auth
 
 - **Статус:** выполнено (2 коммита: middleware `RequireAPIToken` и e2e-тест на реальном `auth.Service` — см. `2026-09-22-auth-b2-mcp.md`).
-- **Файлы:** `internal/mcp` или `internal/app` — где регистрируется `/mcp`
-  (уточняется в плане этапа: миддлварь может жить в `internal/app`, раз она
-  оборачивает `http.Handler` до `server.NewStreamableHTTPServer`, без
-  изменений в `internal/mcp` вообще).
+- **Файлы:** `internal/mcp/middleware.go` (новый файл: `RequireAPIToken`,
+  `AccessFromContext`, `OwnerFromContext`); существующие файлы пакета не
+  изменены; подключение к `/mcp`-маршруту — на этапе C в `internal/app`.
 - **Приёмка:** запрос без `Authorization` — `401`, не доходит до MCP-сервера;
   валидный `gnx_...` — доходит, `OwnerFromContext` резолвится; отозванный —
   `401`; `TouchAPIToken` вызывается при успехе (обновление `last_used_at`).
