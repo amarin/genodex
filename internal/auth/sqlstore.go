@@ -19,7 +19,7 @@ func NewSQLStore(db *storage.DB) *SQLStore {
 	return &SQLStore{db: db}
 }
 
-// TODO: var _ Store = (*SQLStore)(nil) — будет работать после реализации всех 20 методов
+var _ Store = (*SQLStore)(nil)
 
 // timeToSQL форматирует обязательное время как RFC3339 UTC (как
 // storage/backup.go — единственный прецедент хранения time.Time текстом
