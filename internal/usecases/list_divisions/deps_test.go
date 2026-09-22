@@ -41,6 +41,21 @@ func (m *MockAdminDivisionRepo) EXPECT() *MockAdminDivisionRepoMockRecorder {
 	return m.recorder
 }
 
+// ChildrenOfDivision mocks base method.
+func (m *MockAdminDivisionRepo) ChildrenOfDivision(ctx context.Context, parent models.ID, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChildrenOfDivision", ctx, parent, access, page)
+	ret0, _ := ret[0].([]*models.AdministrativeDivision)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChildrenOfDivision indicates an expected call of ChildrenOfDivision.
+func (mr *MockAdminDivisionRepoMockRecorder) ChildrenOfDivision(ctx, parent, access, page any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChildrenOfDivision", reflect.TypeOf((*MockAdminDivisionRepo)(nil).ChildrenOfDivision), ctx, parent, access, page)
+}
+
 // ListAdministrativeDivisions mocks base method.
 func (m *MockAdminDivisionRepo) ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()

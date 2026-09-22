@@ -13,12 +13,24 @@ type ctxKey struct{}
 
 // fakeRepo отдаёт окна списка как настоящий репозиторий и запоминает вызовы.
 type fakeRepo struct {
-	list     []*models.AdministrativeDivision
-	err      error
-	errAt    int // номер вызова (с 1), на котором возвращается err; 0 — на любом
-	gotCtx   context.Context
-	calls    []models.Page
-	accesses []models.Access
+	list      []*models.AdministrativeDivision // корневой список (ListAdministrativeDivisions)
+	children  []*models.AdministrativeDivision // список детей (ChildrenOfDivision)
+	err       error
+	errAt     int // номер вызова (с 1), на котором возвращается err; 0 — на любом
+	gotCtx    context.Context
+	gotParent *models.ID
+	calls     []models.Page
+	accesses  []models.Access
+}
+
+// window нарезает список по окну, как настоящий репозиторий.
+func window(list []*models.AdministrativeDivision, page models.Page) []*models.AdministrativeDivision {
+	page = page.Normalized()
+	if page.Offset >= len(list) {
+		return nil
+	}
+
+	return list[page.Offset:min(page.Offset+page.Limit, len(list))]
 }
 
 func (f *fakeRepo) ListAdministrativeDivisions(
@@ -32,19 +44,30 @@ func (f *fakeRepo) ListAdministrativeDivisions(
 		return nil, f.err
 	}
 
-	page = page.Normalized()
-	if page.Offset >= len(f.list) {
-		return nil, nil
+	return window(f.list, page), nil
+}
+
+func (f *fakeRepo) ChildrenOfDivision(
+	ctx context.Context, parent models.ID, access models.Access, page models.Page,
+) ([]*models.AdministrativeDivision, error) {
+	f.gotCtx = ctx
+	f.calls = append(f.calls, page)
+	f.accesses = append(f.accesses, access)
+	f.gotParent = &parent
+
+	if f.err != nil && (f.errAt == 0 || f.errAt == len(f.calls)) {
+		return nil, f.err
 	}
 
-	end := min(page.Offset+page.Limit, len(f.list))
-
-	return f.list[page.Offset:end], nil
+	return window(f.children, page), nil
 }
 
 func division(id string, typ models.AdminDivisionType) *models.AdministrativeDivision {
 	return &models.AdministrativeDivision{ID: models.ID(id), Name: id, Type: typ}
 }
+
+// validParent — id родителя в валидном формате (префикс AD + 25-значное тело).
+const validParent = models.ID("AD-01J8X4T0K2M9Q7R5V3B6N8C1D4")
 
 func ids(list []models.AdministrativeDivision) []models.ID {
 	out := []models.ID{}
@@ -248,5 +271,78 @@ func TestListDivisionsPassesContextToRepo(t *testing.T) {
 
 	if repo.gotCtx == nil || repo.gotCtx.Value(ctxKey{}) != "marker" {
 		t.Fatalf("репозиторий получил контекст %v, ожидался переданный сценарию", repo.gotCtx)
+	}
+}
+
+// TestListDivisionsFromParentReturnsChildren: при ParentID — только прямые дети,
+// корневой список не читается (ChildrenOfDivision не трогает f.list).
+func TestListDivisionsFromParentReturnsChildren(t *testing.T) {
+	repo := &fakeRepo{
+		list: []*models.AdministrativeDivision{division("ad-root", models.AdminDivisionGovernorate)},
+		children: []*models.AdministrativeDivision{
+			division("ad-1", models.AdminDivisionSelo),
+			division("ad-2", models.AdminDivisionVolost),
+		},
+	}
+	parent := validParent
+
+	got, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{ParentID: &parent})
+	if err != nil || !sameIDs(ids(got), "ad-1", "ad-2") {
+		t.Fatalf("got %v, %v; ожидались ad-1, ad-2", ids(got), err)
+	}
+	if repo.gotParent == nil || *repo.gotParent != parent {
+		t.Fatalf("gotParent = %v, ожидался %s", repo.gotParent, parent)
+	}
+}
+
+// TestListDivisionsFromParentAppliesFiltersAndWindow: вид/тип и окно применяются
+// среди детей, а не среди всего репозитория.
+func TestListDivisionsFromParentAppliesFiltersAndWindow(t *testing.T) {
+	repo := &fakeRepo{
+		children: []*models.AdministrativeDivision{
+			division("ad-1", models.AdminDivisionSelo),
+			division("ad-2", models.AdminDivisionVolost),
+			division("ad-3", models.AdminDivisionDerevnya),
+			division("ad-4", models.AdminDivisionSelo),
+		},
+	}
+	parent := validParent
+
+	got, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{
+		Kind:     models.DivisionKindSettlement,
+		ParentID: &parent,
+		Page:     models.Page{Limit: 1, Offset: 1},
+	})
+	if err != nil || !sameIDs(ids(got), "ad-3") {
+		t.Fatalf("got %v, %v; ожидалась ad-3 (второе селение среди детей)", ids(got), err)
+	}
+}
+
+// TestListDivisionsFromMissingParentIsNotFound: ChildrenOfDivision с ErrNotFound
+// порта пробрасывается (404 наверху).
+func TestListDivisionsFromMissingParentIsNotFound(t *testing.T) {
+	repo := &fakeRepo{err: models.ErrNotFound}
+	parent := validParent
+
+	_, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{ParentID: &parent})
+	if !errors.Is(err, models.ErrNotFound) {
+		t.Fatalf("err = %v, ожидался ErrNotFound", err)
+	}
+}
+
+// TestListDivisionsInvalidParentDoesNotTouchRepo: неверный формат parent_id —
+// *ValidationError, репозиторий не вызывается.
+func TestListDivisionsInvalidParentDoesNotTouchRepo(t *testing.T) {
+	repo := sample()
+	bad := models.ID("not-an-id")
+
+	_, err := New(repo).ListDivisions(context.Background(), models.DivisionQuery{ParentID: &bad})
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "parent_id" {
+		t.Fatalf("err = %v, ожидалась *ValidationError поля parent_id", err)
+	}
+	if len(repo.calls) != 0 {
+		t.Fatalf("репозиторий вызван %d раз при некорректном parent_id", len(repo.calls))
 	}
 }
