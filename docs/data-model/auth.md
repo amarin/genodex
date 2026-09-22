@@ -241,22 +241,34 @@ Middleware `resolveAccess` по замыслу дизайна оборачива
 `models.AccessPublic`. Хелпер `httpapi.AccessFromContext(ctx) models.Access`
 и `httpapi.OwnerFromContext(ctx) (auth.ID, bool)`.
 
-В реализации этапа B `resolveAccess`/`requireCSRFHeader` оборачивают не весь
-`/api/`, а только поддерево `NewAuthHandler` (`internal/httpapi/auth.go`):
-`return requireCSRFHeader(resolveAccess(auth)(mux))`, где `mux` — внутренний
-`http.ServeMux` из 11 маршрутов `/api/auth/*`. Это сделано, чтобы
-`NewAuthHandler` был самодостаточным и тестируемым независимо от остального
-`/api/` — свойство сохраняется и после этапа C: `NewHandler`/`NewAuthHandler`
-остаются как есть, используются существующими юнит-тестами пакета напрямую,
-без auth. Подключён в `internal/app.New` через `httpapi.NewAPIHandler`, см.
-§6 — единая точка входа регистрирует ВСЕ маршруты (`admin-divisions`, `docs`,
-`health`, `auth/*`) на одном `http.ServeMux` и оборачивает его `resolveAccess`+
-`requireCSRFHeader` один раз, а не только вокруг `/api/auth/*`.
-Дополнительное жёсткое ограничение монтирования: маршруты `NewAuthHandler`
-зарегистрированы АБСОЛЮТНЫМИ путями (`GET /api/auth/status`, а не
-относительными) — подключать нужно как `mux.Handle("/api/auth/",
-httpapi.NewAuthHandler(...))`, БЕЗ `http.StripPrefix`: срезание префикса
-молча превратит все 11 маршрутов в `404`.
+`NewAuthHandler`/`NewHandler` (`internal/httpapi/auth.go`/`httpapi.go`) —
+самостоятельные конструкторы БЕЗ реального монтирования, каждый сам решает,
+оборачивать ли себя `resolveAccess`/`requireCSRFHeader`: `NewAuthHandler`
+оборачивает **только свой** внутренний `http.ServeMux` из 11 маршрутов
+`/api/auth/*` (`return requireCSRFHeader(resolveAccess(auth)(mux))`);
+`NewHandler` (`admin-divisions`/`docs`/`health`) не оборачивает себя вовсе —
+он ничего не знает про `auth.AuthService`. Оба существуют, чтобы оставаться
+самодостаточными и тестируемыми независимо от auth — так их и используют
+~40 существующих юнит-тестов пакета напрямую (без `auth.Service`). Если
+`NewAuthHandler` вызывается отдельно — только в собственных юнит-тестах
+пакета `httpapi`, НЕ в `internal/app` — маршруты внутри зарегистрированы
+АБСОЛЮТНЫМИ путями (`GET /api/auth/status`, а не относительными): монтировать
+нужно как `mux.Handle("/api/auth/", httpapi.NewAuthHandler(...))`, БЕЗ
+`http.StripPrefix` (срезание префикса молча превратит все 11 маршрутов в
+`404`) — но это описание для теста самого по себе, не рецепт для реального
+приложения.
+
+Единственный источник истины про реальное монтирование —
+`httpapi.NewAPIHandler(divisions, auth, docsFS)` (`internal/httpapi/api.go`):
+регистрирует ВСЕ маршруты (`admin-divisions`, `docs`, `health`, `auth/*`) на
+одном общем `http.ServeMux` и оборачивает его целиком `resolveAccess`+
+`requireCSRFHeader` ровно один раз — это то и только то, что монтирует
+`internal/app.New`: `mux.Handle("/api/", httpapi.NewAPIHandler(...))`, тоже
+БЕЗ `http.StripPrefix` (маршруты `NewAPIHandler` — те же абсолютные пути).
+Монтировать `NewHandler`/`NewAuthHandler` по отдельности в `internal/app` —
+регрессия к дыре этапа B (`resolveAccess`/`requireCSRFHeader` вокруг только
+`/api/auth/*`, а `admin-divisions`/`docs`/`health` вообще без обёртки),
+которую `NewAPIHandler` закрывает, см. §6.
 
 Отдельный middleware `requireCSRFHeader` — на **любой** `POST/PUT/DELETE` под
 `/api/` без исключений (включая `/api/auth/login|register`: они тоже вызываются
@@ -289,6 +301,16 @@ Cloudflare — обычная схема деплоя одного Go-бинар
 `403` не используется (в этом проекте различие «не тот» vs «не туда» не
 нужно — один владелец = все права). Существующие `400/404/409/422` не
 меняются.
+
+Сознательное, ранее не задокументированное следствие того, что
+`resolveAccess` (см. выше — fail-closed на сбой инфраструктуры) теперь
+оборачивает через `NewAPIHandler` вообще весь `/api/`, включая
+`GET /api/health`: если вызывающий предъявил cookie `genodex_access`, а
+`ResolveAccess` падает на настоящей инфраструктурной ошибке (БД недоступна),
+`/api/health` тоже ответит `500`, а не `200` — health-check с чужой/старой
+cookie не является исключением из fail-closed поведения. Анонимный запрос
+без cookie на `/api/health` (обычный health-check) резолвится в
+`AccessPublic` без обращения к БД и не подвержен этому.
 
 ## 5. MCP-контракт
 

@@ -101,11 +101,23 @@
   `auth.Service`, подключение обоих middleware).
 - **Решения дизайна:** §6. Поведение делений не меняется (нет `Private`) —
   меняется факт проводки параметра и коды ошибок записи.
-- **Приёмка:** `TestDivisionListPassesAccessFromContext`,
-  `TestDivisionCreateAnonymousIs401`,
-  `TestDivisionCreateOwnerSucceeds` (httpapi и mcp); e2e на реальном сторе —
-  bootstrap → создать владельца → залогиниться → создать деление → выйти →
-  анонимная попытка создать → `401`.
+- **Приёмка:** httpapi — `TestDivisionListPassesAccessFromContext`,
+  `TestDivisionCreateAnonymousIs401`, `TestDivisionCreateContract` (владелец
+  через `ownerCtx` — `Access=Full` в контексте, как кладёт `resolveAccess`,
+  «запись владельцем проходит»); mcp — `TestDivisionListToolPassesAccessFromContext`,
+  `TestDivisionSearchToolPassesAccessFromContext` (проводка `Access`),
+  `TestRequireAPITokenNoHeaderIs401`/`TestRequireAPITokenValidTokenResolvesContext`
+  (гейт всего `/mcp`, решение #11 — отдельного гейта на `division_create` и
+  т. п. нет, весь `/mcp` и так недостижим анонимно). e2e на реальном сторе —
+  `TestDivisionWriteContractWithRealStore` (`internal/httpapi`): bootstrap →
+  создать владельца → залогиниться → создать/прочитать/изменить/удалить
+  деление → `409` со списком ссылающихся → `logout` → та же cookie на запись
+  → `401` (протухшая сессия) → анонимная попытка без cookie → `401`; плюс
+  `TestDivisionCreateWithoutCSRFHeaderIs400` — валидная сессия владельца без
+  `X-Requested-With` → `400`, сценарий не вызывается. `internal/app`:
+  `TestAppRejectsUnauthenticatedWrites` — та же проверка на уровне реальной
+  сборки `New()` (`/api/admin-divisions` и `/mcp` анонимно → `401`; `GET
+  /api/health` без cookie → `200`).
 
 ## D. Веб
 
