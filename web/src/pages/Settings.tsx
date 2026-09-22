@@ -23,7 +23,8 @@ import {
   revokeAPIToken,
   type APIToken,
 } from "../auth";
-import { AppHeader, useSession } from "../App";
+import { AppHeader } from "../AppHeader";
+import { useSession } from "../session";
 
 const { Content } = Layout;
 
@@ -65,6 +66,8 @@ interface PasswordFormValues {
   new_password: string;
 }
 
+const PASSWORD_FORM_FIELDS: (keyof PasswordFormValues)[] = ["current_password", "new_password"];
+
 function ChangePasswordCard() {
   const { refresh } = useSession();
   const navigate = useNavigate();
@@ -77,20 +80,29 @@ function ChangePasswordCard() {
     setError(null);
     try {
       await changePassword(values.current_password, values.new_password);
-      // Успех гасит ВСЕ сессии владельца на сервере, включая текущую
-      // (internal/httpapi/auth.go, handleAuthPassword) — cookies уже стёрты
-      // сервером, здесь только синхронизируем состояние и уходим на /login.
-      await refresh();
-      navigate("/login");
     } catch (e) {
-      if (e instanceof ApiError && e.field != null) {
+      if (
+        e instanceof ApiError &&
+        e.field != null &&
+        (PASSWORD_FORM_FIELDS as string[]).includes(e.field)
+      ) {
         form.setFields([{ name: e.field as keyof PasswordFormValues, errors: [e.message] }]);
       } else {
         setError(e instanceof ApiError ? e.message : "Не удалось сменить пароль");
       }
-    } finally {
       setSubmitting(false);
+      return;
     }
+    // Пароль уже сменился на сервере и погасил ВСЕ сессии владельца,
+    // включая текущую (internal/httpapi/auth.go, handleAuthPassword) —
+    // cookies уже стёрты сервером. refresh() здесь синхронизирует
+    // локальное состояние и может сам упасть (например resolveAccess
+    // fail-closed'ится при сбое БД) — это не повод объявлять смену пароля
+    // неудавшейся или оставлять пользователя на /settings с мёртвой
+    // сессией.
+    setSubmitting(false);
+    await refresh().catch(() => {});
+    navigate("/login");
   };
 
   return (
@@ -130,7 +142,7 @@ function InviteCard() {
     setError(null);
     try {
       const invite = await createInvite();
-      setLink(`${window.location.origin}/register?invite=${invite.token}`);
+      setLink(`${window.location.origin}/register?invite=${encodeURIComponent(invite.token)}`);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Не удалось создать приглашение");
     } finally {
@@ -183,6 +195,7 @@ function TokensCard() {
 
   const load = () => {
     setLoading(true);
+    setError(null);
     listAPITokens()
       .then(setTokens)
       .catch((e: Error) => setError(e instanceof ApiError ? e.message : "Не удалось загрузить токены"))
@@ -194,7 +207,7 @@ function TokensCard() {
   }, []);
 
   const onCreate = async () => {
-    if (label.trim() === "") {
+    if (creating || label.trim() === "") {
       return;
     }
     setCreating(true);

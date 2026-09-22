@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Alert, Button, Card, Form, Input, Layout, Spin } from "antd";
 import { register, ApiError } from "../auth";
-import { AppHeader, useSession } from "../App";
+import { AppHeader } from "../AppHeader";
+import { useSession } from "../session";
 
 const { Content } = Layout;
 
@@ -10,6 +11,8 @@ interface RegisterFormValues {
   login: string;
   password: string;
 }
+
+const REGISTER_FORM_FIELDS: (keyof RegisterFormValues)[] = ["login", "password"];
 
 export default function RegisterPage() {
   const { loading, bootstrap, refresh } = useSession();
@@ -40,17 +43,24 @@ export default function RegisterPage() {
     setError(null);
     try {
       await register(values.login, values.password, invite);
-      await refresh();
-      navigate("/docs");
     } catch (e) {
-      if (e instanceof ApiError && e.field != null) {
+      if (
+        e instanceof ApiError &&
+        e.field != null &&
+        (REGISTER_FORM_FIELDS as string[]).includes(e.field)
+      ) {
         form.setFields([{ name: e.field as keyof RegisterFormValues, errors: [e.message] }]);
       } else {
         setError(e instanceof ApiError ? e.message : "Не удалось зарегистрироваться");
       }
-    } finally {
       setSubmitting(false);
+      return;
     }
+    // Регистрация уже удалась на сервере — переход/обновление сессии не
+    // должны выглядеть как провал регистрации.
+    setSubmitting(false);
+    await refresh().catch(() => {});
+    navigate("/docs");
   };
 
   return (

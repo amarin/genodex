@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Alert, Button, Card, Form, Input, Layout } from "antd";
 import { login, ApiError } from "../auth";
-import { AppHeader, useSession } from "../App";
+import { AppHeader } from "../AppHeader";
+import { useSession } from "../session";
 
 const { Content } = Layout;
 
@@ -10,6 +11,8 @@ interface LoginFormValues {
   login: string;
   password: string;
 }
+
+const LOGIN_FORM_FIELDS: (keyof LoginFormValues)[] = ["login", "password"];
 
 export default function LoginPage() {
   const { refresh } = useSession();
@@ -23,17 +26,21 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(values.login, values.password);
-      await refresh();
-      navigate("/docs");
     } catch (e) {
-      if (e instanceof ApiError && e.field != null) {
+      if (e instanceof ApiError && e.field != null && (LOGIN_FORM_FIELDS as string[]).includes(e.field)) {
         form.setFields([{ name: e.field as keyof LoginFormValues, errors: [e.message] }]);
       } else {
         setError(e instanceof ApiError ? e.message : "Не удалось войти");
       }
-    } finally {
       setSubmitting(false);
+      return;
     }
+    // Вход уже удался на сервере — что бы ни случилось дальше (обновление
+    // состояния сессии, переход), это не повод показывать пользователю
+    // ошибку входа.
+    setSubmitting(false);
+    await refresh().catch(() => {});
+    navigate("/docs");
   };
 
   return (
