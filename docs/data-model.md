@@ -34,3 +34,5 @@
 - [Принятые решения (log)](data-model/decisions.md) — журнал согласованных решений
 - [Ядро чтения и записи](data-model/core-read-write.md) — календарь дат, формат id,
   валидация, порт (удаление, транзакции, пагинация, поиск, приватность), контракты
+  (дизайн; проход выполнен — итог в
+  [implementation/core-read-write.md](implementation/core-read-write.md))

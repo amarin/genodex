@@ -1,7 +1,51 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+Заметные изменения проекта фиксируются в этом файле (формат — по мотивам
+[Keep a Changelog](https://keepachangelog.com/)).
 
 ## [Unreleased]
 
-<!-- Next features go here -->
+### Added
+
+- Административное деление — вертикальный срез, полный контракт HTTP и MCP:
+  список с фильтрами (`kind`, `type`), список прямых детей (`parent_id`),
+  префиксный поиск по названию и вариантам названия (`division_search`,
+  `GET /api/admin-divisions/search`), чтение по id, создание/изменение/удаление
+  с генерацией id сервером и проверкой циклов по `parent_id`.
+  (`internal/usecases/{list,search,get,create,update,delete}_division*`,
+  `internal/httpapi`, `internal/mcp`).
+- Веб: строка поиска и переход к дочерним единицам во вкладке «Населённые
+  пункты» (`web/src/App.tsx`).
+- Юлианский/григорианский календарь в `FactDate` (поле `Calendar`, сравнение
+  дат разных календарей через юлианский день, суффиксы `ст. ст.`/`н. ст.` при
+  разборе и выводе).
+- Формат идентификаторов `ПРЕФИКС-ULID` для всех 21 типов сущностей и генератор
+  (`internal/idgen`).
+- `Validate() error` на каждой доменной сущности и value-типе
+  (`*models.ValidationError`).
+- Индексы по внешним ключам, генерируемые из схемы (`PRAGMA
+  foreign_key_list`), и поисковый индекс для префиксного поиска
+  (`idx_search_term`).
+- Порт хранилища: `ErrNotFound` для отсутствующих сущностей, `ctx` во всех
+  методах, `Delete*` для всех 21 типов (общая реализация на графе внешних
+  ключей, `*InUseError` со списком ссылающихся), `InTx` для атомарной записи
+  нескольких сущностей, `Page`/`Access` (публичный/полный доступ) во всех
+  списках, пакетная загрузка (без N+1) для людей и административных делений,
+  `Search` и `ChildrenOfDivision`.
+
+### Changed
+
+- Переименован единственный публичный контракт, существовавший до этого
+  прохода: `settlement_list` / `GET /api/settlements` → `division_list` /
+  `GET /api/admin-divisions`; DTO `Settlement` → `AdminDivision`. Фильтр
+  «только населённые пункты» стал параметром запроса (`kind=settlement`), а не
+  отдельным именем контракта.
+- `internal/definitions/russia`: константы двух исторических систем деления
+  (Российская империя, СССР) используют канонические значения
+  `models.AdminDivisionType` (`governorate`/`district`/`volost`) вместо
+  русских слов для показа, не проходивших `AdminDivisionType.Valid()`.
+
+### Removed
+
+- Мёртвый тип `models.AdministrativeDivisionTypeRelation` (не имел ни одного
+  потребителя в кодовой базе).
