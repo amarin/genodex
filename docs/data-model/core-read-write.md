@@ -281,6 +281,14 @@ type Hit struct{ Type Type; ID ID; Label, Field string }
   `DivisionService` (httpapi и mcp) — единый интерфейс пяти методов, в
   `internal/app` его собирает фасад `divisionService` (пять сценариев,
   `idgen.New()` для `create`).
+- Контракты поиска и родителя делений (S16): `GET /api/admin-divisions/search`
+  (литеральный маршрут перед `{id}` в Go 1.22 ServeMux) и MCP-тул
+  `division_search` ищут по началу названия (`Name`+`Variants`); результат —
+  полные `[]AdminDivision`, окно считается среди найденных единиц. `parent_id`
+  в `models.DivisionQuery` переключает источник списка на
+  `Store.ChildrenOfDivision` (несуществующий родитель — 404, неверный формат —
+  422, репозиторий не вызывается). `DivisionService` вырос до шести методов
+  (`SearchDivisions`); фасад `divisionService` — до шести сценариев.
 - Соглашение об именах контрактов: MCP-тулы `<entity>_list|get|create|update|delete|search`,
   HTTP `GET/POST /api/<множественное>`, `GET/PUT/DELETE /api/<множественное>/{id}`.
   DTO и запросы — в `transport`; ошибки сценариев в статусы: `ErrNotFound` → 404,
