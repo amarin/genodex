@@ -3,7 +3,9 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -315,6 +317,57 @@ func TestServiceRegisterDuplicateLoginFails(t *testing.T) {
 
 	if _, err := svc.Register(ctx, "dup", "password123", &raw); !errors.Is(err, ErrLoginTaken) {
 		t.Fatalf("err = %v, ожидался ErrLoginTaken", err)
+	}
+}
+
+// TestServiceRegisterBootstrapRaceOnlyOneOwnerCreated: N конкурентных
+// bootstrap-регистраций (разные логины, без invite) на пустом сторе —
+// ровно одна проходит, остальные получают ErrInviteRequired (мьютекс
+// сериализует Register — второй и далее видят count>0). Гоняется под
+// -race: fakeStore использует обычные map без своей синхронизации —
+// если бы мьютекса не было или он был бы дырявым, конкурентный доступ к
+// map поймал бы race detector, а не только тест упал бы по количеству.
+func TestServiceRegisterBootstrapRaceOnlyOneOwnerCreated(t *testing.T) {
+	svc := newTestService(newFakeStore())
+
+	const n = 10
+
+	var wg sync.WaitGroup
+
+	results := make([]error, n)
+
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+
+		go func(i int) {
+			defer wg.Done()
+
+			_, err := svc.Register(context.Background(), fmt.Sprintf("owner%d", i), "password123", nil)
+			results[i] = err
+		}(i)
+	}
+
+	wg.Wait()
+
+	var succeeded, inviteRequired int
+
+	for _, err := range results {
+		switch {
+		case err == nil:
+			succeeded++
+		case errors.Is(err, ErrInviteRequired):
+			inviteRequired++
+		default:
+			t.Errorf("неожиданная ошибка: %v", err)
+		}
+	}
+
+	if succeeded != 1 {
+		t.Fatalf("succeeded = %d, ожидалась ровно 1 (гонка должна сериализоваться)", succeeded)
+	}
+
+	if inviteRequired != n-1 {
+		t.Fatalf("inviteRequired = %d, ожидалось %d", inviteRequired, n-1)
 	}
 }
 

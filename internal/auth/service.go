@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"sync"
 	"time"
 
 	"github.com/amarin/genodex/internal/models"
@@ -29,6 +30,18 @@ type AuthResult struct {
 type Service struct {
 	store Store
 	now   func() time.Time
+
+	// registerMu сериализует Register: между CountOwners и CreateOwner нет
+	// БД-транзакции (auth.SQLStore не использует транзакций), так что без
+	// мьютекса два конкурентных bootstrap-запроса на пустой БД оба видят
+	// «владельцев ноль» и оба проходят мимо проверки invite (TOCTOU,
+	// auth.md §9). genodex — однопроцессный сервис на одном соединении
+	// SQLite, поэтому мьютекс внутри процесса полностью закрывает гонку
+	// без изменений в хранилище; заодно делает избыточной (но не
+	// вредной — оставлена как есть) отдельную защиту от повторного
+	// использования invite в MarkInviteUsed (A2-fix-1) — тот же
+	// сериализованный путь закрывает и её.
+	registerMu sync.Mutex
 }
 
 // New создаёт сервис на системных часах.
@@ -50,6 +63,9 @@ func (s *Service) Bootstrap(ctx context.Context) (bool, error) {
 // Register создаёт владельца: до первого владельца invite не нужен
 // (bootstrap), после — обязателен, валиден, не использован и не истёк.
 func (s *Service) Register(ctx context.Context, login, password string, invite *string) (AuthResult, error) {
+	s.registerMu.Lock()
+	defer s.registerMu.Unlock()
+
 	count, err := s.store.CountOwners(ctx)
 	if err != nil {
 		return AuthResult{}, err
