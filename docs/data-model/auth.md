@@ -296,9 +296,11 @@ Middleware на `/mcp` оборачивает `http.Handler` и проверяе
 «Решение: размещение middleware» ниже): читает `Authorization: Bearer gnx_...`,
 резолвит через `auth.Service.ResolveAPIToken`; нет заголовка, неверный или
 отозванный токен — `401` до того, как запрос дойдёт до
-`server.NewStreamableHTTPServer`. Успешная проверка — `Access=AccessFull`,
-`OwnerID` в контекст запроса (тот же путь, что у httpapi, дальше сценарии не
-отличают источник).
+`server.NewStreamableHTTPServer`. Сбой инфраструктуры при проверке токена (например,
+недоступна БД) отвечает `500`, а не `401` — намеренное различие, чтобы сбой
+не был неотличим от успешной атаки на доступность (аналогично `httpapi.resolveAccess`).
+Успешная проверка — `Access=AccessFull`, `OwnerID` в контекст запроса (тот же путь,
+что у httpapi, дальше сценарии не отличают источник).
 
 **Решение: размещение middleware.** Middleware живёт в `internal/mcp` как новый
 файл `middleware.go` (`RequireAPIToken`, `AccessFromContext`, `OwnerFromContext`),
