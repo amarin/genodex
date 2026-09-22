@@ -26,7 +26,7 @@ export interface Invite {
 
 // ApiError — тело {error, field?} из writeAuthError/writeJSON (Go). field
 // заполнен только для *auth.ValidationError (422) — остальные коды его не
-// несят.
+// несут.
 export class ApiError extends Error {
   status: number;
   field?: string;
@@ -38,16 +38,48 @@ export class ApiError extends Error {
   }
 }
 
-async function authFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+// NO_REFRESH_RETRY_PATHS — эндпоинты, на которых 401 либо не означает
+// «истёк access-token» (login/register — это просто неверные креды), либо
+// уже сам является попыткой обновления/завершения сессии (refresh/logout) —
+// ретраить их через refreshSession() было бы бессмысленно или дало бы
+// бесконечную рекурсию.
+const NO_REFRESH_RETRY_PATHS = new Set<string>([
+  "/api/auth/login",
+  "/api/auth/register",
+  "/api/auth/refresh",
+  "/api/auth/logout",
+]);
+
+async function authFetch<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
   const resp = await fetch(path, {
     ...init,
     headers: {
+      ...init.headers,
       "Content-Type": "application/json",
       // requireCSRFHeader (этап B, решение 9): обязателен на любом
       // POST/PUT/DELETE под /api/ без исключений, включая /api/auth/*.
       "X-Requested-With": "genodex",
     },
   });
+
+  if (resp.status === 401 && !retried) {
+    const bare = path.split("?")[0];
+    if (!NO_REFRESH_RETRY_PATHS.has(bare)) {
+      // access-cookie истёк (15 минут) — прежде чем считать это отказом,
+      // пробуем один раз обновить сессию по refresh-cookie (30 дней,
+      // скользящий, auth.md решение 7) и повторить запрос целиком.
+      // Безопасно: requireFull на сервере отклоняет запрос ДО разбора
+      // тела и бизнес-логики, так что исходная попытка никогда не
+      // исполнялась — повтор не может задвоить эффект.
+      try {
+        await refreshSession();
+        return authFetch<T>(path, init, true);
+      } catch {
+        // refresh тоже не удался — падаем в обычную обработку ниже с
+        // исходным 401.
+      }
+    }
+  }
 
   if (!resp.ok) {
     let body: { error?: string; field?: string } = {};
@@ -64,6 +96,10 @@ async function authFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
 
   return resp.json();
+}
+
+export async function refreshSession(): Promise<AuthSession> {
+  return authFetch<AuthSession>("/api/auth/refresh", { method: "POST" });
 }
 
 export async function fetchAuthStatus(): Promise<AuthStatus> {
