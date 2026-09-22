@@ -2,9 +2,11 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/amarin/genodex/internal/auth"
@@ -114,6 +116,38 @@ func TestRequireAPITokenInfrastructureErrorIs500(t *testing.T) {
 
 	if rec.Code != http.StatusInternalServerError || called {
 		t.Fatalf("code=%d called=%v, ожидался 500 без вызова next", rec.Code, called)
+	}
+}
+
+func TestRequireAPITokenErrorResponseJSONValid(t *testing.T) {
+	// Проверяем, что writeInternalError корректно экранирует спецсимволы (кавычки, бэкслеши)
+	// и отдаёт валидный JSON
+	errMsgWithQuote := `db error: "constraint violated"`
+	svc := &fakeTokenResolver{err: errors.New(errMsgWithQuote)}
+	h := RequireAPIToken(svc)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+
+	req := httptest.NewRequest(http.MethodPost, "/mcp", nil)
+	req.Header.Set("Authorization", "Bearer gnx_test")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("code=%d, ожидался 500", rec.Code)
+	}
+
+	// Проверяем валидность JSON и содержание поля error
+	var body map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("ответ не валидный JSON: %v, тело: %s", err, rec.Body.String())
+	}
+
+	errField, ok := body["error"]
+	if !ok {
+		t.Fatal("поле error отсутствует в JSON")
+	}
+
+	if !strings.Contains(errField, errMsgWithQuote) {
+		t.Fatalf("error field=%q, ожидалось содержать %q", errField, errMsgWithQuote)
 	}
 }
 

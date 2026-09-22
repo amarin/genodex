@@ -2,6 +2,7 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -91,9 +92,10 @@ func writeUnauthorized(w http.ResponseWriter) {
 func writeInternalError(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusInternalServerError)
-	errMsg := err.Error()
-	// простой escape JSON-строки (достаточно для логирования, полный уход от сложной зависимости)
-	_, _ = w.Write([]byte(`{"error":"внутренняя ошибка сервера: ` + errMsg + `"}`))
+	resp := map[string]string{
+		"error": "внутренняя ошибка сервера: " + err.Error(),
+	}
+	_ = json.NewEncoder(w).Encode(resp)
 }
 
 // AccessFromContext возвращает режим доступа; models.AccessPublic, если
