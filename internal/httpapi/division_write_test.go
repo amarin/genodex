@@ -1,23 +1,36 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"testing/fstest"
 
+	authpkg "github.com/amarin/genodex/internal/auth"
 	"github.com/amarin/genodex/internal/models"
 )
 
 const writeID = "AD-01ARZ3NDEKTSV4RRFFQ69G5FAV"
 const writeRefID = "AD-01ARZ3NDEKTSV4RRFFQ69G5FA0"
 
+// ownerCtx кладёт в контекст запроса Access=Full и OwnerID — как resolveAccess
+// при валидной cookie-сессии. Существующие тесты записи проверяют контракт
+// хендлера для аутентифицированного владельца; анонимный путь — отдельные
+// тесты TestDivision*AnonymousIs401 ниже.
+func ownerCtx(r *http.Request) *http.Request {
+	ctx := context.WithValue(r.Context(), accessCtxKey, models.AccessFull)
+	ctx = context.WithValue(ctx, ownerCtxKey, authpkg.ID("OW-01ARZ3NDEKTSV4RRFFQ69G5FA9"))
+
+	return r.WithContext(ctx)
+}
+
 func postD(t *testing.T, h http.Handler, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, strings.NewReader(body)))
+	h.ServeHTTP(rec, ownerCtx(httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))))
 
 	return rec
 }
@@ -26,7 +39,7 @@ func putD(t *testing.T, h http.Handler, path, body string) *httptest.ResponseRec
 	t.Helper()
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, path, strings.NewReader(body)))
+	h.ServeHTTP(rec, ownerCtx(httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))))
 
 	return rec
 }
@@ -35,7 +48,7 @@ func delD(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorder 
 	t.Helper()
 
 	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodDelete, path, nil))
+	h.ServeHTTP(rec, ownerCtx(httptest.NewRequest(http.MethodDelete, path, nil)))
 
 	return rec
 }
@@ -220,5 +233,48 @@ func TestDivisionDeleteInUseIs409WithReferrers(t *testing.T) {
 		`","referrers":[{"type":"administrative_division","id":"` + writeRefID + `"}]}`
 	if got := strings.TrimSpace(rec.Body.String()); got != want {
 		t.Fatalf("body = %s, want %s", got, want)
+	}
+}
+
+// TestDivisionCreateAnonymousIs401: без активной сессии запись отклоняется
+// раньше разбора тела — сценарий не вызывается (auth.md §6, приёмка этапа C).
+func TestDivisionCreateAnonymousIs401(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/admin-divisions", strings.NewReader(`{"name":"x","type":"selo"}`))
+	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+
+	requireStatus(t, rec, http.StatusUnauthorized)
+	if svc.gotCreate.ID != "" {
+		t.Fatalf("сценарий вызван анонимом: %+v", svc.gotCreate)
+	}
+}
+
+// TestDivisionUpdateAnonymousIs401: аналогично для PUT.
+func TestDivisionUpdateAnonymousIs401(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/api/admin-divisions/"+writeID, strings.NewReader(`{}`))
+	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+
+	requireStatus(t, rec, http.StatusUnauthorized)
+	if len(svc.gotIDs) != 0 {
+		t.Fatalf("сценарий вызван анонимом: %v", svc.gotIDs)
+	}
+}
+
+// TestDivisionDeleteAnonymousIs401: аналогично для DELETE.
+func TestDivisionDeleteAnonymousIs401(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodDelete, "/api/admin-divisions/"+writeID, nil)
+	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+
+	requireStatus(t, rec, http.StatusUnauthorized)
+	if len(svc.gotIDs) != 0 {
+		t.Fatalf("сценарий вызван анонимом: %v", svc.gotIDs)
 	}
 }

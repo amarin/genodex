@@ -30,16 +30,21 @@ type fakeDivisions struct {
 	search    []models.AdministrativeDivision
 	searchErr error
 	gotSearch models.DivisionSearchQuery
+
+	gotListAccess   models.Access
+	gotSearchAccess models.Access
 }
 
-func (f *fakeDivisions) ListDivisions(_ context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
+func (f *fakeDivisions) ListDivisions(_ context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
 	f.got = q
+	f.gotListAccess = access
 
 	return f.list, f.err
 }
 
-func (f *fakeDivisions) SearchDivisions(_ context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+func (f *fakeDivisions) SearchDivisions(_ context.Context, access models.Access, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
 	f.gotSearch = q
+	f.gotSearchAccess = access
 
 	return f.search, f.searchErr
 }
@@ -254,5 +259,43 @@ func TestOldSettlementsRouteIsGone(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("GET /api/settlements = %d, ожидался 404", rec.Code)
+	}
+}
+
+// TestDivisionListPassesAccessFromContext: Access, положенный resolveAccess в
+// контекст запроса, доходит до сценария как есть (не захардкожен на
+// AccessFull — auth.md §6, приёмка этапа C).
+func TestDivisionListPassesAccessFromContext(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin-divisions", nil)
+	req = req.WithContext(context.WithValue(req.Context(), accessCtxKey, models.AccessPublic))
+
+	rec := httptest.NewRecorder()
+	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	if svc.gotListAccess != models.AccessPublic {
+		t.Fatalf("gotListAccess = %v, ожидался AccessPublic", svc.gotListAccess)
+	}
+}
+
+// TestDivisionSearchPassesAccessFromContext: аналогично для поиска.
+func TestDivisionSearchPassesAccessFromContext(t *testing.T) {
+	svc := &fakeDivisions{}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/admin-divisions/search?q=давы", nil)
+	req = req.WithContext(context.WithValue(req.Context(), accessCtxKey, models.AccessPublic))
+
+	rec := httptest.NewRecorder()
+	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	if svc.gotSearchAccess != models.AccessPublic {
+		t.Fatalf("gotSearchAccess = %v, ожидался AccessPublic", svc.gotSearchAccess)
 	}
 }

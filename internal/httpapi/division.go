@@ -23,7 +23,7 @@ func handleDivisionList(divisions DivisionService) http.HandlerFunc {
 			return
 		}
 
-		list, err := divisions.ListDivisions(r.Context(), q)
+		list, err := divisions.ListDivisions(r.Context(), AccessFromContext(r.Context()), q)
 		if err != nil {
 			writeError(w, err)
 
@@ -70,7 +70,7 @@ func handleDivisionSearch(divisions DivisionService) http.HandlerFunc {
 			return
 		}
 
-		list, err := divisions.SearchDivisions(r.Context(), q)
+		list, err := divisions.SearchDivisions(r.Context(), AccessFromContext(r.Context()), q)
 		if err != nil {
 			writeError(w, err)
 

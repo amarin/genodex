@@ -10,7 +10,8 @@ import (
 )
 
 // handleDivisionGet — GET /api/admin-divisions/{id}. Неверный формат id — 422
-// (ValidationError сценария), отсутствующая единица — 404.
+// (ValidationError сценария), отсутствующая единица — 404. Чтение открыто
+// анонимному посетителю (auth.md §6 — Access здесь не проверяется).
 func handleDivisionGet(divisions DivisionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		d, err := divisions.GetDivision(r.Context(), pathDivisionID(r))
@@ -25,9 +26,15 @@ func handleDivisionGet(divisions DivisionService) http.HandlerFunc {
 }
 
 // handleDivisionCreate — POST /api/admin-divisions: создаёт единицу, отвечает
-// 201 с созданной единицей (id генерирует сценарий).
+// 201 с созданной единицей (id генерирует сценарий). Запись — только для
+// вошедшего владельца (auth.md §6, решение 9): без активной сессии — 401
+// раньше разбора тела, сценарий не вызывается.
 func handleDivisionCreate(divisions DivisionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireFull(w, r); !ok {
+			return
+		}
+
 		var in transport.AdminDivisionCreate
 		if err := decodeJSON(r, &in); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "не удалось разобрать тело: " + err.Error()})
@@ -48,9 +55,14 @@ func handleDivisionCreate(divisions DivisionService) http.HandlerFunc {
 
 // handleDivisionUpdate — PUT /api/admin-divisions/{id}: полная замена полей
 // name/type/parent_id; прочие поля текущей модели сохраняются (обработчик
-// берёт версию через get_division и накладывает поля запроса).
+// берёт версию через get_division и накладывает поля запроса). Запись —
+// только для вошедшего владельца, см. handleDivisionCreate.
 func handleDivisionUpdate(divisions DivisionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireFull(w, r); !ok {
+			return
+		}
+
 		id := pathDivisionID(r)
 
 		var in transport.AdminDivisionUpdate
@@ -82,9 +94,14 @@ func handleDivisionUpdate(divisions DivisionService) http.HandlerFunc {
 }
 
 // handleDivisionDelete — DELETE /api/admin-divisions/{id}: 204 без тела;
-// занятая единица — 409 со списком ссылающихся.
+// занятая единица — 409 со списком ссылающихся. Запись — только для
+// вошедшего владельца, см. handleDivisionCreate.
 func handleDivisionDelete(divisions DivisionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := requireFull(w, r); !ok {
+			return
+		}
+
 		if err := divisions.DeleteDivision(r.Context(), pathDivisionID(r)); err != nil {
 			writeError(w, err)
 
