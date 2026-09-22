@@ -133,6 +133,7 @@ type Store interface {
     DeleteSession(ctx context.Context, id ID) error
 
     CreateAPIToken(ctx context.Context, t APIToken) error
+    GetAPIToken(ctx context.Context, id ID) (*APIToken, error) // для RevokeAPIToken: проверить владельца
     GetAPITokenByHash(ctx context.Context, hash string) (*APIToken, error)
     ListAPITokens(ctx context.Context, ownerID ID) ([]APIToken, error)
     RevokeAPIToken(ctx context.Context, id ID) error
