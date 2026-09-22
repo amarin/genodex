@@ -44,7 +44,7 @@ export GENODEX_DATA=/path/to/data         # env-переменная как де
 ### Подкоманды
 
 ```bash
-genodex serve [--data DIR] [-p 9000] [-web prod|dev]   # сервер (по умолчанию)
+genodex serve [--data DIR] [-p 9000] [-web prod|dev] [--trust-proxy]   # сервер (по умолчанию)
 genodex backup [--data DIR] [--to DIR]                 # бэкап: бандл «снапшот+манифест»
 genodex restore --from DIR --to DIR [--force]          # восстановление из бандла
 genodex verify [--data DIR] [--backup DIR]             # проверка целостности БД/бандла
@@ -61,11 +61,16 @@ genodex verify [--data DIR] [--backup DIR]             # проверка цел
 |------|----------------------|-----------|
 | `-p` | `9000` | Порт HTTP-сервера (для `serve`) |
 | `-web` | `prod` | Режим веб-ассетов: `prod` (встроены в бинарник) или `dev` (с диска `web/dist`) |
+| `-trust-proxy` | `false` | Доверять `X-Forwarded-Proto` от реверс-прокси для `Secure`-флага cookie (включать только за TLS-терминирующим прокси, которому доверяете) |
 | `--data` | `.data` или `GENODEX_DATA` | Каталог данных |
 | `--to` | `<data>/backups` | Каталог бэкапа (для `backup`) / целевой каталог (для `restore`) |
 | `--from` | — | Каталог бандла (для `restore`, обязателен) |
 | `--backup` | — | Каталог бандла для сверки (для `verify`, опционально) |
 | `--force` | `false` | Для `restore`: разрешить запись поверх существующей БД |
+
+`-trust-proxy` подразумевает, что перед сервисом стоит доверенный
+TLS-терминирующий реверс-прокси — подробности и риски см.
+`docs/data-model/auth.md` §4.
 
 Сервер останавливается по `Ctrl+C` (graceful shutdown, до 5 с).
 
