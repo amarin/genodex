@@ -90,6 +90,10 @@
 
 ## C. Проброс `Access` в делениях
 
+- **Статус:** выполнено (4 задачи-коммита — Access параметром в
+  `list_divisions`/`search_divisions`, `requireFull` на запись, единая точка
+  входа `httpapi.NewAPIHandler`, реальное подключение `auth.Service` в
+  `internal/app` — см. `2026-09-22-auth-c-access.md`).
 - **Файлы:** `internal/usecases/list_divisions/scenario.go`,
   `internal/usecases/search_divisions/scenario.go` (+тесты — фейки получают
   ожидаемый `Access`), `internal/httpapi/deps.go`/`division.go`,

@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/amarin/genodex"
+	"github.com/amarin/genodex/internal/auth"
 	"github.com/amarin/genodex/internal/httpapi"
 	"github.com/amarin/genodex/internal/idgen"
 	"github.com/amarin/genodex/internal/mcp"
@@ -48,12 +49,12 @@ type divisionService struct {
 	del    *delete_division.Scenario
 }
 
-func (s *divisionService) ListDivisions(ctx context.Context, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
-	return s.list.ListDivisions(ctx, q)
+func (s *divisionService) ListDivisions(ctx context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
+	return s.list.ListDivisions(ctx, access, q)
 }
 
-func (s *divisionService) SearchDivisions(ctx context.Context, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
-	return s.search.SearchDivisions(ctx, q)
+func (s *divisionService) SearchDivisions(ctx context.Context, access models.Access, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error) {
+	return s.search.SearchDivisions(ctx, access, q)
 }
 
 func (s *divisionService) GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error) {
@@ -75,9 +76,11 @@ func (s *divisionService) DeleteDivision(ctx context.Context, id models.ID) erro
 var (
 	_ httpapi.DivisionService = (*divisionService)(nil)
 	_ mcp.DivisionService     = (*divisionService)(nil)
+	_ httpapi.AuthService     = (*auth.Service)(nil)
+	_ mcp.TokenResolver       = (*auth.Service)(nil)
 )
 
-// New собирает приложение: хранилище → сценарии → MCP/HTTP интерфейсы.
+// New собирает приложение: хранилище → сценарии/auth → MCP/HTTP интерфейсы.
 func New(cfg Config) (*App, error) {
 	st, err := sqlstore.Open(cfg.DataDir)
 	if err != nil {
@@ -93,9 +96,13 @@ func New(cfg Config) (*App, error) {
 		del:    delete_division.New(st),
 	}
 
+	// auth-хранилище — на том же соединении, что и общий store (см.
+	// sqlstore.Store.DB), файл БД один и тот же (internal/storage/schema_auth.go).
+	authService := auth.New(auth.NewSQLStore(st.DB()))
+
 	mux := http.NewServeMux()
-	mux.Handle("/mcp", server.NewStreamableHTTPServer(mcp.NewServer(divisions)))
-	mux.Handle("/api/", httpapi.NewHandler(divisions, genodex.DocsFS(cfg.WebMode)))
+	mux.Handle("/mcp", mcp.RequireAPIToken(authService)(server.NewStreamableHTTPServer(mcp.NewServer(divisions))))
+	mux.Handle("/api/", httpapi.NewAPIHandler(divisions, authService, genodex.DocsFS(cfg.WebMode)))
 	mux.Handle("/static/", http.StripPrefix("/static/", web.StaticHandler(cfg.WebMode)))
 	mux.Handle("/", web.SPAHandler(cfg.WebMode))
 
