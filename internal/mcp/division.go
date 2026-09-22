@@ -27,6 +27,39 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 	)
 
 	s.AddTool(tool, divisionListHandler(divisions))
+
+	tool = mcp.NewTool(
+		"division_get",
+		mcp.WithDescription("Единица административного деления по id; результат — JSON единицы. Неверный формат id или отсутствующая единица — ошибка тула"),
+		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы, например AD-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
+	)
+	s.AddTool(tool, divisionGetHandler(divisions))
+
+	tool = mcp.NewTool(
+		"division_create",
+		mcp.WithDescription("Создать единицу административного деления; id генерируется сервером; результат — JSON созданной единицы. Неверные name/type или несуществующий parent_id — ошибка тула"),
+		mcp.WithString("name", mcp.Required(), mcp.Description("Название единицы")),
+		mcp.WithString("type", mcp.Required(), mcp.Description("governorate, district, volost, gorod, selo, derevnya, hutor, pogost, stanitsa, mestechko, other")),
+		mcp.WithString("parent_id", mcp.Description("id родительской единицы; пусто — корень")),
+	)
+	s.AddTool(tool, divisionCreateHandler(divisions))
+
+	tool = mcp.NewTool(
+		"division_update",
+		mcp.WithDescription("Изменить единицу административного деления: обновляются name, type и parent_id (пустой parent_id — корень); прочие поля текущей версии сохраняются; результат — JSON обновлённой единицы"),
+		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы")),
+		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
+		mcp.WithString("type", mcp.Required(), mcp.Description("governorate, district, volost, gorod, selo, derevnya, hutor, pogost, stanitsa, mestechko, other")),
+		mcp.WithString("parent_id", mcp.Description("id нового родителя; пусто — корень")),
+	)
+	s.AddTool(tool, divisionUpdateHandler(divisions))
+
+	tool = mcp.NewTool(
+		"division_delete",
+		mcp.WithDescription("Удалить единицу административного деления, если она не занята другими единицами; занятая — ошибка тула. Необратимо"),
+		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы")),
+	)
+	s.AddTool(tool, divisionDeleteHandler(divisions))
 }
 
 // divisionListHandler возвращает обработчик тула division_list: разбирает
@@ -92,4 +125,101 @@ func optionalInt(req mcp.CallToolRequest, name string) (int, error) {
 	}
 
 	return n, nil
+}
+
+// divisionGetHandler — тул division_get: читает единицу по id. Валидация
+// формата id и проверка существования — в сценарии; его ошибки — ошибки тула.
+func divisionGetHandler(divisions DivisionService) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		d, err := divisions.GetDivision(ctx, models.ID(req.GetString("id", "")))
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить единицу: %v", err)), nil
+		}
+
+		return toolJSONResult(transport.AdminDivisionFromModel(d))
+	}
+}
+
+// divisionCreateHandler — тул division_create: собирает модель из аргументов
+// (пустой parent_id — корень) и отдаёт созданную единицу.
+func divisionCreateHandler(divisions DivisionService) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		row := transport.AdminDivisionCreate{
+			Name:     req.GetString("name", ""),
+			Type:     models.AdminDivisionType(req.GetString("type", "")),
+			ParentID: optionalParentID(req),
+		}
+
+		created, err := divisions.CreateDivision(ctx, row.Model())
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("не удалось создать единицу: %v", err)), nil
+		}
+
+		return toolJSONResult(transport.AdminDivisionFromModel(created))
+	}
+}
+
+// divisionUpdateHandler — тул division_update: меняет name/type/parent_id,
+// остальные поля берутся из актуальной версии сценария.
+func divisionUpdateHandler(divisions DivisionService) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id := models.ID(req.GetString("id", ""))
+
+		cur, err := divisions.GetDivision(ctx, id)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
+		}
+
+		row := transport.AdminDivisionUpdate{
+			Name:     req.GetString("name", ""),
+			Type:     models.AdminDivisionType(req.GetString("type", "")),
+			ParentID: optionalParentID(req),
+		}
+		cur.Name = row.Name
+		cur.Type = row.Type
+		cur.ParentID = row.ParentID
+
+		if err := divisions.UpdateDivision(ctx, cur); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil
+		}
+
+		return toolJSONResult(transport.AdminDivisionFromModel(cur))
+	}
+}
+
+// divisionDeleteHandler — тул division_delete: удаляет единицу; занятая —
+// ошибка тула с текстом ошибки сценария.
+func divisionDeleteHandler(divisions DivisionService) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		id := models.ID(req.GetString("id", ""))
+
+		if err := divisions.DeleteDivision(ctx, id); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("не удалось удалить единицу: %v", err)), nil
+		}
+
+		return mcp.NewToolResultText(fmt.Sprintf("деление %q удалено", id)), nil
+	}
+}
+
+// toolJSONResult сериализует значение в JSON-текст результата тула.
+func toolJSONResult(v any) (*mcp.CallToolResult, error) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("не удалось сериализовать: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(data)), nil
+}
+
+// optionalParentID читает необязательный parent_id; пустая строка (в т.ч. явный
+// null) — корень (nil-указатель).
+func optionalParentID(req mcp.CallToolRequest) *models.ID {
+	raw := req.GetString("parent_id", "")
+	if raw == "" {
+		return nil
+	}
+
+	id := models.ID(raw)
+
+	return &id
 }
