@@ -1,6 +1,21 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Alert, Button, Card, Input, Layout, List, Spin, Tabs, Typography } from "antd";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
+import { Alert, Button, Card, Input, Layout, List, Space, Spin, Tabs, Typography } from "antd";
 import { BookOutlined, HomeOutlined } from "@ant-design/icons";
 import {
   fetchAdminDivisions,
@@ -9,9 +24,121 @@ import {
   type AdminDivision,
   type AdminDivisionQuery,
 } from "./api";
+import { fetchAuthStatus, fetchAuthSession, logout, type AuthSession } from "./auth";
 import DocsPanel from "./docs-panel";
+import LoginPage from "./pages/Login";
+import RegisterPage from "./pages/Register";
+import SettingsPage from "./pages/Settings";
 
 const { Header, Content } = Layout;
+
+// --- сессия: контекст, доступный шапке и страницам Login/Register/Settings ---
+
+interface SessionState {
+  loading: boolean;
+  bootstrap: boolean;
+  session: AuthSession | null; // null — анонимный посетитель
+}
+
+interface SessionContextValue extends SessionState {
+  refresh: () => Promise<void>;
+}
+
+const SessionContext = createContext<SessionContextValue | null>(null);
+
+// useSession — текущая сессия и способ её обновить (после
+// login/register/logout/смены пароля). Бросает, если вызван вне дерева
+// SessionProvider — единственное дерево строит App() ниже, так что в
+// пределах этого приложения это всегда программная ошибка, не рантайм-кейс.
+export function useSession(): SessionContextValue {
+  const ctx = useContext(SessionContext);
+  if (ctx == null) {
+    throw new Error("useSession вызван вне SessionProvider");
+  }
+  return ctx;
+}
+
+function SessionProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<SessionState>({ loading: true, bootstrap: false, session: null });
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const refresh = useCallback(async () => {
+    const status = await fetchAuthStatus();
+    const session = status.bootstrap ? null : await fetchAuthSession();
+    setState({ loading: false, bootstrap: status.bootstrap, session });
+  }, []);
+
+  useEffect(() => {
+    refresh().catch(() => setState((s) => ({ ...s, loading: false })));
+  }, [refresh]);
+
+  // Корень приложения на старте (auth.md §7): bootstrap=true — редирект на
+  // /register. Проверяется не только на первом рендере — пока bootstrap
+  // остаётся true, любая другая страница тоже отправляет туда же.
+  useEffect(() => {
+    if (!state.loading && state.bootstrap && location.pathname !== "/register") {
+      navigate("/register", { replace: true });
+    }
+  }, [state.loading, state.bootstrap, location.pathname, navigate]);
+
+  return <SessionContext.Provider value={{ ...state, refresh }}>{children}</SessionContext.Provider>;
+}
+
+// --- общая шапка: используется и /docs (ниже), и страницами Login/Register/Settings ---
+
+export function AppHeader() {
+  const { loading, session, refresh } = useSession();
+  const navigate = useNavigate();
+
+  const onLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // Не блокируем выход из UI, даже если сеть/сервер подвели — cookies
+      // всё равно будут перезаписаны при следующем логине.
+    }
+    await refresh();
+    navigate("/docs");
+  };
+
+  return (
+    <Header
+      style={{
+        color: "#fff",
+        fontSize: 18,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <Link to="/docs" style={{ color: "#fff" }}>
+        Genealogy MCP
+      </Link>
+      {!loading && (
+        <Space>
+          {session != null ? (
+            <>
+              <Typography.Text style={{ color: "#fff" }}>{session.login}</Typography.Text>
+              <Link to="/settings" style={{ color: "#fff" }}>
+                Настройки
+              </Link>
+              <Button type="link" style={{ color: "#fff" }} onClick={onLogout}>
+                Выйти
+              </Button>
+            </>
+          ) : (
+            <Link to="/login" style={{ color: "#fff" }}>
+              Войти
+            </Link>
+          )}
+        </Space>
+      )}
+    </Header>
+  );
+}
+
+// --- существующая часть, без изменений ---
 
 function SettlementsTab() {
   const [items, setItems] = useState<AdminDivision[]>([]);
@@ -105,11 +232,16 @@ function SettlementsTab() {
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Navigate to="/docs" replace />} />
-        <Route path="/docs" element={<AppContent />} />
-        <Route path="/docs/:docPath*" element={<AppContent />} />
-      </Routes>
+      <SessionProvider>
+        <Routes>
+          <Route path="/" element={<Navigate to="/docs" replace />} />
+          <Route path="/docs" element={<AppContent />} />
+          <Route path="/docs/:docPath*" element={<AppContent />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
+      </SessionProvider>
     </BrowserRouter>
   );
 }
@@ -117,7 +249,7 @@ export default function App() {
 function AppContent() {
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Header style={{ color: "#fff", fontSize: 18 }}>Genealogy MCP</Header>
+      <AppHeader />
       <Content style={{ padding: 24 }}>
         <Tabs
           defaultActiveKey="settlements"
