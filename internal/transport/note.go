@@ -5,8 +5,8 @@ import "github.com/amarin/genodex/internal/models"
 // Note — контракт заметки как самостоятельной сущности (markdown-текст с
 // иерархией «книга → главы», GET /api/notes, MCP-тул note_list). ParentID —
 // просто id родительской заметки (не TextRef — строгая self-ref ссылка, как
-// Archive.RepositoryID; пустая строка — без родителя). Sources — read-only
-// в v1 (см. internal/transport/source_link.go).
+// Archive.RepositoryID; пустая строка — без родителя). Sources редактируется
+// с подпроекта 5 (см. internal/transport/source_link.go).
 type Note struct {
 	ID       models.ID    `json:"id"`
 	Kind     string       `json:"kind"`

@@ -58,13 +58,14 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, parishCreateHandler(parishes))
 
 	tool = mcp.NewTool(
 		"parish_update",
-		mcp.WithDescription("Изменить приход: полная замена name/church/settlements/since/until/notes; результат — JSON обновлённой записи. church — {text, ref?, type?}: передайте обратно ref/type, полученные из parish_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при любом обновлении через MCP, пока не появится picker (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить приход: полная замена name/church/settlements/since/until/notes; результат — JSON обновлённой записи. church — {text, ref?, type?}: передайте обратно ref/type, полученные из parish_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при любом обновлении через MCP, пока не появится picker (docs/data-model/entity-write.md §5); sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithObject("church", mcp.Description("Церковь (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
@@ -75,6 +76,7 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, parishUpdateHandler(parishes))
@@ -213,18 +215,20 @@ func parishUpdateHandler(parishes ParishService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		sources, err := optionalSourceLinks(args, "sources")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		cur.Name = req.GetString("name", "")
 		cur.Church = church
 		cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
 		cur.Since = since
 		cur.Until = until
 		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Sources = sources
+
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Sources = sources
+		}
 
 		if err := parishes.UpdateParish(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

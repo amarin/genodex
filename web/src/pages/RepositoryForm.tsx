@@ -20,8 +20,8 @@ const FORM_FIELDS: (keyof RepositoryFormValues)[] = ["name", "type", "address"];
 // инпут, не Select (docs/data-model/entity-write.md, models/repository_type.go
 // перечисляет типовые значения archive/library/museum/private/other как
 // подсказку, но допустимы и другие). urls/notes редактируются вне antd Form
-// (TextRefListEditor). sources не редактируется — read-only в v1 (Citation
-// ещё не имеет CRUD).
+// (TextRefListEditor), sources — тем же паттерном (SourceLinkListEditor),
+// что и у остальных пяти ретрофитнутых сущностей (подпроект 5).
 export function CreateRepositoryModal({
   open,
   onClose,

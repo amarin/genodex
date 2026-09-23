@@ -53,6 +53,7 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
@@ -60,7 +61,7 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 
 	tool = mcp.NewTool(
 		"note_update",
-		mcp.WithDescription("Изменить заметку: полная замена kind/title/text/parent_id/private; результат — JSON обновлённой записи. Несуществующий parent_id или цикл в цепочке родителей — ошибка тула"),
+		mcp.WithDescription("Изменить заметку: полная замена kind/title/text/parent_id/private; результат — JSON обновлённой записи. Несуществующий parent_id или цикл в цепочке родителей — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("kind", mcp.Required(), mcp.Description("Вид заметки")),
 		mcp.WithString("title", mcp.Description("Заголовок")),
@@ -69,6 +70,7 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
@@ -177,15 +179,9 @@ func noteUpdateHandler(notes NoteService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		cur.Kind = models.NoteKind(req.GetString("kind", ""))
 		cur.Title = req.GetString("title", "")
 		cur.Text = req.GetString("text", "")
-		cur.Sources = sources
 		cur.Private = req.GetBool("private", false)
 
 		if pid := req.GetString("parent_id", ""); pid != "" {
@@ -193,6 +189,14 @@ func noteUpdateHandler(notes NoteService) server.ToolHandlerFunc {
 			cur.ParentID = &pidID
 		} else {
 			cur.ParentID = nil
+		}
+
+		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Sources = sources
 		}
 
 		if err := notes.UpdateNote(ctx, cur); err != nil {

@@ -55,13 +55,14 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, divisionCreateHandler(divisions))
 
 	tool = mcp.NewTool(
 		"division_update",
-		mcp.WithDescription("Изменить единицу административного деления: обновляются name, type и parent_id (пустой parent_id — корень); прочие поля текущей версии сохраняются; результат — JSON обновлённой единицы"),
+		mcp.WithDescription("Изменить единицу административного деления: обновляются name, type и parent_id (пустой parent_id — корень); прочие поля текущей версии сохраняются; результат — JSON обновлённой единицы; при отсутствии sources в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithString("type", mcp.Required(), mcp.Description("governorate, district, volost, gorod, selo, derevnya, hutor, pogost, stanitsa, mestechko, other")),
@@ -69,6 +70,7 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, divisionUpdateHandler(divisions))
@@ -223,11 +225,6 @@ func divisionUpdateHandler(divisions DivisionService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		row := transport.AdminDivisionUpdate{
 			Name:     req.GetString("name", ""),
 			Type:     models.AdminDivisionType(req.GetString("type", "")),
@@ -236,7 +233,14 @@ func divisionUpdateHandler(divisions DivisionService) server.ToolHandlerFunc {
 		cur.Name = row.Name
 		cur.Type = row.Type
 		cur.ParentID = row.ParentID
-		cur.Sources = sources
+
+		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Sources = sources
+		}
 
 		if err := divisions.UpdateDivision(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

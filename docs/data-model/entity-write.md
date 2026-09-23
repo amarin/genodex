@@ -143,11 +143,15 @@ Person и др.).
   использована в `Parish.Since`/`Until`. Компонент и хелпер
   `formatFactDate` рассчитаны на переиспользование как есть в
   Family/Person/Event (подпроекты 7-9), без переделки.
-- **Read-only `Sources []SourceLink`** — есть у любой сущности со
-  ссылками на доказательства. Create/Update DTO это поле не принимают
-  вовсе, fetch-then-merge в `update_<entity>` его не трогает — значение
-  молча переживает любое обновление как есть. Это осознанное решение (у
-  `Citation` ещё нет CRUD, подпроект 5), а не недосмотр.
+- **`Sources []SourceLink`** — есть у любой сущности со ссылками на
+  доказательства. До подпроекта 5 было read-only: Create/Update DTO это
+  поле не принимали, fetch-then-merge в `update_<entity>` его не трогал —
+  значение молча переживало любое обновление как есть (осознанное решение,
+  пока у `Citation` не было CRUD). С подпроекта 5 (`Citation` теперь имеет
+  CRUD) поле редактируемое у всех шести ретрофитнутых сущностей
+  (`AdministrativeDivision`/`Repository`/`Church`/`Parish`/`Archive`/`Note`)
+  — подробности контракта, проверки `citation_id` и MCP/HTTP-семантики
+  «отсутствие поля» — см. §3.3 ниже.
 - **`Private` действует и на чтении по id, не только в List/Search.**
   Любая будущая сущность с полем `Private bool` обязана прокидывать
   `access models.Access` в свой usecase-уровневый `Get<Entity>` и

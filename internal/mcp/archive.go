@@ -54,6 +54,7 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
@@ -61,7 +62,7 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 
 	tool = mcp.NewTool(
 		"archive_update",
-		mcp.WithDescription("Изменить архив: полная замена name/system/repository_id/notes/private; результат — JSON обновлённой записи. Несуществующий repository_id — ошибка тула"),
+		mcp.WithDescription("Изменить архив: полная замена name/system/repository_id/notes/private; результат — JSON обновлённой записи. Несуществующий repository_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithObject("system", mcp.Description("Система иерархии — только именем"), mcp.Properties(map[string]any{
@@ -72,6 +73,7 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
 			"properties": sourceLinkObjectProperties(),
+			"required":   []string{"citation_id"},
 		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
@@ -186,17 +188,19 @@ func archiveUpdateHandler(archives ArchiveService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		cur.Name = req.GetString("name", "")
 		cur.System = system
 		cur.RepositoryID = models.ID(req.GetString("repository_id", ""))
 		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Sources = sources
 		cur.Private = req.GetBool("private", false)
+
+		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Sources = sources
+		}
 
 		if err := archives.UpdateArchive(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

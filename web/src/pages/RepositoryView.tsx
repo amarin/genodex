@@ -56,9 +56,9 @@ function TextRefListView({ items }: { items: TextRef[] }) {
   );
 }
 
-// SourceLinkListView — read-only список доказательств (Sources): Citation
-// ещё не имеет CRUD (docs/data-model/entity-write.md §2, подпроект 5), поэтому
-// здесь только чтение, без формы создания/редактирования.
+// SourceLinkListView — read-only отображение списка доказательств (Sources)
+// в режиме просмотра; редактируется отдельным SourceLinkListEditor в форме
+// ниже (Citation имеет CRUD с подпроекта 5, docs/data-model/entity-write.md §3.3).
 function SourceLinkListView({ items }: { items: SourceLink[] }) {
   if (items.length === 0) {
     return <Typography.Text type="secondary">—</Typography.Text>;
@@ -69,7 +69,7 @@ function SourceLinkListView({ items }: { items: SourceLink[] }) {
       dataSource={items}
       renderItem={(s) => (
         <List.Item>
-          citation {s.citation_id}
+          <Link to={`/citations/${s.citation_id}`}>citation {s.citation_id}</Link>
           {s.role ? ` — ${s.role}` : ""}
         </List.Item>
       )}

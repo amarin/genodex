@@ -80,7 +80,7 @@ TLS-терминирующий реверс-прокси — подробнос�
 |------|-----------|
 | `/mcp` | MCP-сервер, транспорт Streamable HTTP. Для AI-ассистентов и MCP-клиентов. |
 | `/api/health` | Проверка живости: `{"status":"ok"}`. |
-| `/api/admin-divisions` | Единицы административного деления (JSON): `GET` — список `[{"id", "name", "type", "parent_id"}]` (параметры, включая `parent_id`, — ниже); `POST` — создание; `GET/PUT/DELETE /api/admin-divisions/{id}` — чтение/изменение/удаление единицы; `GET /api/admin-divisions/search` — поиск по началу названия. |
+| `/api/admin-divisions` | Единицы административного деления (JSON): `GET` — список `[{"id", "name", "type", "parent_id", "sources"}]` (параметры, включая `parent_id`, — ниже); `POST` — создание; `GET/PUT/DELETE /api/admin-divisions/{id}` — чтение/изменение/удаление единицы; `GET /api/admin-divisions/search` — поиск по началу названия. |
 | `/api/surnames` | Словарные записи фамилий (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/surnames/{id}` — чтение/изменение/удаление записи; `GET /api/surnames/search?q=` — поиск по началу канонической формы (включая варианты). |
 | `/api/patronymics` | Словарные записи отчеств (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/patronymics/{id}` — чтение/изменение/удаление записи; `GET /api/patronymics/search?q=` — поиск по началу канонической формы (включая варианты). |
 | `/api/estates` | Словарные записи сословий (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/estates/{id}` — чтение/изменение/удаление записи; `GET /api/estates/search?q=` — поиск по началу канонической формы (включая варианты). |
@@ -97,7 +97,7 @@ TLS-терминирующий реверс-прокси — подробнос�
 | `/static/` | Собранные ассеты SPA (JS/CSS). |
 | `/` | Веб-интерфейс (SPA): `index.html`, для неизвестных путей — fallback на неё. |
 
-`sources` у `/api/admin-divisions`, `/api/repositories`, `/api/churches`, `/api/parishes`, `/api/archives`, `/api/notes` — редактируется с подпроекта 5 (`Citation` теперь имеет CRUD): `POST`/`PUT` принимают `sources: [{"citation_id", "reliability"?, "role"?, "note"?}]`; `target_type`/`target_id` клиент не отправляет — сервер подставляет владельца из контекста. Несуществующий `citation_id` — 422 на поле `sources[i].citation_id` (по индексу элемента). `/api/admin-divisions` — единственный маршрут, где `sources` раньше не было в ответе вовсе (не просто read-only) — теперь есть, как и у остальных пяти.
+`sources` у `/api/admin-divisions`, `/api/repositories`, `/api/churches`, `/api/parishes`, `/api/archives`, `/api/notes` — редактируется с подпроекта 5 (`Citation` теперь имеет CRUD): `POST`/`PUT` принимают `sources: [{"citation_id", "reliability"?, "role"?, "note"?}]`; `target_type`/`target_id` клиент не отправляет — сервер подставляет владельца из контекста. Несуществующий `citation_id` — 422 на поле `sources[i].citation_id` (по индексу элемента). `/api/admin-divisions` — единственный маршрут, где `sources` раньше не было в ответе вовсе (не просто read-only) — теперь есть, как и у остальных пяти. HTTP `PUT` всегда полностью заменяет `sources` телом запроса: отсутствие ключа `sources` в JSON-теле очищает список (в отличие от MCP-тулов — см. ниже).
 
 ## Примеры запросов
 
@@ -199,7 +199,7 @@ curl -s -X POST http://localhost:9000/mcp \
 | `citation_update` | Изменение записи: полная замена `source_id`/`anchor`/`text`/`note`/`private`; несуществующий `source_id` или ссылка внутри `anchor` — ошибка тула на соответствующем поле |
 | `citation_delete` | Удаление записи по `id`; занятая другой сущностью (`SourceLink` у любой сущности с доказательствами) — ошибка тула |
 
-`<entity>_create`/`<entity>_update` у `division`/`repository`/`church`/`parish`/`archive`/`note` с подпроекта 5 принимают аргумент `sources` — массив объектов `{citation_id, reliability?, role?, note?}` (первый MCP-аргумент вида «массив объектов» в программе, см. `sourceLinkObjectProperties`; раньше массивы были только строками). Несуществующий `citation_id` — ошибка тула на поле `sources[i].citation_id`.
+`<entity>_create`/`<entity>_update` у `division`/`repository`/`church`/`parish`/`archive`/`note` с подпроекта 5 принимают аргумент `sources` — массив объектов `{citation_id, reliability?, role?, note?}` (первый MCP-аргумент вида «массив объектов» в программе, см. `sourceLinkObjectProperties`; раньше массивы были только строками). Несуществующий `citation_id` — ошибка тула на поле `sources[i].citation_id`. В отличие от остальных полей `*_update` (которые заменяются полностью, вплоть до значения по умолчанию, если не переданы), `sources` — исключение: отсутствие аргумента `sources` в вызове `*_update` сохраняет текущие источники записи как есть; чтобы очистить их, нужно явно передать `"sources": []` (в отличие от HTTP `PUT`, где отсутствие ключа `sources` в теле запроса всегда очищает список, см. выше).
 
 ### HTTP API
 

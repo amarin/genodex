@@ -129,6 +129,72 @@ func TestDivisionUpdateToolMergesFields(t *testing.T) {
 	}
 }
 
+// TestDivisionUpdateToolSourcesPassed: непустой sources в аргументах доходит
+// до сценария моделью (Fix 1 финального ревью подпроекта 5).
+func TestDivisionUpdateToolSourcesPassed(t *testing.T) {
+	svc := &fakeDivisions{getDiv: models.AdministrativeDivision{
+		ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo,
+	}}
+
+	res := callDivisionWrite(t, divisionUpdateHandler(svc), svc, map[string]any{
+		"id": "ad-1", "name": "Давыдово", "type": "selo",
+		"sources": []any{map[string]any{"citation_id": "C-1", "role": "рождение", "reliability": "primary"}},
+	})
+
+	if res.IsError {
+		t.Fatalf("неожиданная ошибка тула: %s", resultText(t, res))
+	}
+
+	got := svc.updated.Sources
+	if len(got) != 1 || got[0].CitationID != "C-1" || got[0].Role != "рождение" || got[0].Reliability != models.ReliabilityPrimary {
+		t.Fatalf("updated.Sources = %+v", got)
+	}
+}
+
+// TestDivisionUpdateToolOmittedSourcesKeepsCurrent: отсутствие sources в
+// аргументах сохраняет текущие источники записи (Fix 1 финального ревью
+// подпроекта 5: раньше отсутствие ключа сценарий трактовал как явную очистку).
+func TestDivisionUpdateToolOmittedSourcesKeepsCurrent(t *testing.T) {
+	svc := &fakeDivisions{getDiv: models.AdministrativeDivision{
+		ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo,
+		Sources: []models.SourceLink{{CitationID: "C-1", Role: "рождение"}},
+	}}
+
+	res := callDivisionWrite(t, divisionUpdateHandler(svc), svc, map[string]any{
+		"id": "ad-1", "name": "Давыдова", "type": "selo",
+	})
+
+	if res.IsError {
+		t.Fatalf("неожиданная ошибка тула: %s", resultText(t, res))
+	}
+
+	got := svc.updated.Sources
+	if len(got) != 1 || got[0].CitationID != "C-1" {
+		t.Fatalf("updated.Sources = %+v, ожидалось сохранение текущих источников", got)
+	}
+}
+
+// TestDivisionUpdateToolEmptySourcesClears: явный пустой массив sources
+// очищает текущие источники (в отличие от отсутствия ключа).
+func TestDivisionUpdateToolEmptySourcesClears(t *testing.T) {
+	svc := &fakeDivisions{getDiv: models.AdministrativeDivision{
+		ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo,
+		Sources: []models.SourceLink{{CitationID: "C-1", Role: "рождение"}},
+	}}
+
+	res := callDivisionWrite(t, divisionUpdateHandler(svc), svc, map[string]any{
+		"id": "ad-1", "name": "Давыдова", "type": "selo", "sources": []any{},
+	})
+
+	if res.IsError {
+		t.Fatalf("неожиданная ошибка тула: %s", resultText(t, res))
+	}
+
+	if got := svc.updated.Sources; len(got) != 0 {
+		t.Fatalf("updated.Sources = %+v, ожидалась очистка явным пустым массивом", got)
+	}
+}
+
 // TestDivisionUpdateToolNotFoundIsError: отсутствующая единица — ошибка тула.
 func TestDivisionUpdateToolNotFoundIsError(t *testing.T) {
 	res := callDivisionWrite(t, divisionUpdateHandler(&fakeDivisions{err: models.ErrNotFound}),

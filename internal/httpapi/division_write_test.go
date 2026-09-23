@@ -173,6 +173,26 @@ func TestDivisionUpdateMergesFields(t *testing.T) {
 	}
 }
 
+// TestDivisionUpdatePassesSources: PUT-тело с непустым sources доходит до
+// сценария моделью и возвращается в ответе (HTTP — полная замена sources,
+// в отличие от MCP; см. docs/usage.md).
+func TestDivisionUpdatePassesSources(t *testing.T) {
+	svc := &fakeDivisions{getDiv: models.AdministrativeDivision{ID: writeID, Name: "Село", Type: models.AdminDivisionSelo}}
+
+	body := `{"name":"Село","type":"selo","sources":[{"citation_id":"C-1","role":"рождение","reliability":"primary"}]}`
+	rec := putD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID, body)
+
+	requireStatus(t, rec, http.StatusOK)
+
+	got := svc.updated.Sources
+	if len(got) != 1 || got[0].CitationID != "C-1" || got[0].Role != "рождение" {
+		t.Fatalf("updated.Sources = %+v", got)
+	}
+	if !strings.Contains(rec.Body.String(), `"citation_id":"C-1"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+}
+
 func TestDivisionUpdateNotFoundIs404(t *testing.T) {
 	svc := &fakeDivisions{err: models.ErrNotFound}
 

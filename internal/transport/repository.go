@@ -3,7 +3,7 @@ package transport
 import "github.com/amarin/genodex/internal/models"
 
 // Repository — контракт хранилища-контейнера источников (GET /api/repositories,
-// MCP-тул repository_list). Sources — read-only в v1 (см. internal/transport/source_link.go).
+// MCP-тул repository_list). Sources редактируется с подпроекта 5 (см. internal/transport/source_link.go).
 type Repository struct {
 	ID      models.ID    `json:"id"`
 	Name    string       `json:"name"`

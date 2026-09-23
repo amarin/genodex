@@ -41,7 +41,8 @@ export function adminDivisionTypeLabel(t: string): string {
 }
 
 // AdminDivisionInput — тело POST/PUT /api/admin-divisions (transport.AdminDivisionCreate
-// и transport.AdminDivisionUpdate имеют одинаковую форму: полная замена name/type/parent_id).
+// и transport.AdminDivisionUpdate имеют одинаковую форму: полная замена name/type/parent_id;
+// с подпроекта 5 сюда же входит sources — тоже полная замена).
 export interface AdminDivisionInput {
   name: string;
   type: AdminDivisionType;
@@ -629,7 +630,7 @@ export interface Repository {
 
 // RepositoryInput — тело POST/PUT /api/repositories (transport.RepositoryCreate
 // и transport.RepositoryUpdate имеют одинаковую форму: полная замена всех
-// полей, кроме sources — read-only в v1).
+// полей, включая sources — редактируется с подпроекта 5).
 export interface RepositoryInput {
   name: string;
   type: string;
@@ -955,8 +956,8 @@ export async function deleteArchive(id: string): Promise<void> {
 
 // Note — заметка (markdown-текст с иерархией «книга → главы»). parent_id —
 // просто id родительской заметки (не TextRef — строгая self-ref ссылка, как
-// у Archive.repository_id); пустая строка — без родителя. sources — read-only
-// в v1 (Citation ещё без CRUD, подпроект 5).
+// у Archive.repository_id); пустая строка — без родителя. sources
+// редактируется с подпроекта 5 (Citation теперь имеет CRUD).
 export interface Note {
   id: string;
   kind: string;

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Alert, Breadcrumb, Button, Card, Checkbox, Descriptions, Form, Input, Select, Space, Spin, Typography } from "antd";
+import { Alert, Breadcrumb, Button, Card, Checkbox, Descriptions, Form, Input, List, Modal, Popconfirm, Select, Space, Spin, Typography } from "antd";
 import { deleteCitation, fetchCitation, fetchSources, updateCitation, type Anchor, type Citation, type Source } from "../api";
-import { ApiError } from "../auth";
+import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
 import { AnchorEditor } from "../AnchorEditor";
 
@@ -55,6 +55,7 @@ export default function CitationView() {
   const [saving, setSaving] = useState(false);
 
   const [deleting, setDeleting] = useState(false);
+  const [conflict, setConflict] = useState<ApiErrorReferrer[] | null>(null);
 
   const load = (citationId: string) => {
     setLoading(true);
@@ -147,7 +148,11 @@ export default function CitationView() {
       await deleteCitation(citation.id);
       navigate("/citations");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Не удалось удалить запись");
+      if (e instanceof ApiError && e.status === 409) {
+        setConflict(e.referrers ?? []);
+      } else {
+        setError(e instanceof ApiError ? e.message : "Не удалось удалить запись");
+      }
     } finally {
       setDeleting(false);
     }
@@ -207,9 +212,17 @@ export default function CitationView() {
           {session != null && (
             <Space style={{ marginTop: 16 }}>
               <Button onClick={startEdit}>Редактировать</Button>
-              <Button danger loading={deleting} onClick={onDelete}>
-                Удалить
-              </Button>
+              <Popconfirm
+                title={`Удалить «${citationLabel(citation)}»?`}
+                description="Действие необратимо."
+                okText="Удалить"
+                cancelText="Отмена"
+                onConfirm={onDelete}
+              >
+                <Button danger loading={deleting}>
+                  Удалить
+                </Button>
+              </Popconfirm>
             </Space>
           )}
         </>
@@ -247,6 +260,26 @@ export default function CitationView() {
           </Space>
         </Form>
       )}
+
+      <Modal
+        title="Запись используется"
+        open={conflict != null}
+        onCancel={() => setConflict(null)}
+        footer={<Button onClick={() => setConflict(null)}>Закрыть</Button>}
+      >
+        <Typography.Paragraph>
+          Нельзя удалить — на запись ссылаются другие сущности:
+        </Typography.Paragraph>
+        <List
+          size="small"
+          dataSource={conflict ?? []}
+          renderItem={(r) => (
+            <List.Item>
+              {r.type} {r.id}
+            </List.Item>
+          )}
+        />
+      </Modal>
     </Card>
   );
 }

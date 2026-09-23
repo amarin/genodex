@@ -9,6 +9,9 @@ import {
   Descriptions,
   Form,
   Input,
+  List,
+  Modal,
+  Popconfirm,
   Select,
   Space,
   Spin,
@@ -25,7 +28,7 @@ import {
   type Source,
   type TextRef,
 } from "../api";
-import { ApiError } from "../auth";
+import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
 import { FactDateEditor, formatFactDate } from "../FactDateEditor";
 import { TextRefListEditor } from "../TextRefList";
@@ -84,6 +87,7 @@ export default function SourceView() {
   const [saving, setSaving] = useState(false);
 
   const [deleting, setDeleting] = useState(false);
+  const [conflict, setConflict] = useState<ApiErrorReferrer[] | null>(null);
 
   const load = (sourceId: string) => {
     setLoading(true);
@@ -182,7 +186,11 @@ export default function SourceView() {
       await deleteSource(source.id);
       navigate("/sources");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Не удалось удалить запись");
+      if (e instanceof ApiError && e.status === 409) {
+        setConflict(e.referrers ?? []);
+      } else {
+        setError(e instanceof ApiError ? e.message : "Не удалось удалить запись");
+      }
     } finally {
       setDeleting(false);
     }
@@ -254,9 +262,17 @@ export default function SourceView() {
           {session != null && (
             <Space style={{ marginTop: 16 }}>
               <Button onClick={startEdit}>Редактировать</Button>
-              <Button danger loading={deleting} onClick={onDelete}>
-                Удалить
-              </Button>
+              <Popconfirm
+                title={`Удалить «${source.title}»?`}
+                description="Действие необратимо."
+                okText="Удалить"
+                cancelText="Отмена"
+                onConfirm={onDelete}
+              >
+                <Button danger loading={deleting}>
+                  Удалить
+                </Button>
+              </Popconfirm>
             </Space>
           )}
         </>
@@ -309,6 +325,26 @@ export default function SourceView() {
           </Space>
         </Form>
       )}
+
+      <Modal
+        title="Запись используется"
+        open={conflict != null}
+        onCancel={() => setConflict(null)}
+        footer={<Button onClick={() => setConflict(null)}>Закрыть</Button>}
+      >
+        <Typography.Paragraph>
+          Нельзя удалить — на запись ссылаются другие сущности:
+        </Typography.Paragraph>
+        <List
+          size="small"
+          dataSource={conflict ?? []}
+          renderItem={(r) => (
+            <List.Item>
+              {r.type} {r.id}
+            </List.Item>
+          )}
+        />
+      </Modal>
     </Card>
   );
 }

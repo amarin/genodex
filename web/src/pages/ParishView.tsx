@@ -65,7 +65,7 @@ function SourceLinkListView({ items }: { items: SourceLink[] }) {
       dataSource={items}
       renderItem={(s) => (
         <List.Item>
-          citation {s.citation_id}
+          <Link to={`/citations/${s.citation_id}`}>citation {s.citation_id}</Link>
           {s.role ? ` — ${s.role}` : ""}
         </List.Item>
       )}

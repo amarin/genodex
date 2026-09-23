@@ -30,7 +30,14 @@ func TestDivisionWriteContractWithRealStore(t *testing.T) {
 	t.Cleanup(func() { _ = st.Close() })
 
 	authSvc := auth.New(auth.NewSQLStore(st.DB()))
-	h := httpapi.NewAPIHandler(httpapi.Deps{Divisions: newDivisionService(t, st), Auth: authSvc, DocsFS: fstest.MapFS{}, TrustProxy: false})
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
 
 	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
 	requireStatusS(t, regRec, http.StatusCreated)
@@ -91,6 +98,32 @@ func TestDivisionWriteContractWithRealStore(t *testing.T) {
 	requireStatusS(t, rec, http.StatusUnprocessableEntity)
 	if !strings.Contains(rec.Body.String(), `"field":"parent_id"`) {
 		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Ретрофит: строгий FK sources[i].citation_id — сквозная проверка через
+	// реальный HTTP-хендлер → сценарий → SQLite (по образцу
+	// TestArchiveWriteContractWithRealStore; Division — единственная сущность,
+	// у которой Sources пришлось добавлять в read/write-контракт с нуля, а не
+	// только в usecase, см. docs/data-model/entity-write.md §3.3).
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Ревизская сказка","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createDivision(t, h, owner,
+		fmt.Sprintf(`{"name":"Гавриловское","type":"volost","sources":[{"citation_id":%q}]}`, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий citation_id — 422 на sources[0].citation_id.
+	rec = postReq(t, h, owner,
+		`{"name":"Призрачная волость","type":"volost","sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}]}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
 	}
 
 	// Logout инвалидирует сессию: та же cookie больше не проходит requireFull.
@@ -923,6 +956,8 @@ func TestChurchWriteContractWithRealStore(t *testing.T) {
 	h := httpapi.NewAPIHandler(httpapi.Deps{
 		Divisions:  newDivisionService(t, st),
 		Churches:   newChurchService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
 		Auth:       authSvc,
 		DocsFS:     fstest.MapFS{},
 		TrustProxy: false,
@@ -964,6 +999,32 @@ func TestChurchWriteContractWithRealStore(t *testing.T) {
 
 	// Несуществующая — 404.
 	requireStatusS(t, getReq(t, h, "/api/churches/"+string(created.ID)), http.StatusNotFound)
+
+	// Ретрофит: строгий FK sources[i].citation_id — сквозная проверка через
+	// реальный HTTP-хендлер → сценарий → SQLite (по образцу
+	// TestArchiveWriteContractWithRealStore). Также закрывает create_church's
+	// перевод на транзакционный InTx (docs/data-model/entity-write.md §3.3),
+	// который иначе не проверяется ни одним real-store тестом.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Метрическая книга","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createChurch(t, h, owner,
+		fmt.Sprintf(`{"name":"Покровская церковь","settlements":[],"variants":[],"notes":[],"sources":[{"citation_id":%q}]}`, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий citation_id — 422 на sources[0].citation_id.
+	rec = postChurchReq(t, h, owner,
+		`{"name":"Церковь-призрак","settlements":[],"variants":[],"notes":[],"sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}]}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
 }
 
 func createChurch(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Church {
