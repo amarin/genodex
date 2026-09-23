@@ -158,6 +158,24 @@
   ArchiveDocumentsList,ArchiveDocumentView,ArchiveDocumentForm}.tsx`,
   `web/src/pages/ArchiveView.tsx`, `web/src/pages/{AttachmentForm,
   AttachmentView}.tsx`, `web/src/AnchorEditor.tsx`).
+- Роды/линии (`Family`) — подпроект 7, полный стек: usecase-сценарии, HTTP
+  (`/api/families*`) и MCP (`family_list/search/get/create/update/delete`).
+  Самая механическая сущность программы на сегодня — структурно та же
+  форма, что `Repository` (подпроект 3) минус `Type`/`Address`, с `URLs`,
+  переименованным в `Members`; ни одного нового паттерна не потребовалось.
+  `Members` — мягкая ссылка на `Person` (`TypePerson`, без CRUD до
+  подпроекта 8): `TextRef.Ref` не проверяется на существование при
+  сохранении, как и у любого другого списка `TextRef` в программе.
+  `Sources` редактируемый с рождения контракта (как `ArchiveNode`/
+  `ArchiveDocument` из подпроекта 6), не ретрофит. Веб: страница «Роды» —
+  список/просмотр/редактирование/создание с `TextRefListEditor` для
+  `Members`/`Notes` и `SourceLinkListEditor` для `Sources`; строка «Роды» в
+  каталоге сущностей (`internal/transport/family{,_write}.go`,
+  `internal/usecases/{list,search,get,create,update,delete}_family*`
+  (пакеты `list_families`/`search_families`/`get_family`/`create_family`/
+  `update_family`/`delete_family`), `internal/httpapi/family{,_write}.go`,
+  `internal/mcp/family.go`, `web/src/pages/{FamiliesList,FamilyForm,
+  FamilyView}.tsx`, `web/src/App.tsx`, `web/src/pages/EntityCatalog.tsx`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

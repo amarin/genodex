@@ -183,3 +183,14 @@ type CitationService interface {
 	UpdateCitation(ctx context.Context, c models.Citation) error
 	DeleteCitation(ctx context.Context, id models.ID) error
 }
+
+// FamilyService — контракт сценариев родов/линий, отдаваемых в MCP-тулы:
+// список, поиск, чтение, создание, изменение, удаление.
+type FamilyService interface {
+	ListFamilies(ctx context.Context, access models.Access, page models.Page) ([]models.Family, error)
+	SearchFamilies(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Family, error)
+	GetFamily(ctx context.Context, access models.Access, id models.ID) (models.Family, error)
+	CreateFamily(ctx context.Context, f models.Family) (models.Family, error)
+	UpdateFamily(ctx context.Context, f models.Family) error
+	DeleteFamily(ctx context.Context, id models.ID) error
+}

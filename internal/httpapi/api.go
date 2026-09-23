@@ -27,6 +27,7 @@ type Deps struct {
 	Attachments  AttachmentService
 	Sources      SourceService
 	Citations    CitationService
+	Families     FamilyService
 	Auth         AuthService
 	DocsFS       fs.FS
 	TrustProxy   bool
@@ -101,6 +102,10 @@ func NewAPIHandler(deps Deps) http.Handler {
 
 	if deps.Citations != nil {
 		registerCitationRoutes(mux, deps.Citations)
+	}
+
+	if deps.Families != nil {
+		registerFamilyRoutes(mux, deps.Families)
 	}
 
 	registerAuthRoutes(mux, deps.Auth, deps.TrustProxy)

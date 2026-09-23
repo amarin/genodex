@@ -2254,3 +2254,175 @@ func putCitationReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, 
 
 	return rec
 }
+
+// TestFamilyWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» (по образцу TestRepositoryWriteContractWithRealStore, структурно
+// ближайшего шаблона подпроекта 7 — Family отличается от Repository
+// отсутствием Type/Address и переименованием URLs → Members) для родов:
+// bootstrap-регистрация → создание → чтение → изменение → удаление →
+// повторное чтение — 404. Дополнительно закрывает: приватность (Fix 1),
+// проверяемая явно через ОБА пути (create И update — этот дефект уже
+// повторялся дважды в программе, подпроекты 2 и 4); строгий FK
+// sources[i].citation_id; и то, что members — мягкая ссылка на Person (без
+// CRUD, подпроект 8) — ref/type round-trip'ятся как обычный TextRef, без
+// проверки существования.
+func TestFamilyWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Families:   newFamilyService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание.
+	created := createFamily(t, h, owner,
+		`{"name":"Ивановы","members":[],"notes":[],"private":false}`, http.StatusCreated)
+	if created.Name != "Ивановы" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "F-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю.
+	rec := getReq(t, h, "/api/families/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"name":"Ивановы"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена name/members/notes/sources/private.
+	rec = putFamilyReq(t, h, owner, "/api/families/"+string(created.ID),
+		`{"name":"Ивановы (испр.)","members":[],"notes":[],"private":false}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeFamilyS(t, rec)
+	if updated.Name != "Ивановы (испр.)" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/families/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/families/"+string(created.ID)), http.StatusNotFound)
+
+	// Fix 1 (CRITICAL, повторялась дважды — подпроекты 2 и 4): private
+	// должен пережить и create, и update, а не только прямое сохранение.
+	// Сначала create с private:true.
+	private := createFamily(t, h, owner,
+		`{"name":"Приватный род","members":[],"notes":[],"private":true}`, http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private (после create) = %+v, want Private=true", private)
+	}
+	requireStatusS(t, getReq(t, h, "/api/families/"+string(private.ID)), http.StatusNotFound)
+
+	// Теперь update с private:true у записи, созданной как публичная.
+	rec = putFamilyReq(t, h, owner, "/api/families/"+string(private.ID),
+		`{"name":"Приватный род","members":[],"notes":[],"private":true}`)
+	requireStatusS(t, rec, http.StatusOK)
+	afterUpdate := decodeFamilyS(t, rec)
+	if !afterUpdate.Private {
+		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
+	}
+	requireStatusS(t, getReq(t, h, "/api/families/"+string(private.ID)), http.StatusNotFound)
+
+	// members — мягкая ссылка на Person (без CRUD, подпроект 8):
+	// ref/type сохраняются как обычный TextRef, существование не проверяется.
+	withMember := createFamily(t, h, owner,
+		`{"name":"Петровы","members":[{"text":"Пётр Петров","ref":"I-01ARZ3NDEKTSV4RRFFQ69G5FA9","type":"person"}],"notes":[],"private":false}`,
+		http.StatusCreated)
+	if len(withMember.Members) != 1 || withMember.Members[0].Ref != "I-01ARZ3NDEKTSV4RRFFQ69G5FA9" {
+		t.Fatalf("withMember.Members = %+v", withMember.Members)
+	}
+
+	// Ретрофит-паттерн (по образцу TestArchiveWriteContractWithRealStore):
+	// строгий FK sources[i].citation_id — сквозная проверка через реальный
+	// HTTP-хендлер → сценарий → SQLite.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Ревизская сказка","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createFamily(t, h, owner,
+		fmt.Sprintf(`{"name":"Сидоровы","members":[],"notes":[],"sources":[{"citation_id":%q}],"private":false}`, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий citation_id — 422 на sources[0].citation_id.
+	rec = postFamilyReq(t, h, owner,
+		`{"name":"Призрачный род","members":[],"notes":[],"sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}],"private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
+}
+
+func createFamily(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Family {
+	t.Helper()
+
+	rec := postFamilyReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeFamilyS(t, rec)
+}
+
+func decodeFamilyS(t *testing.T, rec *httptest.ResponseRecorder) transport.Family {
+	t.Helper()
+
+	var f transport.Family
+	if err := json.Unmarshal(rec.Body.Bytes(), &f); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return f
+}
+
+func postFamilyReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/families", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putFamilyReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}

@@ -80,6 +80,10 @@ func NewHandler(deps Deps) http.Handler {
 		registerCitationRoutes(mux, deps.Citations)
 	}
 
+	if deps.Families != nil {
+		registerFamilyRoutes(mux, deps.Families)
+	}
+
 	return mux
 }
 
@@ -248,6 +252,16 @@ func registerCitationRoutes(mux *http.ServeMux, citations CitationService) {
 	mux.HandleFunc("POST /api/citations", handleCitationCreate(citations))
 	mux.HandleFunc("PUT /api/citations/{id}", handleCitationUpdate(citations))
 	mux.HandleFunc("DELETE /api/citations/{id}", handleCitationDelete(citations))
+}
+
+// registerFamilyRoutes регистрирует маршруты /api/families на переданном mux.
+func registerFamilyRoutes(mux *http.ServeMux, families FamilyService) {
+	mux.HandleFunc("GET /api/families", handleFamilyList(families))
+	mux.HandleFunc("GET /api/families/search", handleFamilySearch(families))
+	mux.HandleFunc("GET /api/families/{id}", handleFamilyGet(families))
+	mux.HandleFunc("POST /api/families", handleFamilyCreate(families))
+	mux.HandleFunc("PUT /api/families/{id}", handleFamilyUpdate(families))
+	mux.HandleFunc("DELETE /api/families/{id}", handleFamilyDelete(families))
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

@@ -24,6 +24,7 @@ import (
 	create_citation "github.com/amarin/genodex/internal/usecases/create_citation"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
 	create_estate "github.com/amarin/genodex/internal/usecases/create_estate"
+	create_family "github.com/amarin/genodex/internal/usecases/create_family"
 	create_given_name "github.com/amarin/genodex/internal/usecases/create_given_name"
 	create_note "github.com/amarin/genodex/internal/usecases/create_note"
 	create_parish "github.com/amarin/genodex/internal/usecases/create_parish"
@@ -40,6 +41,7 @@ import (
 	delete_citation "github.com/amarin/genodex/internal/usecases/delete_citation"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
 	delete_estate "github.com/amarin/genodex/internal/usecases/delete_estate"
+	delete_family "github.com/amarin/genodex/internal/usecases/delete_family"
 	delete_given_name "github.com/amarin/genodex/internal/usecases/delete_given_name"
 	delete_note "github.com/amarin/genodex/internal/usecases/delete_note"
 	delete_parish "github.com/amarin/genodex/internal/usecases/delete_parish"
@@ -56,6 +58,7 @@ import (
 	get_citation "github.com/amarin/genodex/internal/usecases/get_citation"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
 	get_estate "github.com/amarin/genodex/internal/usecases/get_estate"
+	get_family "github.com/amarin/genodex/internal/usecases/get_family"
 	get_given_name "github.com/amarin/genodex/internal/usecases/get_given_name"
 	get_note "github.com/amarin/genodex/internal/usecases/get_note"
 	get_parish "github.com/amarin/genodex/internal/usecases/get_parish"
@@ -72,6 +75,7 @@ import (
 	list_citations "github.com/amarin/genodex/internal/usecases/list_citations"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
 	list_estates "github.com/amarin/genodex/internal/usecases/list_estates"
+	list_families "github.com/amarin/genodex/internal/usecases/list_families"
 	list_given_names "github.com/amarin/genodex/internal/usecases/list_given_names"
 	list_notes "github.com/amarin/genodex/internal/usecases/list_notes"
 	list_parishes "github.com/amarin/genodex/internal/usecases/list_parishes"
@@ -88,6 +92,7 @@ import (
 	search_citations "github.com/amarin/genodex/internal/usecases/search_citations"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
 	search_estates "github.com/amarin/genodex/internal/usecases/search_estates"
+	search_families "github.com/amarin/genodex/internal/usecases/search_families"
 	search_given_names "github.com/amarin/genodex/internal/usecases/search_given_names"
 	search_notes "github.com/amarin/genodex/internal/usecases/search_notes"
 	search_parishes "github.com/amarin/genodex/internal/usecases/search_parishes"
@@ -104,6 +109,7 @@ import (
 	update_citation "github.com/amarin/genodex/internal/usecases/update_citation"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
 	update_estate "github.com/amarin/genodex/internal/usecases/update_estate"
+	update_family "github.com/amarin/genodex/internal/usecases/update_family"
 	update_given_name "github.com/amarin/genodex/internal/usecases/update_given_name"
 	update_note "github.com/amarin/genodex/internal/usecases/update_note"
 	update_parish "github.com/amarin/genodex/internal/usecases/update_parish"
@@ -690,6 +696,40 @@ func (s *citationService) DeleteCitation(ctx context.Context, id models.ID) erro
 	return s.del.DeleteCitation(ctx, id)
 }
 
+// familyService — фасад всех сценариев родов/линий, отдаваемых HTTP и MCP.
+type familyService struct {
+	list   *list_families.Scenario
+	search *search_families.Scenario
+	get    *get_family.Scenario
+	create *create_family.Scenario
+	update *update_family.Scenario
+	del    *delete_family.Scenario
+}
+
+func (s *familyService) ListFamilies(ctx context.Context, access models.Access, page models.Page) ([]models.Family, error) {
+	return s.list.ListFamilies(ctx, access, page)
+}
+
+func (s *familyService) SearchFamilies(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Family, error) {
+	return s.search.SearchFamilies(ctx, access, q)
+}
+
+func (s *familyService) GetFamily(ctx context.Context, access models.Access, id models.ID) (models.Family, error) {
+	return s.get.GetFamily(ctx, access, id)
+}
+
+func (s *familyService) CreateFamily(ctx context.Context, f models.Family) (models.Family, error) {
+	return s.create.CreateFamily(ctx, f)
+}
+
+func (s *familyService) UpdateFamily(ctx context.Context, f models.Family) error {
+	return s.update.UpdateFamily(ctx, f)
+}
+
+func (s *familyService) DeleteFamily(ctx context.Context, id models.ID) error {
+	return s.del.DeleteFamily(ctx, id)
+}
+
 var (
 	_ httpapi.DivisionService        = (*divisionService)(nil)
 	_ mcp.DivisionService            = (*divisionService)(nil)
@@ -723,6 +763,8 @@ var (
 	_ mcp.SourceService              = (*sourceService)(nil)
 	_ httpapi.CitationService        = (*citationService)(nil)
 	_ mcp.CitationService            = (*citationService)(nil)
+	_ httpapi.FamilyService          = (*familyService)(nil)
+	_ mcp.FamilyService              = (*familyService)(nil)
 	_ httpapi.AuthService            = (*auth.Service)(nil)
 	_ mcp.TokenResolver              = (*auth.Service)(nil)
 )
@@ -878,6 +920,15 @@ func New(cfg Config) (*App, error) {
 		del:    delete_citation.New(st),
 	}
 
+	families := &familyService{
+		list:   list_families.New(st),
+		search: search_families.New(st),
+		get:    get_family.New(st),
+		create: create_family.New(st, idgen.New()),
+		update: update_family.New(st),
+		del:    delete_family.New(st),
+	}
+
 	// auth-хранилище — на том же соединении, что и общий store (см.
 	// sqlstore.Store.DB), файл БД один и тот же (internal/storage/schema_auth.go).
 	authService := auth.New(auth.NewSQLStore(st.DB()))
@@ -894,6 +945,7 @@ func New(cfg Config) (*App, error) {
 			Attachments:  attachments,
 			Sources:      sources,
 			Citations:    citations,
+			Families:     families,
 		}),
 	)))
 	mux.Handle("/api/", httpapi.NewAPIHandler(httpapi.Deps{
@@ -913,6 +965,7 @@ func New(cfg Config) (*App, error) {
 		Attachments:  attachments,
 		Sources:      sources,
 		Citations:    citations,
+		Families:     families,
 		Auth:         authService,
 		DocsFS:       genodex.DocsFS(cfg.WebMode),
 		TrustProxy:   cfg.TrustProxy,
