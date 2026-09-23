@@ -1,7 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Alert, Button, Card, Input, Layout, List, Spin, Tabs, Typography } from "antd";
-import { BookOutlined, HomeOutlined } from "@ant-design/icons";
+import { BankOutlined, BookOutlined, HomeOutlined } from "@ant-design/icons";
 import {
   fetchAdminDivisions,
   searchAdminDivisions,
@@ -12,6 +12,8 @@ import {
 import { SessionProvider } from "./session";
 import { AppHeader } from "./AppHeader";
 import DocsPanel from "./docs-panel";
+import DivisionsList from "./pages/DivisionsList";
+import DivisionView from "./pages/DivisionView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -109,6 +111,16 @@ function SettlementsTab() {
   );
 }
 
+// DivisionsTab — «Административное деление»: с id в URL показывает View
+// конкретной единицы, без id — List (дерево от корня). Тот же приём, что
+// DocsPanel использует для docPath — один компонент ветвится по параметру,
+// а не отдельный <Route> на каждый режим (Tabs ниже держит оба под одним
+// маршрутом /divisions/:id?, см. роуты в App()).
+function DivisionsTab() {
+  const { id } = useParams<{ id?: string }>();
+  return id != null ? <DivisionView /> : <DivisionsList />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -117,6 +129,8 @@ export default function App() {
           <Route path="/" element={<Navigate to="/docs" replace />} />
           <Route path="/docs" element={<AppContent />} />
           <Route path="/docs/:docPath*" element={<AppContent />} />
+          <Route path="/divisions" element={<AppContent />} />
+          <Route path="/divisions/:id" element={<AppContent />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />
@@ -142,6 +156,15 @@ function AppContent() {
                 </>
               ),
               children: <SettlementsTab />,
+            },
+            {
+              key: "divisions",
+              label: (
+                <>
+                  <BankOutlined /> Административное деление
+                </>
+              ),
+              children: <DivisionsTab />,
             },
             {
               key: "docs",
