@@ -43,3 +43,26 @@ func TextRefsToModel(ts []TextRef) []models.TextRef {
 
 	return out
 }
+
+// TextRefFromModelPtr конвертирует необязательную ссылку (например,
+// Church.Parish); nil — не задана.
+func TextRefFromModelPtr(t *models.TextRef) *TextRef {
+	if t == nil {
+		return nil
+	}
+
+	v := TextRefFromModel(*t)
+
+	return &v
+}
+
+// ModelPtr конвертирует контракт обратно в необязательную модель; nil — не задана.
+func (t *TextRef) ModelPtr() *models.TextRef {
+	if t == nil {
+		return nil
+	}
+
+	v := t.Model()
+
+	return &v
+}

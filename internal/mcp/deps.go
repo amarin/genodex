@@ -71,3 +71,47 @@ type GivenNameService interface {
 	UpdateGivenName(ctx context.Context, x models.GivenName) error
 	DeleteGivenName(ctx context.Context, id models.ID) error
 }
+
+// RepositoryService — контракт сценариев хранилищ-контейнеров источников,
+// отдаваемых в MCP-тулы: список, поиск, чтение, создание, изменение, удаление.
+type RepositoryService interface {
+	ListRepositories(ctx context.Context, access models.Access, page models.Page) ([]models.Repository, error)
+	SearchRepositories(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Repository, error)
+	GetRepository(ctx context.Context, id models.ID) (models.Repository, error)
+	CreateRepository(ctx context.Context, r models.Repository) (models.Repository, error)
+	UpdateRepository(ctx context.Context, r models.Repository) error
+	DeleteRepository(ctx context.Context, id models.ID) error
+}
+
+// ChurchService — контракт сценариев церквей, отдаваемых в MCP-тулы: список,
+// поиск, чтение, создание, изменение, удаление.
+type ChurchService interface {
+	ListChurches(ctx context.Context, access models.Access, page models.Page) ([]models.Church, error)
+	SearchChurches(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Church, error)
+	GetChurch(ctx context.Context, id models.ID) (models.Church, error)
+	CreateChurch(ctx context.Context, c models.Church) (models.Church, error)
+	UpdateChurch(ctx context.Context, c models.Church) error
+	DeleteChurch(ctx context.Context, id models.ID) error
+}
+
+// ParishService — контракт сценариев приходов, отдаваемых в MCP-тулы: список,
+// поиск, чтение, создание, изменение, удаление.
+type ParishService interface {
+	ListParishes(ctx context.Context, access models.Access, page models.Page) ([]models.Parish, error)
+	SearchParishes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Parish, error)
+	GetParish(ctx context.Context, id models.ID) (models.Parish, error)
+	CreateParish(ctx context.Context, p models.Parish) (models.Parish, error)
+	UpdateParish(ctx context.Context, p models.Parish) error
+	DeleteParish(ctx context.Context, id models.ID) error
+}
+
+// ArchiveService — контракт сценариев архивов, отдаваемых в MCP-тулы: список,
+// поиск, чтение, создание, изменение, удаление.
+type ArchiveService interface {
+	ListArchives(ctx context.Context, access models.Access, page models.Page) ([]models.Archive, error)
+	SearchArchives(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Archive, error)
+	GetArchive(ctx context.Context, id models.ID) (models.Archive, error)
+	CreateArchive(ctx context.Context, a models.Archive) (models.Archive, error)
+	UpdateArchive(ctx context.Context, a models.Archive) error
+	DeleteArchive(ctx context.Context, id models.ID) error
+}

@@ -11,15 +11,19 @@ import (
 // меняя сигнатуру функций (docs/data-model/entity-write.md §3; решение
 // принято при добавлении Surname, первой сущности после AdministrativeDivision).
 type Deps struct {
-	Divisions   DivisionService
-	Surnames    SurnameService
-	Patronymics PatronymicService
-	Estates     EstateService
-	Titles      TitleService
-	GivenNames  GivenNameService
-	Auth        AuthService
-	DocsFS      fs.FS
-	TrustProxy  bool
+	Divisions    DivisionService
+	Surnames     SurnameService
+	Patronymics  PatronymicService
+	Estates      EstateService
+	Titles       TitleService
+	GivenNames   GivenNameService
+	Repositories RepositoryService
+	Churches     ChurchService
+	Parishes     ParishService
+	Archives     ArchiveService
+	Auth         AuthService
+	DocsFS       fs.FS
+	TrustProxy   bool
 }
 
 // NewAPIHandler — единая точка входа /api: маршруты делений, фамилий,
@@ -51,6 +55,22 @@ func NewAPIHandler(deps Deps) http.Handler {
 
 	if deps.GivenNames != nil {
 		registerGivenNameRoutes(mux, deps.GivenNames)
+	}
+
+	if deps.Repositories != nil {
+		registerRepositoryRoutes(mux, deps.Repositories)
+	}
+
+	if deps.Churches != nil {
+		registerChurchRoutes(mux, deps.Churches)
+	}
+
+	if deps.Parishes != nil {
+		registerParishRoutes(mux, deps.Parishes)
+	}
+
+	if deps.Archives != nil {
+		registerArchiveRoutes(mux, deps.Archives)
 	}
 
 	registerAuthRoutes(mux, deps.Auth, deps.TrustProxy)

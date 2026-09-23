@@ -40,6 +40,22 @@ func NewHandler(deps Deps) http.Handler {
 		registerGivenNameRoutes(mux, deps.GivenNames)
 	}
 
+	if deps.Repositories != nil {
+		registerRepositoryRoutes(mux, deps.Repositories)
+	}
+
+	if deps.Churches != nil {
+		registerChurchRoutes(mux, deps.Churches)
+	}
+
+	if deps.Parishes != nil {
+		registerParishRoutes(mux, deps.Parishes)
+	}
+
+	if deps.Archives != nil {
+		registerArchiveRoutes(mux, deps.Archives)
+	}
+
 	return mux
 }
 
@@ -106,6 +122,46 @@ func registerGivenNameRoutes(mux *http.ServeMux, givenNames GivenNameService) {
 	mux.HandleFunc("POST /api/given-names", handleGivenNameCreate(givenNames))
 	mux.HandleFunc("PUT /api/given-names/{id}", handleGivenNameUpdate(givenNames))
 	mux.HandleFunc("DELETE /api/given-names/{id}", handleGivenNameDelete(givenNames))
+}
+
+// registerRepositoryRoutes регистрирует маршруты /api/repositories на переданном mux.
+func registerRepositoryRoutes(mux *http.ServeMux, repositories RepositoryService) {
+	mux.HandleFunc("GET /api/repositories", handleRepositoryList(repositories))
+	mux.HandleFunc("GET /api/repositories/search", handleRepositorySearch(repositories))
+	mux.HandleFunc("GET /api/repositories/{id}", handleRepositoryGet(repositories))
+	mux.HandleFunc("POST /api/repositories", handleRepositoryCreate(repositories))
+	mux.HandleFunc("PUT /api/repositories/{id}", handleRepositoryUpdate(repositories))
+	mux.HandleFunc("DELETE /api/repositories/{id}", handleRepositoryDelete(repositories))
+}
+
+// registerChurchRoutes регистрирует маршруты /api/churches на переданном mux.
+func registerChurchRoutes(mux *http.ServeMux, churches ChurchService) {
+	mux.HandleFunc("GET /api/churches", handleChurchList(churches))
+	mux.HandleFunc("GET /api/churches/search", handleChurchSearch(churches))
+	mux.HandleFunc("GET /api/churches/{id}", handleChurchGet(churches))
+	mux.HandleFunc("POST /api/churches", handleChurchCreate(churches))
+	mux.HandleFunc("PUT /api/churches/{id}", handleChurchUpdate(churches))
+	mux.HandleFunc("DELETE /api/churches/{id}", handleChurchDelete(churches))
+}
+
+// registerParishRoutes регистрирует маршруты /api/parishes на переданном mux.
+func registerParishRoutes(mux *http.ServeMux, parishes ParishService) {
+	mux.HandleFunc("GET /api/parishes", handleParishList(parishes))
+	mux.HandleFunc("GET /api/parishes/search", handleParishSearch(parishes))
+	mux.HandleFunc("GET /api/parishes/{id}", handleParishGet(parishes))
+	mux.HandleFunc("POST /api/parishes", handleParishCreate(parishes))
+	mux.HandleFunc("PUT /api/parishes/{id}", handleParishUpdate(parishes))
+	mux.HandleFunc("DELETE /api/parishes/{id}", handleParishDelete(parishes))
+}
+
+// registerArchiveRoutes регистрирует маршруты /api/archives на переданном mux.
+func registerArchiveRoutes(mux *http.ServeMux, archives ArchiveService) {
+	mux.HandleFunc("GET /api/archives", handleArchiveList(archives))
+	mux.HandleFunc("GET /api/archives/search", handleArchiveSearch(archives))
+	mux.HandleFunc("GET /api/archives/{id}", handleArchiveGet(archives))
+	mux.HandleFunc("POST /api/archives", handleArchiveCreate(archives))
+	mux.HandleFunc("PUT /api/archives/{id}", handleArchiveUpdate(archives))
+	mux.HandleFunc("DELETE /api/archives/{id}", handleArchiveDelete(archives))
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
