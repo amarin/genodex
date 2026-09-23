@@ -585,3 +585,198 @@ export async function updateGivenName(id: string, input: GivenNameInput): Promis
 export async function deleteGivenName(id: string): Promise<void> {
   return authFetch<void>(`/api/given-names/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+export interface SourceLink {
+  citation_id: string;
+  target_type?: string;
+  target_id?: string;
+  reliability?: string;
+  role?: string;
+  note?: string;
+}
+
+// FactDate — контракт структурированной даты (transport.FactDate): год/
+// месяц/день, точность, формулировка, календарь, верхняя граница периода для
+// modifier=between. Первое появление в проекте (Parish.Since/Until).
+export type FactPrecision = "unknown" | "year" | "month" | "day";
+export type FactModifier = "exact" | "approx" | "before" | "after" | "between";
+export type FactCalendar = "" | "gregorian" | "julian" | "unknown";
+
+export interface FactDate {
+  year: number;
+  month?: number;
+  day?: number;
+  precision: FactPrecision;
+  modifier: FactModifier;
+  calendar?: FactCalendar;
+  year_to?: number;
+  month_to?: number;
+  day_to?: number;
+}
+
+export interface Repository {
+  id: string;
+  name: string;
+  type: string;
+  address?: string;
+  urls: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+// RepositoryInput — тело POST/PUT /api/repositories (transport.RepositoryCreate
+// и transport.RepositoryUpdate имеют одинаковую форму: полная замена всех
+// полей, кроме sources — read-only в v1).
+export interface RepositoryInput {
+  name: string;
+  type: string;
+  address?: string;
+  urls: TextRef[];
+  notes: TextRef[];
+  private: boolean;
+}
+
+export interface RepositoryQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface RepositorySearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchRepositories(query: RepositoryQuery = {}): Promise<Repository[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/repositories${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchRepositories(query: RepositorySearchQuery): Promise<Repository[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/repositories/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchRepository(id: string): Promise<Repository> {
+  return authFetch<Repository>(`/api/repositories/${encodeURIComponent(id)}`);
+}
+
+export async function createRepository(input: RepositoryInput): Promise<Repository> {
+  return authFetch<Repository>("/api/repositories", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateRepository(id: string, input: RepositoryInput): Promise<Repository> {
+  return authFetch<Repository>(`/api/repositories/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteRepository(id: string): Promise<void> {
+  return authFetch<void>(`/api/repositories/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export interface Church {
+  id: string;
+  name: string;
+  parish?: TextRef | null;
+  settlements: TextRef[];
+  variants: string[];
+  notes: TextRef[];
+  sources: SourceLink[];
+}
+
+export interface ChurchInput {
+  name: string;
+  parish?: TextRef | null;
+  settlements: TextRef[];
+  variants: string[];
+  notes: TextRef[];
+}
+
+export interface ChurchQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface ChurchSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchChurches(query: ChurchQuery = {}): Promise<Church[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/churches${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchChurches(query: ChurchSearchQuery): Promise<Church[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/churches/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchChurch(id: string): Promise<Church> {
+  return authFetch<Church>(`/api/churches/${encodeURIComponent(id)}`);
+}
+
+export async function createChurch(input: ChurchInput): Promise<Church> {
+  return authFetch<Church>("/api/churches", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateChurch(id: string, input: ChurchInput): Promise<Church> {
+  return authFetch<Church>(`/api/churches/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteChurch(id: string): Promise<void> {
+  return authFetch<void>(`/api/churches/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

@@ -17,6 +17,10 @@ import TitlesList from "./pages/TitlesList";
 import TitleView from "./pages/TitleView";
 import GivenNamesList from "./pages/GivenNamesList";
 import GivenNameView from "./pages/GivenNameView";
+import RepositoriesList from "./pages/RepositoriesList";
+import RepositoryView from "./pages/RepositoryView";
+import ChurchesList from "./pages/ChurchesList";
+import ChurchView from "./pages/ChurchView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -56,6 +60,10 @@ export default function App() {
           <Route path="/titles/:id" element={<PageLayout><TitleView /></PageLayout>} />
           <Route path="/given-names" element={<PageLayout><GivenNamesList /></PageLayout>} />
           <Route path="/given-names/:id" element={<PageLayout><GivenNameView /></PageLayout>} />
+          <Route path="/repositories" element={<PageLayout><RepositoriesList /></PageLayout>} />
+          <Route path="/repositories/:id" element={<PageLayout><RepositoryView /></PageLayout>} />
+          <Route path="/churches" element={<PageLayout><ChurchesList /></PageLayout>} />
+          <Route path="/churches/:id" element={<PageLayout><ChurchView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

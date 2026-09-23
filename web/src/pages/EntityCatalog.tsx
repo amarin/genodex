@@ -12,6 +12,8 @@ const CATALOG_ENTRIES: { label: string; path: string }[] = [
   { label: "Сословия", path: "/estates" },
   { label: "Титулы", path: "/titles" },
   { label: "Фамилии", path: "/surnames" },
+  { label: "Хранилища", path: "/repositories" },
+  { label: "Церкви", path: "/churches" },
 ];
 
 const SORTED_ENTRIES = [...CATALOG_ENTRIES].sort((a, b) => a.label.localeCompare(b.label, "ru"));
