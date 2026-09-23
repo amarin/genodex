@@ -11,6 +11,7 @@ import (
 
 	"github.com/amarin/genodex/internal/auth"
 	"github.com/amarin/genodex/internal/httpapi"
+	"github.com/amarin/genodex/internal/idgen"
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
 	"github.com/amarin/genodex/internal/transport"
@@ -1255,6 +1256,263 @@ func putArchiveReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, b
 	t.Helper()
 
 	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestNoteWriteContractWithRealStore: сквозной путь «хранилище → сценарии →
+// HTTP» (по образцу TestArchiveWriteContractWithRealStore) для заметок:
+// bootstrap-регистрация → создание → чтение → изменение → удаление →
+// повторное чтение — 404. Дополнительно закрывает self-ref FK
+// (Note.ParentID): несуществующий родитель — 422 на поле parent_id;
+// переустановка parent_id в цепочку собственных потомков (цикл) — тоже 422
+// на поле parent_id; и Fix 1 (приватная запись, анонимный GET — 404).
+func TestNoteWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Notes:      newNoteService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание без родителя.
+	created := createNote(t, h, owner,
+		`{"kind":"note","title":"Заголовок","text":"Текст записи","private":false}`, http.StatusCreated)
+	if created.Title != "Заголовок" || created.Text != "Текст записи" || created.ParentID != "" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "N-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id.
+	rec := getReq(t, h, "/api/notes/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"text":"Текст записи"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена kind/title/text/parent_id/private.
+	rec = putNoteReq(t, h, owner, "/api/notes/"+string(created.ID),
+		`{"kind":"article","title":"Заголовок (испр.)","text":"Текст записи","private":false}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeNoteS(t, rec)
+	if updated.Kind != "article" || updated.Title != "Заголовок (испр.)" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/notes/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/notes/"+string(created.ID)), http.StatusNotFound)
+
+	// Self-ref FK: валидный parent_id создаётся и сохраняется как есть.
+	parent := createNote(t, h, owner, `{"kind":"book","title":"Книга","private":false}`, http.StatusCreated)
+
+	child := createNote(t, h, owner,
+		fmt.Sprintf(`{"kind":"chapter","title":"Глава 1","parent_id":%q,"private":false}`, parent.ID), http.StatusCreated)
+	if child.ParentID != string(parent.ID) {
+		t.Fatalf("child.ParentID = %q, want %q", child.ParentID, parent.ID)
+	}
+
+	// Self-ref FK: корректный по формату, но несуществующий parent_id — 422.
+	rec = postNoteReq(t, h, owner,
+		`{"kind":"note","title":"Сирота","parent_id":"N-01ARZ3NDEKTSV4RRFFQ69G5FA9","private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"parent_id"`) {
+		t.Fatalf("body = %s, want field=parent_id", rec.Body)
+	}
+
+	// Цикл: A без родителя, B — потомок A, затем A переставляется в потомки B — 422.
+	noteA := createNote(t, h, owner, `{"kind":"note","title":"A","private":false}`, http.StatusCreated)
+	noteB := createNote(t, h, owner,
+		fmt.Sprintf(`{"kind":"note","title":"B","parent_id":%q,"private":false}`, noteA.ID), http.StatusCreated)
+
+	rec = putNoteReq(t, h, owner, "/api/notes/"+string(noteA.ID),
+		fmt.Sprintf(`{"kind":"note","title":"A","parent_id":%q,"private":false}`, noteB.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"parent_id"`) {
+		t.Fatalf("body = %s, want field=parent_id", rec.Body)
+	}
+
+	// Fix 1: приватная запись, анонимный GET — 404, не 200.
+	private := createNote(t, h, owner, `{"kind":"note","title":"Приватная","private":true}`, http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private = %+v, want Private=true", private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/notes/"+string(private.ID)), http.StatusNotFound)
+}
+
+func createNote(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Note {
+	t.Helper()
+
+	rec := postNoteReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeNoteS(t, rec)
+}
+
+func decodeNoteS(t *testing.T, rec *httptest.ResponseRecorder) transport.Note {
+	t.Helper()
+
+	var n transport.Note
+	if err := json.Unmarshal(rec.Body.Bytes(), &n); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return n
+}
+
+func postNoteReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/notes", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putNoteReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestAttachmentWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» (по образцу TestArchiveWriteContractWithRealStore) для
+// файловых вложений: bootstrap-регистрация → обязательный строгий FK
+// node_id (пустой — 422 на поле node_id; корректный по формату, но
+// несуществующий — тоже 422 на поле node_id) → Fix 1 (приватная запись,
+// анонимный GET — 404). ArchiveNode ещё не имеет своего CRUD-слоя
+// (подпроект 6) — сеется напрямую через generic-хранилище вместе с
+// Archive, на который он ссылается.
+func TestAttachmentWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	ids := idgen.New()
+	archiveID := ids.New(models.TypeArchive)
+	if err := st.SaveArchive(t.Context(), &models.Archive{ID: archiveID, Name: "ГАВО, архив"}); err != nil {
+		t.Fatalf("seed archive: %v", err)
+	}
+
+	nodeID := ids.New(models.TypeArchiveNode)
+	if err := st.SaveArchiveNode(t.Context(), &models.ArchiveNode{
+		ID: nodeID, Type: "fond", ArchiveID: archiveID, Label: "Фонд 1",
+	}); err != nil {
+		t.Fatalf("seed archive node: %v", err)
+	}
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:   newDivisionService(t, st),
+		Attachments: newAttachmentService(t, st),
+		Auth:        authSvc,
+		DocsFS:      fstest.MapFS{},
+		TrustProxy:  false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Строгий FK, всегда обязателен: пустой node_id — 422 на поле node_id.
+	rec := postAttachmentReq(t, h, owner, `{"kind":"scan","filename":"скан.jpg","private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"node_id"`) {
+		t.Fatalf("body = %s, want field=node_id", rec.Body)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий node_id — 422.
+	rec = postAttachmentReq(t, h, owner,
+		`{"kind":"scan","filename":"скан.jpg","node_id":"AN-01ARZ3NDEKTSV4RRFFQ69G5FA9","private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"node_id"`) {
+		t.Fatalf("body = %s, want field=node_id", rec.Body)
+	}
+
+	// Fix 1: приватная запись (с настоящим node_id), анонимный GET — 404, не 200.
+	private := createAttachment(t, h, owner,
+		fmt.Sprintf(`{"kind":"scan","filename":"скан.jpg","node_id":%q,"private":true}`, nodeID), http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private = %+v, want Private=true", private)
+	}
+	if private.NodeID != string(nodeID) {
+		t.Fatalf("private.NodeID = %q, want %q", private.NodeID, nodeID)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/attachments/"+string(private.ID)), http.StatusNotFound)
+}
+
+func createAttachment(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Attachment {
+	t.Helper()
+
+	rec := postAttachmentReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeAttachmentS(t, rec)
+}
+
+func decodeAttachmentS(t *testing.T, rec *httptest.ResponseRecorder) transport.Attachment {
+	t.Helper()
+
+	var a transport.Attachment
+	if err := json.Unmarshal(rec.Body.Bytes(), &a); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return a
+}
+
+func postAttachmentReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/attachments", strings.NewReader(body))
 	req.Header.Set("X-Requested-With", "genodex")
 	for _, c := range cookies {
 		req.AddCookie(c)

@@ -90,10 +90,12 @@ TLS-терминирующий реверс-прокси — подробнос�
 | `/api/churches` | Церкви (JSON): `GET` — список `[{"id", "name", "parish", "settlements", "variants", "notes", "sources"}]`; `POST` — создание; `GET/PUT/DELETE /api/churches/{id}` — чтение/изменение/удаление записи; `GET /api/churches/search?q=` — поиск по началу названия. `parish` — одиночная необязательная ссылка (`{text, ref?, type?}`, v1-форма редактирует только text). |
 | `/api/parishes` | Приходы (JSON): `GET` — список `[{"id", "name", "church", "settlements", "since", "until", "notes", "sources"}]`; `POST` — создание; `GET/PUT/DELETE /api/parishes/{id}` — чтение/изменение/удаление записи; `GET /api/parishes/search?q=` — поиск по началу названия. `since`/`until` — структурированная дата (`FactDate`, см. `web/src/FactDateEditor.tsx`). |
 | `/api/archives` | Архивы (JSON): `GET` — список `[{"id", "name", "system", "repository_id", "notes", "sources", "private"}]`; `POST` — создание; `GET/PUT/DELETE /api/archives/{id}` — чтение/изменение/удаление записи (приватная запись для не-владельца — 404); `GET /api/archives/search?q=` — поиск по началу названия. `repository_id` — строгая ссылка на `/api/repositories`: несуществующий id при создании/изменении — 422 на поле `repository_id`. |
+| `/api/notes` | Заметки (markdown-текст с иерархией «книга → главы», JSON): `GET` — список `[{"id", "kind", "title", "text", "parent_id", "sources", "private"}]`; `POST` — создание; `GET/PUT/DELETE /api/notes/{id}` — чтение/изменение/удаление записи (приватная запись для не-владельца — 404, как отсутствующая); `GET /api/notes/search?q=` — поиск по началу заголовка. `parent_id` — строгая self-ref ссылка на другую заметку: несуществующий id — 422 на поле `parent_id`; при `PUT`, если новый `parent_id` образует цикл (прямой или через цепочку), — тоже 422 на поле `parent_id`. |
+| `/api/attachments` | Файловые вложения (JSON): `GET` — список `[{"id", "kind", "uri", "filename", "mime", "page", "node_id", "document_id", "note", "private"}]`; `POST` — создание; `GET/PUT/DELETE /api/attachments/{id}` — чтение/изменение/удаление записи (приватная запись для не-владельца — 404); `GET /api/attachments/search?q=` — поиск по началу имени файла или URI. `node_id` — обязательная строгая ссылка на архивный узел (`ArchiveNode`, ещё без своего `/api/`-эндпоинта — подпроект 6): несуществующий id — 422 на поле `node_id`. `document_id` — необязательная мягкая ссылка на архивный документ (`ArchiveDocument`, тоже подпроект 6, `ON DELETE SET NULL` в схеме); при создании/изменении, если задан, существование тоже проверяется — 422 на поле `document_id`. |
 | `/static/` | Собранные ассеты SPA (JS/CSS). |
 | `/` | Веб-интерфейс (SPA): `index.html`, для неизвестных путей — fallback на неё. |
 
-`sources` у `/api/repositories`, `/api/churches`, `/api/parishes`, `/api/archives` — read-only: create/update DTO его не принимают, изменить нельзя (Citation ещё без CRUD, подпроект 5).
+`sources` у `/api/repositories`, `/api/churches`, `/api/parishes`, `/api/archives`, `/api/notes` — read-only: create/update DTO его не принимают, изменить нельзя (Citation ещё без CRUD, подпроект 5).
 
 ## Примеры запросов
 
@@ -170,6 +172,18 @@ curl -s -X POST http://localhost:9000/mcp \
 | `archive_create` | Создание записи: `name` (обязателен), `system` (только именем, без ссылки), `repository_id` (строгая ссылка — несуществующий id — ошибка тула на поле `repository_id`), `notes`, `private`; id генерирует сервер |
 | `archive_update` | Изменение записи: полная замена `name`/`system`/`repository_id`/`notes`/`private`; несуществующий `repository_id` — ошибка тула на поле `repository_id` |
 | `archive_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `note_list` | Список заметок; аргументы `limit`, `offset` |
+| `note_search` | Поиск заметок по началу заголовка; аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `note_get` | Запись по `id` (JSON контракта); приватная запись для не-владельца — ошибка тула (как отсутствующая) |
+| `note_create` | Создание записи: `kind` (обязателен), `title`, `text`, `parent_id` (строгая self-ref ссылка на другую заметку — несуществующий id — ошибка тула на поле `parent_id`), `private`; id генерирует сервер |
+| `note_update` | Изменение записи: полная замена `kind`/`title`/`text`/`parent_id`/`private`; несуществующий `parent_id` или цикл в цепочке родителей — ошибка тула на поле `parent_id` |
+| `note_delete` | Удаление записи по `id`; есть дочерние заметки или другие строгие ссылки — ошибка тула |
+| `attachment_list` | Список вложений; аргументы `limit`, `offset` |
+| `attachment_search` | Поиск вложений по началу имени файла или URI; аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `attachment_get` | Запись по `id` (JSON контракта); приватная запись для не-владельца — ошибка тула (как отсутствующая) |
+| `attachment_create` | Создание записи: `kind` (обязателен, закрытый перечень scan/document/audio/photo), `uri`, `filename`, `mime`, `page`, `node_id` (обязателен, строгая ссылка на архивный узел — несуществующий id — ошибка тула на поле `node_id`), `document_id` (необязателен, если задан — тоже проверяется, ошибка тула на поле `document_id`), `note`, `private`; id генерирует сервер |
+| `attachment_update` | Изменение записи: полная замена `kind`/`uri`/`filename`/`mime`/`page`/`node_id`/`document_id`/`note`/`private`; несуществующий `node_id` или `document_id` — ошибка тула на соответствующем поле |
+| `attachment_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
 
 ### HTTP API
 

@@ -87,7 +87,7 @@ export default function NotesList() {
         }
       >
         <Input.Search
-          placeholder="Поиск по заголовку или тексту…"
+          placeholder="Поиск по заголовку…"
           allowClear
           enterButton
           loading={searching}

@@ -86,7 +86,7 @@ export default function AttachmentsList() {
         }
       >
         <Input.Search
-          placeholder="Поиск по имени файла или заметке…"
+          placeholder="Поиск по имени файла или URI…"
           allowClear
           enterButton
           loading={searching}

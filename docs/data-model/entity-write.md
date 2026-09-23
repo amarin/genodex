@@ -159,6 +159,37 @@ Person и др.).
   `internal/usecases/get_repository/scenario.go` и
   `internal/usecases/get_archive/scenario.go`).
 
+### 3.2. Подпроект 4 (self-ref: `Note`, `Attachment`) — новые паттерны
+
+- **Self-ref строгий FK с обходом цепочки на цикл** (`Note.ParentID` →
+  другая `Note`, `ON DELETE RESTRICT`). `create_note` проверяет
+  существование `parent_id` в той же транзакции, что и сохранение (образец:
+  `create_division`) — на create цикл невозможен, новый id ещё ничьим
+  предком быть не может. `update_note` ДОПОЛНИТЕЛЬНО обходит полную цепочку
+  родителей (`checkParentChain`, образец: `update_division`), чтобы
+  поймать переустановку `parent_id` в цепочку собственных потомков —
+  прямую или транзитивную.
+- **Строгий FK на сущность без своего CRUD-слоя.** `Attachment.NodeID`
+  (обязателен) и `Attachment.DocumentID` (необязателен, `ON DELETE SET
+  NULL`) ссылаются на `ArchiveNode`/`ArchiveDocument`, у которых ещё нет
+  usecase/httpapi/mcp-слоя (появится в подпроекте 6) — но
+  generic-хранилище (`store.Store`, `internal/store/deps.go`) уже умеет
+  читать любую сущность по id независимо от готовности её
+  orchestration-слоя. `create_attachment`/`update_attachment` вызывают
+  `tx.GetArchiveNode`/`tx.GetArchiveDocument` напрямую, в той же
+  транзакции, что и сохранение — 422 на поле `node_id`/`document_id`.
+  Веб-форма в v1 — обычные текстовые поля ввода id (без `Select`/picker'а,
+  тот появится вместе с CRUD-слоем цели).
+- **Осторожно с описанием search.** Полнотекстовый поиск индексирует
+  только те поля, что явно переданы в `replaceSearchIndex` при сохранении
+  (см. `internal/store/sqlstore`), а не все текстовые поля модели — для
+  `Note` это только `title` (не `text`), для `Attachment` — `filename` и
+  `uri` (не `note`). Формулировки в MCP-описаниях/doc-комментариях/
+  веб-плейсхолдерах должны буквально совпадать со списком полей в
+  `replaceSearchIndex`, иначе описание вводит в заблуждение (найдено
+  финальным ревью подпроекта 4 — было "по началу заголовка или текста" при
+  индексации только `title`).
+
 ## 4. Веб-UI конвенции
 
 **Навигация — единая точка входа, без вкладок.** Уточнение по ходу

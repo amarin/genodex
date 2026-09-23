@@ -18,7 +18,7 @@ func New(attachments AttachmentRepo) *Scenario {
 	return &Scenario{attachments: attachments}
 }
 
-// SearchAttachments находит вложения, чьи имя файла или заметка начинаются
+// SearchAttachments находит вложения, чьё имя файла или URI начинаются
 // с текста запроса — та же механика, что и
 // search_divisions.SearchDivisions (см. её комментарий).
 func (s *Scenario) SearchAttachments(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Attachment, error) {

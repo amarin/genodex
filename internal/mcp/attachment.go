@@ -29,8 +29,8 @@ func registerAttachmentTools(s *server.MCPServer, attachments AttachmentService)
 
 	tool = mcp.NewTool(
 		"attachment_search",
-		mcp.WithDescription("Поиск вложений по началу имени файла или заметки; результат — JSON-массив записей. Пустой q — пустой результат"),
-		mcp.WithString("q", mcp.Required(), mcp.Description("Начало имени файла или заметки")),
+		mcp.WithDescription("Поиск вложений по началу имени файла или URI; результат — JSON-массив записей. Пустой q — пустой результат"),
+		mcp.WithString("q", mcp.Required(), mcp.Description("Начало имени файла или URI")),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
 	)

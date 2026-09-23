@@ -29,8 +29,8 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 
 	tool = mcp.NewTool(
 		"note_search",
-		mcp.WithDescription("Поиск заметок по началу заголовка или текста; результат — JSON-массив записей. Пустой q — пустой результат"),
-		mcp.WithString("q", mcp.Required(), mcp.Description("Начало заголовка или текста")),
+		mcp.WithDescription("Поиск заметок по началу заголовка; результат — JSON-массив записей. Пустой q — пустой результат"),
+		mcp.WithString("q", mcp.Required(), mcp.Description("Начало заголовка")),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
 	)

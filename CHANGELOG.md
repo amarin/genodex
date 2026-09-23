@@ -75,6 +75,23 @@
   `web/src/pages/{RepositoriesList,RepositoryView,RepositoryForm,ChurchesList,
   ChurchView,ChurchForm,ParishesList,ParishView,ParishForm,ArchivesList,
   ArchiveView,ArchiveForm}.tsx`, `web/src/FactDateEditor.tsx`).
+- Заметки/Вложения (`Note`/`Attachment`) — self-ref и подпроектная FK-на-
+  сущность-без-CRUD, полный CRUD: HTTP (`/api/notes*`, `/api/attachments*`)
+  и MCP (`note_*`/`attachment_*` — по 6 тулов на сущность), веб-страницы
+  (список/просмотр/редактирование/создание). Новые паттерны: self-ref
+  строгий FK с проверкой существования на create и обходом цепочки
+  родителей на цикл на update (`Note.ParentID`); обязательный/
+  необязательный строгий FK на сущность без своего CRUD-слоя, существование
+  проверяется через generic-хранилище (`Attachment.NodeID`/`DocumentID` →
+  `ArchiveNode`/`ArchiveDocument`, появятся в подпроекте 6)
+  (`internal/usecases/{list,search,get,create,update,delete}_{note,
+  attachment}*` (note usecases named `list_notes`/`search_notes`/`get_note`/
+  `create_note`/`update_note`/`delete_note`, attachment usecases named
+  `list_attachments`/`search_attachments`/`get_attachment`/
+  `create_attachment`/`update_attachment`/`delete_attachment`),
+  `internal/httpapi/{note,attachment}*.go`, `internal/mcp/{note,
+  attachment}.go`, `web/src/pages/{NotesList,NoteView,NoteForm,
+  AttachmentsList,AttachmentView,AttachmentForm}.tsx`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

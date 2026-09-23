@@ -18,7 +18,7 @@ func New(notes NoteRepo) *Scenario {
 	return &Scenario{notes: notes}
 }
 
-// SearchNotes находит заметки, чьи заголовок или текст начинаются с текста
+// SearchNotes находит заметки, чей заголовок начинается с текста
 // запроса — та же механика, что и
 // search_divisions.SearchDivisions (см. её комментарий).
 func (s *Scenario) SearchNotes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Note, error) {
