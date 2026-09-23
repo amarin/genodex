@@ -9,6 +9,12 @@ import DivisionsList from "./pages/DivisionsList";
 import DivisionView from "./pages/DivisionView";
 import SurnamesList from "./pages/SurnamesList";
 import SurnameView from "./pages/SurnameView";
+import PatronymicsList from "./pages/PatronymicsList";
+import PatronymicView from "./pages/PatronymicView";
+import EstatesList from "./pages/EstatesList";
+import EstateView from "./pages/EstateView";
+import TitlesList from "./pages/TitlesList";
+import TitleView from "./pages/TitleView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -40,6 +46,12 @@ export default function App() {
           <Route path="/divisions/:id" element={<PageLayout><DivisionView /></PageLayout>} />
           <Route path="/surnames" element={<PageLayout><SurnamesList /></PageLayout>} />
           <Route path="/surnames/:id" element={<PageLayout><SurnameView /></PageLayout>} />
+          <Route path="/patronymics" element={<PageLayout><PatronymicsList /></PageLayout>} />
+          <Route path="/patronymics/:id" element={<PageLayout><PatronymicView /></PageLayout>} />
+          <Route path="/estates" element={<PageLayout><EstatesList /></PageLayout>} />
+          <Route path="/estates/:id" element={<PageLayout><EstateView /></PageLayout>} />
+          <Route path="/titles" element={<PageLayout><TitlesList /></PageLayout>} />
+          <Route path="/titles/:id" element={<PageLayout><TitleView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

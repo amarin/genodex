@@ -243,3 +243,257 @@ export async function fetchDoc(path: string): Promise<string> {
   }
   return resp.text();
 }
+
+export interface Patronymic {
+  id: string;
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+// PatronymicInput — тело POST/PUT /api/patronymics (transport.PatronymicCreate и
+// transport.PatronymicUpdate имеют одинаковую форму: полная замена всех полей).
+export interface PatronymicInput {
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+export interface PatronymicQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface PatronymicSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchPatronymics(query: PatronymicQuery = {}): Promise<Patronymic[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/patronymics${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchPatronymics(query: PatronymicSearchQuery): Promise<Patronymic[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/patronymics/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// fetchPatronymic — GET /api/patronymics/{id}, открыто анонимному посетителю. Через
+// authFetch — ради ApiError (нужен код 404 на странице View).
+export async function fetchPatronymic(id: string): Promise<Patronymic> {
+  return authFetch<Patronymic>(`/api/patronymics/${encodeURIComponent(id)}`);
+}
+
+// createPatronymic/updatePatronymic/deletePatronymic — запись, только для вошедшего
+// владельца (requireFull на сервере, internal/httpapi/patronymic_write.go).
+export async function createPatronymic(input: PatronymicInput): Promise<Patronymic> {
+  return authFetch<Patronymic>("/api/patronymics", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updatePatronymic(id: string, input: PatronymicInput): Promise<Patronymic> {
+  return authFetch<Patronymic>(`/api/patronymics/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deletePatronymic(id: string): Promise<void> {
+  return authFetch<void>(`/api/patronymics/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+
+export interface Estate {
+  id: string;
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+// EstateInput — тело POST/PUT /api/estates (transport.EstateCreate и
+// transport.EstateUpdate имеют одинаковую форму: полная замена всех полей).
+export interface EstateInput {
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+export interface EstateQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface EstateSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchEstates(query: EstateQuery = {}): Promise<Estate[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/estates${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchEstates(query: EstateSearchQuery): Promise<Estate[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/estates/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// fetchEstate — GET /api/estates/{id}, открыто анонимному посетителю. Через
+// authFetch — ради ApiError (нужен код 404 на странице View).
+export async function fetchEstate(id: string): Promise<Estate> {
+  return authFetch<Estate>(`/api/estates/${encodeURIComponent(id)}`);
+}
+
+// createEstate/updateEstate/deleteEstate — запись, только для вошедшего
+// владельца (requireFull на сервере, internal/httpapi/estate_write.go).
+export async function createEstate(input: EstateInput): Promise<Estate> {
+  return authFetch<Estate>("/api/estates", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateEstate(id: string, input: EstateInput): Promise<Estate> {
+  return authFetch<Estate>(`/api/estates/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteEstate(id: string): Promise<void> {
+  return authFetch<void>(`/api/estates/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+
+export interface Title {
+  id: string;
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+// TitleInput — тело POST/PUT /api/titles (transport.TitleCreate и
+// transport.TitleUpdate имеют одинаковую форму: полная замена всех полей).
+export interface TitleInput {
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+export interface TitleQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface TitleSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchTitles(query: TitleQuery = {}): Promise<Title[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/titles${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchTitles(query: TitleSearchQuery): Promise<Title[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/titles/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// fetchTitle — GET /api/titles/{id}, открыто анонимному посетителю. Через
+// authFetch — ради ApiError (нужен код 404 на странице View).
+export async function fetchTitle(id: string): Promise<Title> {
+  return authFetch<Title>(`/api/titles/${encodeURIComponent(id)}`);
+}
+
+// createTitle/updateTitle/deleteTitle — запись, только для вошедшего
+// владельца (requireFull на сервере, internal/httpapi/title_write.go).
+export async function createTitle(input: TitleInput): Promise<Title> {
+  return authFetch<Title>("/api/titles", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateTitle(id: string, input: TitleInput): Promise<Title> {
+  return authFetch<Title>(`/api/titles/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteTitle(id: string): Promise<void> {
+  return authFetch<void>(`/api/titles/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
