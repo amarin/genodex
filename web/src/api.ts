@@ -5,6 +5,7 @@ export interface AdminDivision {
   name: string;
   type: string;
   parent_id: string | null;
+  sources: SourceLink[];
 }
 
 // AdminDivisionType — models.AdminDivisionType (internal/models/administrative_division_type.go).
@@ -45,6 +46,7 @@ export interface AdminDivisionInput {
   name: string;
   type: AdminDivisionType;
   parent_id: string | null;
+  sources: SourceLink[];
 }
 
 export interface AdminDivisionQuery {
@@ -634,6 +636,7 @@ export interface RepositoryInput {
   address?: string;
   urls: TextRef[];
   notes: TextRef[];
+  sources: SourceLink[];
   private: boolean;
 }
 
@@ -716,6 +719,7 @@ export interface ChurchInput {
   settlements: TextRef[];
   variants: string[];
   notes: TextRef[];
+  sources: SourceLink[];
 }
 
 export interface ChurchQuery {
@@ -799,6 +803,7 @@ export interface ParishInput {
   since?: FactDate | null;
   until?: FactDate | null;
   notes: TextRef[];
+  sources: SourceLink[];
 }
 
 export interface ParishQuery {
@@ -881,6 +886,7 @@ export interface ArchiveInput {
   system?: TextRef | null;
   repository_id?: string;
   notes: TextRef[];
+  sources: SourceLink[];
   private: boolean;
 }
 
@@ -966,6 +972,7 @@ export interface NoteInput {
   title?: string;
   text?: string;
   parent_id?: string;
+  sources: SourceLink[];
   private: boolean;
 }
 

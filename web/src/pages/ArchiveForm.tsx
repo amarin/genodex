@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { Alert, Checkbox, Form, Input, Modal, Select } from "antd";
-import { createArchive, fetchRepositories, type Archive, type Repository, type TextRef } from "../api";
+import {
+  createArchive,
+  fetchRepositories,
+  type Archive,
+  type Repository,
+  type SourceLink,
+  type TextRef,
+} from "../api";
 import { ApiError } from "../auth";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 
 interface ArchiveFormValues {
@@ -43,6 +51,7 @@ export function CreateArchiveModal({
 }) {
   const [form] = Form.useForm<ArchiveFormValues>();
   const [notes, setNotes] = useState<TextRef[]>([]);
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const repositoryOptions = useRepositoryOptions();
@@ -50,6 +59,7 @@ export function CreateArchiveModal({
   const reset = () => {
     form.resetFields();
     setNotes([]);
+    setSources([]);
     setError(null);
   };
 
@@ -68,6 +78,7 @@ export function CreateArchiveModal({
         system: systemText ? { text: systemText } : null,
         repository_id: values.repository_id ?? "",
         notes,
+        sources,
         private: values.private ?? false,
       });
       reset();
@@ -119,6 +130,9 @@ export function CreateArchiveModal({
         </Form.Item>
         <Form.Item label="Заметки">
           <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />
+        </Form.Item>
+        <Form.Item label="Доказательства">
+          <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
         </Form.Item>
         <Form.Item name="private" valuePropName="checked">
           <Checkbox>Приватная запись</Checkbox>

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Alert, Checkbox, Form, Input, Modal } from "antd";
-import { createRepository, type Repository, type TextRef } from "../api";
+import { createRepository, type Repository, type SourceLink, type TextRef } from "../api";
 import { ApiError } from "../auth";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 
 interface RepositoryFormValues {
@@ -33,6 +34,7 @@ export function CreateRepositoryModal({
   const [form] = Form.useForm<RepositoryFormValues>();
   const [urls, setUrls] = useState<TextRef[]>([]);
   const [notes, setNotes] = useState<TextRef[]>([]);
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -40,6 +42,7 @@ export function CreateRepositoryModal({
     form.resetFields();
     setUrls([]);
     setNotes([]);
+    setSources([]);
     setError(null);
   };
 
@@ -58,6 +61,7 @@ export function CreateRepositoryModal({
         address: values.address ?? "",
         urls,
         notes,
+        sources,
         private: values.private ?? false,
       });
       reset();
@@ -108,6 +112,9 @@ export function CreateRepositoryModal({
         </Form.Item>
         <Form.Item label="Заметки">
           <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />
+        </Form.Item>
+        <Form.Item label="Доказательства">
+          <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
         </Form.Item>
         <Form.Item name="private" valuePropName="checked">
           <Checkbox>Приватная запись</Checkbox>

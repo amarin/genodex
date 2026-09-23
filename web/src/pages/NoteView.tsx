@@ -20,6 +20,7 @@ import {
 import { deleteNote, fetchNote, fetchNotes, updateNote, type Note, type SourceLink } from "../api";
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
+import { SourceLinkListEditor } from "../SourceLinkList";
 
 interface EditFormValues {
   kind: string;
@@ -71,6 +72,7 @@ export default function NoteView() {
 
   const [editing, setEditing] = useState(false);
   const [form] = Form.useForm<EditFormValues>();
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -127,6 +129,7 @@ export default function NoteView() {
       parent_id: note.parent_id ?? undefined,
       private: note.private,
     });
+    setSources(note.sources);
     setSaveError(null);
     setEditing(true);
   };
@@ -148,6 +151,7 @@ export default function NoteView() {
         title: values.title,
         text: values.text,
         parent_id: values.parent_id ?? "",
+        sources,
         private: values.private ?? false,
       });
       setNote(updated);
@@ -284,6 +288,9 @@ export default function NoteView() {
                 (option?.label ?? "").toString().toLowerCase().includes(input.toLowerCase())
               }
             />
+          </Form.Item>
+          <Form.Item label="Доказательства">
+            <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
           </Form.Item>
           <Form.Item name="private" valuePropName="checked">
             <Checkbox>Приватная запись</Checkbox>

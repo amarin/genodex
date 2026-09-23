@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Alert, Checkbox, Form, Input, Modal, Select } from "antd";
-import { createNote, fetchNotes, type Note } from "../api";
+import { createNote, fetchNotes, type Note, type SourceLink } from "../api";
 import { ApiError } from "../auth";
+import { SourceLinkListEditor } from "../SourceLinkList";
 
 interface NoteFormValues {
   kind: string;
@@ -43,12 +44,14 @@ export function CreateNoteModal({
   onCreated: (created: Note) => void;
 }) {
   const [form] = Form.useForm<NoteFormValues>();
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const noteOptions = useNoteOptions();
 
   const reset = () => {
     form.resetFields();
+    setSources([]);
     setError(null);
   };
 
@@ -66,6 +69,7 @@ export function CreateNoteModal({
         title: values.title,
         text: values.text,
         parent_id: values.parent_id ?? "",
+        sources,
         private: values.private ?? false,
       });
       reset();
@@ -117,6 +121,9 @@ export function CreateNoteModal({
               (option?.label ?? "").toString().toLowerCase().includes(input.toLowerCase())
             }
           />
+        </Form.Item>
+        <Form.Item label="Доказательства">
+          <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
         </Form.Item>
         <Form.Item name="private" valuePropName="checked">
           <Checkbox>Приватная запись</Checkbox>

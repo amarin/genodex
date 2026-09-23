@@ -26,6 +26,7 @@ import {
 } from "../api";
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 import { FactDateEditor, formatFactDate } from "../FactDateEditor";
 
@@ -92,6 +93,7 @@ export default function ParishView() {
   const [since, setSince] = useState<FactDate | null>(null);
   const [until, setUntil] = useState<FactDate | null>(null);
   const [notes, setNotes] = useState<TextRef[]>([]);
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -132,6 +134,7 @@ export default function ParishView() {
     setSince(parish.since ?? null);
     setUntil(parish.until ?? null);
     setNotes(parish.notes);
+    setSources(parish.sources);
     setSaveError(null);
     setEditing(true);
   };
@@ -161,6 +164,7 @@ export default function ParishView() {
         since,
         until,
         notes,
+        sources,
       });
       setParish(updated);
       setEditing(false);
@@ -295,6 +299,9 @@ export default function ParishView() {
           </Form.Item>
           <Form.Item label="Заметки">
             <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />
+          </Form.Item>
+          <Form.Item label="Доказательства">
+            <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
           </Form.Item>
           <Space>
             <Button type="primary" htmlType="submit" loading={saving}>

@@ -29,6 +29,7 @@ import {
 } from "../api";
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 
 interface EditFormValues {
@@ -93,6 +94,7 @@ export default function ArchiveView() {
   const [editing, setEditing] = useState(false);
   const [form] = Form.useForm<EditFormValues>();
   const [notes, setNotes] = useState<TextRef[]>([]);
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -145,6 +147,7 @@ export default function ArchiveView() {
       private: archive.private,
     });
     setNotes(archive.notes);
+    setSources(archive.sources);
     setSaveError(null);
     setEditing(true);
   };
@@ -167,6 +170,7 @@ export default function ArchiveView() {
         system: systemText ? { text: systemText } : null,
         repository_id: values.repository_id ?? "",
         notes,
+        sources,
         private: values.private ?? false,
       });
       setArchive(updated);
@@ -298,6 +302,9 @@ export default function ArchiveView() {
           </Form.Item>
           <Form.Item label="Заметки">
             <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />
+          </Form.Item>
+          <Form.Item label="Доказательства">
+            <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
           </Form.Item>
           <Form.Item name="private" valuePropName="checked">
             <Checkbox>Приватная запись</Checkbox>

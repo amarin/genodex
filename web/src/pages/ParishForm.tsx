@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Alert, Form, Input, Modal } from "antd";
-import { createParish, type FactDate, type Parish, type TextRef } from "../api";
+import { createParish, type FactDate, type Parish, type SourceLink, type TextRef } from "../api";
 import { ApiError } from "../auth";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 import { FactDateEditor } from "../FactDateEditor";
 
@@ -29,6 +30,7 @@ export function CreateParishModal({
   const [since, setSince] = useState<FactDate | null>(null);
   const [until, setUntil] = useState<FactDate | null>(null);
   const [notes, setNotes] = useState<TextRef[]>([]);
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +40,7 @@ export function CreateParishModal({
     setSince(null);
     setUntil(null);
     setNotes([]);
+    setSources([]);
     setError(null);
   };
 
@@ -58,6 +61,7 @@ export function CreateParishModal({
         since,
         until,
         notes,
+        sources,
       });
       reset();
       onCreated(created);
@@ -106,6 +110,9 @@ export function CreateParishModal({
         </Form.Item>
         <Form.Item label="Заметки">
           <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />
+        </Form.Item>
+        <Form.Item label="Доказательства">
+          <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
         </Form.Item>
       </Form>
     </Modal>

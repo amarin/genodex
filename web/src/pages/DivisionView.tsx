@@ -26,13 +26,37 @@ import {
   MAX_PAGE_LIMIT,
   type AdminDivision,
   type AdminDivisionType,
+  type SourceLink,
 } from "../api";
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { CreateDivisionModal, TYPE_OPTIONS } from "./DivisionForm";
 
 function divisionLabel(d: AdminDivision): string {
   return `${d.name} (${adminDivisionTypeLabel(d.type)})`;
+}
+
+// SourceLinkListView — read-only список доказательств (Sources). До
+// подпроекта 5 у Division он вообще не показывался (Sources были невидимы
+// даже через GET); теперь бэкенд отдаёт их, и здесь — та же схема
+// отображения, что и в ArchiveView/RepositoryView/….
+function SourceLinkListView({ items }: { items: SourceLink[] }) {
+  if (items.length === 0) {
+    return <Typography.Text type="secondary">—</Typography.Text>;
+  }
+  return (
+    <List
+      size="small"
+      dataSource={items}
+      renderItem={(s) => (
+        <List.Item>
+          citation {s.citation_id}
+          {s.role ? ` — ${s.role}` : ""}
+        </List.Item>
+      )}
+    />
+  );
 }
 
 interface EditFormValues {
@@ -62,6 +86,7 @@ export default function DivisionView() {
 
   const [editing, setEditing] = useState(false);
   const [form] = Form.useForm<EditFormValues>();
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -135,6 +160,7 @@ export default function DivisionView() {
     setParentPickerOpen(false);
     setParentQuery("");
     setParentResults([]);
+    setSources(division.sources);
     setSaveError(null);
     setEditing(true);
   };
@@ -193,6 +219,7 @@ export default function DivisionView() {
         name: values.name,
         type: values.type,
         parent_id: editParentId,
+        sources,
       });
       setDivision(updated);
       if (updated.parent_id != null) {
@@ -284,6 +311,7 @@ export default function DivisionView() {
                 <Typography.Text type="secondary">корень</Typography.Text>
               )}
             </Descriptions.Item>
+            <Descriptions.Item label="Доказательства"><SourceLinkListView items={division.sources} /></Descriptions.Item>
           </Descriptions>
           {session != null && (
             <Space style={{ marginTop: 16 }}>
@@ -355,6 +383,9 @@ export default function DivisionView() {
                 </Card>
               )}
             </Space>
+          </Form.Item>
+          <Form.Item label="Доказательства">
+            <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
           </Form.Item>
           <Space>
             <Button type="primary" htmlType="submit" loading={saving}>

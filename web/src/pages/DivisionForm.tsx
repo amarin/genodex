@@ -5,8 +5,10 @@ import {
   createDivision,
   type AdminDivision,
   type AdminDivisionType,
+  type SourceLink,
 } from "../api";
 import { ApiError } from "../auth";
+import { SourceLinkListEditor } from "../SourceLinkList";
 
 export const TYPE_OPTIONS = (Object.keys(ADMIN_DIVISION_TYPE_LABELS) as AdminDivisionType[]).map(
   (value) => ({ value, label: ADMIN_DIVISION_TYPE_LABELS[value] }),
@@ -35,11 +37,13 @@ export function CreateDivisionModal({
   onCreated: (created: AdminDivision) => void;
 }) {
   const [form] = Form.useForm<DivisionFormValues>();
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleClose = () => {
     form.resetFields();
+    setSources([]);
     setError(null);
     onClose();
   };
@@ -52,8 +56,10 @@ export function CreateDivisionModal({
         name: values.name,
         type: values.type,
         parent_id: parentId,
+        sources,
       });
       form.resetFields();
+      setSources([]);
       onCreated(created);
     } catch (e) {
       if (e instanceof ApiError && e.field != null && (FORM_FIELDS as string[]).includes(e.field)) {
@@ -90,6 +96,9 @@ export function CreateDivisionModal({
         </Form.Item>
         <Form.Item name="type" label="Тип" rules={[{ required: true, message: "Выберите тип" }]}>
           <Select options={TYPE_OPTIONS} placeholder="Выберите тип" />
+        </Form.Item>
+        <Form.Item label="Доказательства">
+          <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
         </Form.Item>
       </Form>
     </Modal>

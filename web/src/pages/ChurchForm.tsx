@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Alert, Form, Input, Modal } from "antd";
-import { createChurch, type Church, type TextRef } from "../api";
+import { createChurch, type Church, type SourceLink, type TextRef } from "../api";
 import { ApiError } from "../auth";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 
 interface ChurchFormValues {
@@ -30,6 +31,7 @@ export function CreateChurchModal({
   const [settlements, setSettlements] = useState<TextRef[]>([]);
   const [variants, setVariants] = useState<TextRef[]>([]);
   const [notes, setNotes] = useState<TextRef[]>([]);
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,6 +40,7 @@ export function CreateChurchModal({
     setSettlements([]);
     setVariants([]);
     setNotes([]);
+    setSources([]);
     setError(null);
   };
 
@@ -57,6 +60,7 @@ export function CreateChurchModal({
         settlements,
         variants: variants.map((v) => v.text).filter((t) => t.trim() !== ""),
         notes,
+        sources,
       });
       reset();
       onCreated(created);
@@ -102,6 +106,9 @@ export function CreateChurchModal({
         </Form.Item>
         <Form.Item label="Заметки">
           <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />
+        </Form.Item>
+        <Form.Item label="Доказательства">
+          <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
         </Form.Item>
       </Form>
     </Modal>

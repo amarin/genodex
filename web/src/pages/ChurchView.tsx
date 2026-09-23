@@ -25,6 +25,7 @@ import {
 } from "../api";
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
+import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 
 interface EditFormValues {
@@ -89,6 +90,7 @@ export default function ChurchView() {
   const [settlements, setSettlements] = useState<TextRef[]>([]);
   const [variants, setVariants] = useState<TextRef[]>([]);
   const [notes, setNotes] = useState<TextRef[]>([]);
+  const [sources, setSources] = useState<SourceLink[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -128,6 +130,7 @@ export default function ChurchView() {
     setSettlements(church.settlements);
     setVariants(church.variants.map((v) => ({ text: v })));
     setNotes(church.notes);
+    setSources(church.sources);
     setSaveError(null);
     setEditing(true);
   };
@@ -158,6 +161,7 @@ export default function ChurchView() {
         settlements,
         variants: variants.map((v) => v.text).filter((t) => t.trim() !== ""),
         notes,
+        sources,
       });
       setChurch(updated);
       setEditing(false);
@@ -290,6 +294,9 @@ export default function ChurchView() {
           </Form.Item>
           <Form.Item label="Заметки">
             <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />
+          </Form.Item>
+          <Form.Item label="Доказательства">
+            <SourceLinkListEditor value={sources} onChange={setSources} addLabel="+ доказательство" />
           </Form.Item>
           <Space>
             <Button type="primary" htmlType="submit" loading={saving}>
