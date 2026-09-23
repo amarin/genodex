@@ -1031,3 +1031,96 @@ export async function updateNote(id: string, input: NoteInput): Promise<Note> {
 export async function deleteNote(id: string): Promise<void> {
   return authFetch<void>(`/api/notes/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+// Attachment — файловое вложение. node_id — обязательная строгая ссылка на
+// архивный узел (просто id — ArchiveNode ещё без CRUD, подпроект 6).
+// document_id — необязательная мягкая ссылка (ON DELETE SET NULL). Оба поля
+// в v1 — обычные текстовые поля ввода id (без picker'а, тот появится вместе
+// с ArchiveNode/ArchiveDocument).
+export interface Attachment {
+  id: string;
+  kind: string;
+  uri?: string;
+  filename?: string;
+  mime?: string;
+  page?: number;
+  node_id: string;
+  document_id?: string;
+  note?: string;
+  private: boolean;
+}
+
+export interface AttachmentInput {
+  kind: string;
+  uri?: string;
+  filename?: string;
+  mime?: string;
+  page?: number;
+  node_id: string;
+  document_id?: string;
+  note?: string;
+  private: boolean;
+}
+
+export interface AttachmentQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface AttachmentSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchAttachments(query: AttachmentQuery = {}): Promise<Attachment[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/attachments${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchAttachments(query: AttachmentSearchQuery): Promise<Attachment[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/attachments/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchAttachment(id: string): Promise<Attachment> {
+  return authFetch<Attachment>(`/api/attachments/${encodeURIComponent(id)}`);
+}
+
+export async function createAttachment(input: AttachmentInput): Promise<Attachment> {
+  return authFetch<Attachment>("/api/attachments", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateAttachment(id: string, input: AttachmentInput): Promise<Attachment> {
+  return authFetch<Attachment>(`/api/attachments/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteAttachment(id: string): Promise<void> {
+  return authFetch<void>(`/api/attachments/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
