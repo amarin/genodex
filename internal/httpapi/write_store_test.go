@@ -2331,23 +2331,40 @@ func TestFamilyWriteContractWithRealStore(t *testing.T) {
 	}
 	requireStatusS(t, getReq(t, h, "/api/families/"+string(private.ID)), http.StatusNotFound)
 
-	// Теперь update с private:true у записи, созданной как публичная.
-	rec = putFamilyReq(t, h, owner, "/api/families/"+string(private.ID),
-		`{"name":"Приватный род","members":[],"notes":[],"private":true}`)
+	// Теперь update, переключающий PUBLIC → PRIVATE (не private → private —
+	// та проверка ловит только "update сбрасывает private в false", а не
+	// "update не выставляет private в true у публичной записи"; финальный
+	// ревью подпроекта 7 нашёл, что прежняя версия этого шага создавала
+	// запись сразу приватной, так что реального переключения не проверяла).
+	public := createFamily(t, h, owner,
+		`{"name":"Публичный род","members":[],"notes":[],"private":false}`, http.StatusCreated)
+	requireStatusS(t, getReq(t, h, "/api/families/"+string(public.ID)), http.StatusOK)
+
+	rec = putFamilyReq(t, h, owner, "/api/families/"+string(public.ID),
+		`{"name":"Публичный род","members":[],"notes":[],"private":true}`)
 	requireStatusS(t, rec, http.StatusOK)
 	afterUpdate := decodeFamilyS(t, rec)
 	if !afterUpdate.Private {
 		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
 	}
-	requireStatusS(t, getReq(t, h, "/api/families/"+string(private.ID)), http.StatusNotFound)
+	requireStatusS(t, getReq(t, h, "/api/families/"+string(public.ID)), http.StatusNotFound)
 
 	// members — мягкая ссылка на Person (без CRUD, подпроект 8):
 	// ref/type сохраняются как обычный TextRef, существование не проверяется.
+	// Проверяем и ответ create, и то, что ref/type реально пережили запись и
+	// чтение из SQLite (а не только эхо сценария в памяти).
 	withMember := createFamily(t, h, owner,
 		`{"name":"Петровы","members":[{"text":"Пётр Петров","ref":"I-01ARZ3NDEKTSV4RRFFQ69G5FA9","type":"person"}],"notes":[],"private":false}`,
 		http.StatusCreated)
 	if len(withMember.Members) != 1 || withMember.Members[0].Ref != "I-01ARZ3NDEKTSV4RRFFQ69G5FA9" {
-		t.Fatalf("withMember.Members = %+v", withMember.Members)
+		t.Fatalf("withMember.Members (ответ create) = %+v", withMember.Members)
+	}
+	reread := getReq(t, h, "/api/families/"+string(withMember.ID))
+	requireStatusS(t, reread, http.StatusOK)
+	rereadFamily := decodeFamilyS(t, reread)
+	if len(rereadFamily.Members) != 1 || rereadFamily.Members[0].Ref != "I-01ARZ3NDEKTSV4RRFFQ69G5FA9" ||
+		rereadFamily.Members[0].Type != "person" {
+		t.Fatalf("withMember.Members (после чтения из SQLite) = %+v", rereadFamily.Members)
 	}
 
 	// Ретрофит-паттерн (по образцу TestArchiveWriteContractWithRealStore):
