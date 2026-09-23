@@ -12,12 +12,14 @@ const CATALOG_ENTRIES: { label: string; path: string }[] = [
   { label: "Заметки", path: "/notes" },
   { label: "Имена", path: "/given-names" },
   { label: "Отчества", path: "/patronymics" },
+  { label: "Источники", path: "/sources" },
   { label: "Приходы", path: "/parishes" },
   { label: "Сословия", path: "/estates" },
   { label: "Титулы", path: "/titles" },
   { label: "Фамилии", path: "/surnames" },
   { label: "Хранилища", path: "/repositories" },
   { label: "Церкви", path: "/churches" },
+  { label: "Цитаты", path: "/citations" },
 ];
 
 const SORTED_ENTRIES = [...CATALOG_ENTRIES].sort((a, b) => a.label.localeCompare(b.label, "ru"));

@@ -29,6 +29,10 @@ import NotesList from "./pages/NotesList";
 import NoteView from "./pages/NoteView";
 import AttachmentsList from "./pages/AttachmentsList";
 import AttachmentView from "./pages/AttachmentView";
+import SourcesList from "./pages/SourcesList";
+import SourceView from "./pages/SourceView";
+import CitationsList from "./pages/CitationsList";
+import CitationView from "./pages/CitationView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -80,6 +84,10 @@ export default function App() {
           <Route path="/notes/:id" element={<PageLayout><NoteView /></PageLayout>} />
           <Route path="/attachments" element={<PageLayout><AttachmentsList /></PageLayout>} />
           <Route path="/attachments/:id" element={<PageLayout><AttachmentView /></PageLayout>} />
+          <Route path="/sources" element={<PageLayout><SourcesList /></PageLayout>} />
+          <Route path="/sources/:id" element={<PageLayout><SourceView /></PageLayout>} />
+          <Route path="/citations" element={<PageLayout><CitationsList /></PageLayout>} />
+          <Route path="/citations/:id" element={<PageLayout><CitationView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

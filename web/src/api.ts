@@ -1124,3 +1124,191 @@ export async function updateAttachment(id: string, input: AttachmentInput): Prom
 export async function deleteAttachment(id: string): Promise<void> {
   return authFetch<void>(`/api/attachments/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+export type Reliability = "primary" | "contemporary" | "memory" | "indirect" | "unknown";
+
+// Anchor — контракт полиморфной привязки «где именно» (transport.Anchor):
+// плоское представление с дискриминатором kind, по образцу FactDate. undefined
+// — привязки нет (цитата может относиться к источнику целиком).
+export type AnchorKind = "archive" | "file" | "url";
+
+export interface Anchor {
+  kind: AnchorKind;
+  node_id?: string;
+  document_id?: string;
+  page?: number;
+  rect?: string;
+  attachment_id?: string;
+  timecode?: string;
+  url?: string;
+}
+
+// Source — источник доказательства. date — структурированная дата (см.
+// FactDate). repository_id — просто id (мягкая ссылка, необязательна).
+export interface Source {
+  id: string;
+  kind: string;
+  title: string;
+  author?: string;
+  date?: FactDate | null;
+  reliability: Reliability;
+  repository_id?: string;
+  notes: TextRef[];
+  private: boolean;
+}
+
+export interface SourceInput {
+  kind: string;
+  title: string;
+  author?: string;
+  date?: FactDate | null;
+  reliability: Reliability;
+  repository_id?: string;
+  notes: TextRef[];
+  private: boolean;
+}
+
+export interface SourceQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface SourceSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchSources(query: SourceQuery = {}): Promise<Source[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/sources${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchSources(query: SourceSearchQuery): Promise<Source[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/sources/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchSource(id: string): Promise<Source> {
+  return authFetch<Source>(`/api/sources/${encodeURIComponent(id)}`);
+}
+
+export async function createSource(input: SourceInput): Promise<Source> {
+  return authFetch<Source>("/api/sources", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateSource(id: string, input: SourceInput): Promise<Source> {
+  return authFetch<Source>(`/api/sources/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteSource(id: string): Promise<void> {
+  return authFetch<void>(`/api/sources/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// Citation — цитата из источника. anchor — необязательная полиморфная
+// привязка «где именно» (см. Anchor).
+export interface Citation {
+  id: string;
+  source_id: string;
+  anchor?: Anchor | null;
+  text?: string;
+  note?: string;
+  private: boolean;
+}
+
+export interface CitationInput {
+  source_id: string;
+  anchor?: Anchor | null;
+  text?: string;
+  note?: string;
+  private: boolean;
+}
+
+export interface CitationQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface CitationSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchCitations(query: CitationQuery = {}): Promise<Citation[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/citations${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchCitations(query: CitationSearchQuery): Promise<Citation[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/citations/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchCitation(id: string): Promise<Citation> {
+  return authFetch<Citation>(`/api/citations/${encodeURIComponent(id)}`);
+}
+
+export async function createCitation(input: CitationInput): Promise<Citation> {
+  return authFetch<Citation>("/api/citations", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateCitation(id: string, input: CitationInput): Promise<Citation> {
+  return authFetch<Citation>(`/api/citations/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteCitation(id: string): Promise<void> {
+  return authFetch<void>(`/api/citations/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
