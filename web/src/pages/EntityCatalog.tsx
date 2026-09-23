@@ -16,6 +16,7 @@ const CATALOG_ENTRIES: { label: string; path: string }[] = [
   { label: "Отчества", path: "/patronymics" },
   { label: "Источники", path: "/sources" },
   { label: "Приходы", path: "/parishes" },
+  { label: "Роды", path: "/families" },
   { label: "Сословия", path: "/estates" },
   { label: "Титулы", path: "/titles" },
   { label: "Фамилии", path: "/surnames" },

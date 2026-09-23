@@ -37,6 +37,8 @@ import SourcesList from "./pages/SourcesList";
 import SourceView from "./pages/SourceView";
 import CitationsList from "./pages/CitationsList";
 import CitationView from "./pages/CitationView";
+import FamiliesList from "./pages/FamiliesList";
+import FamilyView from "./pages/FamilyView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -96,6 +98,8 @@ export default function App() {
           <Route path="/sources/:id" element={<PageLayout><SourceView /></PageLayout>} />
           <Route path="/citations" element={<PageLayout><CitationsList /></PageLayout>} />
           <Route path="/citations/:id" element={<PageLayout><CitationView /></PageLayout>} />
+          <Route path="/families" element={<PageLayout><FamiliesList /></PageLayout>} />
+          <Route path="/families/:id" element={<PageLayout><FamilyView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

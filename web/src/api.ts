@@ -704,6 +704,90 @@ export async function deleteRepository(id: string): Promise<void> {
   return authFetch<void>(`/api/repositories/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+export interface Family {
+  id: string;
+  name: string;
+  members: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+// FamilyInput — тело POST/PUT /api/families (transport.FamilyCreate и
+// transport.FamilyUpdate имеют одинаковую форму: полная замена всех полей,
+// включая sources — редактируется с рождения контракта, docs/data-model/
+// entity-write.md §3.3/§3.6).
+export interface FamilyInput {
+  name: string;
+  members: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+export interface FamilyQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface FamilySearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchFamilies(query: FamilyQuery = {}): Promise<Family[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/families${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchFamilies(query: FamilySearchQuery): Promise<Family[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/families/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchFamily(id: string): Promise<Family> {
+  return authFetch<Family>(`/api/families/${encodeURIComponent(id)}`);
+}
+
+export async function createFamily(input: FamilyInput): Promise<Family> {
+  return authFetch<Family>("/api/families", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateFamily(id: string, input: FamilyInput): Promise<Family> {
+  return authFetch<Family>(`/api/families/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteFamily(id: string): Promise<void> {
+  return authFetch<void>(`/api/families/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export interface Church {
   id: string;
   name: string;
