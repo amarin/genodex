@@ -17,6 +17,8 @@ import (
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
 	create_archive "github.com/amarin/genodex/internal/usecases/create_archive"
+	create_archive_document "github.com/amarin/genodex/internal/usecases/create_archive_document"
+	create_archive_node "github.com/amarin/genodex/internal/usecases/create_archive_node"
 	create_attachment "github.com/amarin/genodex/internal/usecases/create_attachment"
 	create_church "github.com/amarin/genodex/internal/usecases/create_church"
 	create_citation "github.com/amarin/genodex/internal/usecases/create_citation"
@@ -31,6 +33,8 @@ import (
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	create_title "github.com/amarin/genodex/internal/usecases/create_title"
 	delete_archive "github.com/amarin/genodex/internal/usecases/delete_archive"
+	delete_archive_document "github.com/amarin/genodex/internal/usecases/delete_archive_document"
+	delete_archive_node "github.com/amarin/genodex/internal/usecases/delete_archive_node"
 	delete_attachment "github.com/amarin/genodex/internal/usecases/delete_attachment"
 	delete_church "github.com/amarin/genodex/internal/usecases/delete_church"
 	delete_citation "github.com/amarin/genodex/internal/usecases/delete_citation"
@@ -45,6 +49,8 @@ import (
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	delete_title "github.com/amarin/genodex/internal/usecases/delete_title"
 	get_archive "github.com/amarin/genodex/internal/usecases/get_archive"
+	get_archive_document "github.com/amarin/genodex/internal/usecases/get_archive_document"
+	get_archive_node "github.com/amarin/genodex/internal/usecases/get_archive_node"
 	get_attachment "github.com/amarin/genodex/internal/usecases/get_attachment"
 	get_church "github.com/amarin/genodex/internal/usecases/get_church"
 	get_citation "github.com/amarin/genodex/internal/usecases/get_citation"
@@ -58,6 +64,8 @@ import (
 	get_source "github.com/amarin/genodex/internal/usecases/get_source"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	get_title "github.com/amarin/genodex/internal/usecases/get_title"
+	list_archive_documents "github.com/amarin/genodex/internal/usecases/list_archive_documents"
+	list_archive_nodes "github.com/amarin/genodex/internal/usecases/list_archive_nodes"
 	list_archives "github.com/amarin/genodex/internal/usecases/list_archives"
 	list_attachments "github.com/amarin/genodex/internal/usecases/list_attachments"
 	list_churches "github.com/amarin/genodex/internal/usecases/list_churches"
@@ -72,6 +80,8 @@ import (
 	list_sources "github.com/amarin/genodex/internal/usecases/list_sources"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	list_titles "github.com/amarin/genodex/internal/usecases/list_titles"
+	search_archive_documents "github.com/amarin/genodex/internal/usecases/search_archive_documents"
+	search_archive_nodes "github.com/amarin/genodex/internal/usecases/search_archive_nodes"
 	search_archives "github.com/amarin/genodex/internal/usecases/search_archives"
 	search_attachments "github.com/amarin/genodex/internal/usecases/search_attachments"
 	search_churches "github.com/amarin/genodex/internal/usecases/search_churches"
@@ -87,6 +97,8 @@ import (
 	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
 	search_titles "github.com/amarin/genodex/internal/usecases/search_titles"
 	update_archive "github.com/amarin/genodex/internal/usecases/update_archive"
+	update_archive_document "github.com/amarin/genodex/internal/usecases/update_archive_document"
+	update_archive_node "github.com/amarin/genodex/internal/usecases/update_archive_node"
 	update_attachment "github.com/amarin/genodex/internal/usecases/update_attachment"
 	update_church "github.com/amarin/genodex/internal/usecases/update_church"
 	update_citation "github.com/amarin/genodex/internal/usecases/update_citation"
@@ -470,6 +482,76 @@ func (s *archiveService) DeleteArchive(ctx context.Context, id models.ID) error 
 	return s.del.DeleteArchive(ctx, id)
 }
 
+// archiveNodeService — фасад всех сценариев узлов архивного дерева,
+// отдаваемых HTTP и MCP.
+type archiveNodeService struct {
+	list   *list_archive_nodes.Scenario
+	search *search_archive_nodes.Scenario
+	get    *get_archive_node.Scenario
+	create *create_archive_node.Scenario
+	update *update_archive_node.Scenario
+	del    *delete_archive_node.Scenario
+}
+
+func (s *archiveNodeService) ListArchiveNodes(ctx context.Context, access models.Access, q models.ArchiveNodeQuery) ([]models.ArchiveNode, error) {
+	return s.list.ListArchiveNodes(ctx, access, q)
+}
+
+func (s *archiveNodeService) SearchArchiveNodes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.ArchiveNode, error) {
+	return s.search.SearchArchiveNodes(ctx, access, q)
+}
+
+func (s *archiveNodeService) GetArchiveNode(ctx context.Context, access models.Access, id models.ID) (models.ArchiveNode, error) {
+	return s.get.GetArchiveNode(ctx, access, id)
+}
+
+func (s *archiveNodeService) CreateArchiveNode(ctx context.Context, n models.ArchiveNode) (models.ArchiveNode, error) {
+	return s.create.CreateArchiveNode(ctx, n)
+}
+
+func (s *archiveNodeService) UpdateArchiveNode(ctx context.Context, n models.ArchiveNode) error {
+	return s.update.UpdateArchiveNode(ctx, n)
+}
+
+func (s *archiveNodeService) DeleteArchiveNode(ctx context.Context, id models.ID) error {
+	return s.del.DeleteArchiveNode(ctx, id)
+}
+
+// archiveDocumentService — фасад всех сценариев документов внутри единиц
+// учёта, отдаваемых HTTP и MCP.
+type archiveDocumentService struct {
+	list   *list_archive_documents.Scenario
+	search *search_archive_documents.Scenario
+	get    *get_archive_document.Scenario
+	create *create_archive_document.Scenario
+	update *update_archive_document.Scenario
+	del    *delete_archive_document.Scenario
+}
+
+func (s *archiveDocumentService) ListArchiveDocuments(ctx context.Context, access models.Access, page models.Page) ([]models.ArchiveDocument, error) {
+	return s.list.ListArchiveDocuments(ctx, access, page)
+}
+
+func (s *archiveDocumentService) SearchArchiveDocuments(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.ArchiveDocument, error) {
+	return s.search.SearchArchiveDocuments(ctx, access, q)
+}
+
+func (s *archiveDocumentService) GetArchiveDocument(ctx context.Context, access models.Access, id models.ID) (models.ArchiveDocument, error) {
+	return s.get.GetArchiveDocument(ctx, access, id)
+}
+
+func (s *archiveDocumentService) CreateArchiveDocument(ctx context.Context, d models.ArchiveDocument) (models.ArchiveDocument, error) {
+	return s.create.CreateArchiveDocument(ctx, d)
+}
+
+func (s *archiveDocumentService) UpdateArchiveDocument(ctx context.Context, d models.ArchiveDocument) error {
+	return s.update.UpdateArchiveDocument(ctx, d)
+}
+
+func (s *archiveDocumentService) DeleteArchiveDocument(ctx context.Context, id models.ID) error {
+	return s.del.DeleteArchiveDocument(ctx, id)
+}
+
 // noteService — фасад всех сценариев заметок, отдаваемых HTTP и MCP.
 type noteService struct {
 	list   *list_notes.Scenario
@@ -609,36 +691,40 @@ func (s *citationService) DeleteCitation(ctx context.Context, id models.ID) erro
 }
 
 var (
-	_ httpapi.DivisionService   = (*divisionService)(nil)
-	_ mcp.DivisionService       = (*divisionService)(nil)
-	_ httpapi.SurnameService    = (*surnameService)(nil)
-	_ mcp.SurnameService        = (*surnameService)(nil)
-	_ httpapi.PatronymicService = (*patronymicService)(nil)
-	_ mcp.PatronymicService     = (*patronymicService)(nil)
-	_ httpapi.EstateService     = (*estateService)(nil)
-	_ mcp.EstateService         = (*estateService)(nil)
-	_ httpapi.TitleService      = (*titleService)(nil)
-	_ mcp.TitleService          = (*titleService)(nil)
-	_ httpapi.GivenNameService  = (*givenNameService)(nil)
-	_ mcp.GivenNameService      = (*givenNameService)(nil)
-	_ httpapi.RepositoryService = (*repositoryService)(nil)
-	_ mcp.RepositoryService     = (*repositoryService)(nil)
-	_ httpapi.ChurchService     = (*churchService)(nil)
-	_ mcp.ChurchService         = (*churchService)(nil)
-	_ httpapi.ParishService     = (*parishService)(nil)
-	_ mcp.ParishService         = (*parishService)(nil)
-	_ httpapi.ArchiveService    = (*archiveService)(nil)
-	_ mcp.ArchiveService        = (*archiveService)(nil)
-	_ httpapi.NoteService       = (*noteService)(nil)
-	_ mcp.NoteService           = (*noteService)(nil)
-	_ httpapi.AttachmentService = (*attachmentService)(nil)
-	_ mcp.AttachmentService     = (*attachmentService)(nil)
-	_ httpapi.SourceService     = (*sourceService)(nil)
-	_ mcp.SourceService         = (*sourceService)(nil)
-	_ httpapi.CitationService   = (*citationService)(nil)
-	_ mcp.CitationService       = (*citationService)(nil)
-	_ httpapi.AuthService       = (*auth.Service)(nil)
-	_ mcp.TokenResolver         = (*auth.Service)(nil)
+	_ httpapi.DivisionService        = (*divisionService)(nil)
+	_ mcp.DivisionService            = (*divisionService)(nil)
+	_ httpapi.SurnameService         = (*surnameService)(nil)
+	_ mcp.SurnameService             = (*surnameService)(nil)
+	_ httpapi.PatronymicService      = (*patronymicService)(nil)
+	_ mcp.PatronymicService          = (*patronymicService)(nil)
+	_ httpapi.EstateService          = (*estateService)(nil)
+	_ mcp.EstateService              = (*estateService)(nil)
+	_ httpapi.TitleService           = (*titleService)(nil)
+	_ mcp.TitleService               = (*titleService)(nil)
+	_ httpapi.GivenNameService       = (*givenNameService)(nil)
+	_ mcp.GivenNameService           = (*givenNameService)(nil)
+	_ httpapi.RepositoryService      = (*repositoryService)(nil)
+	_ mcp.RepositoryService          = (*repositoryService)(nil)
+	_ httpapi.ChurchService          = (*churchService)(nil)
+	_ mcp.ChurchService              = (*churchService)(nil)
+	_ httpapi.ParishService          = (*parishService)(nil)
+	_ mcp.ParishService              = (*parishService)(nil)
+	_ httpapi.ArchiveService         = (*archiveService)(nil)
+	_ mcp.ArchiveService             = (*archiveService)(nil)
+	_ httpapi.ArchiveNodeService     = (*archiveNodeService)(nil)
+	_ mcp.ArchiveNodeService         = (*archiveNodeService)(nil)
+	_ httpapi.ArchiveDocumentService = (*archiveDocumentService)(nil)
+	_ mcp.ArchiveDocumentService     = (*archiveDocumentService)(nil)
+	_ httpapi.NoteService            = (*noteService)(nil)
+	_ mcp.NoteService                = (*noteService)(nil)
+	_ httpapi.AttachmentService      = (*attachmentService)(nil)
+	_ mcp.AttachmentService          = (*attachmentService)(nil)
+	_ httpapi.SourceService          = (*sourceService)(nil)
+	_ mcp.SourceService              = (*sourceService)(nil)
+	_ httpapi.CitationService        = (*citationService)(nil)
+	_ mcp.CitationService            = (*citationService)(nil)
+	_ httpapi.AuthService            = (*auth.Service)(nil)
+	_ mcp.TokenResolver              = (*auth.Service)(nil)
 )
 
 // New собирает приложение: хранилище → сценарии/auth → MCP/HTTP интерфейсы.
@@ -738,6 +824,24 @@ func New(cfg Config) (*App, error) {
 		del:    delete_archive.New(st),
 	}
 
+	archiveNodes := &archiveNodeService{
+		list:   list_archive_nodes.New(st),
+		search: search_archive_nodes.New(st),
+		get:    get_archive_node.New(st),
+		create: create_archive_node.New(st, idgen.New()),
+		update: update_archive_node.New(st),
+		del:    delete_archive_node.New(st),
+	}
+
+	archiveDocs := &archiveDocumentService{
+		list:   list_archive_documents.New(st),
+		search: search_archive_documents.New(st),
+		get:    get_archive_document.New(st),
+		create: create_archive_document.New(st, idgen.New()),
+		update: update_archive_document.New(st),
+		del:    delete_archive_document.New(st),
+	}
+
 	notes := &noteService{
 		list:   list_notes.New(st),
 		search: search_notes.New(st),
@@ -784,10 +888,12 @@ func New(cfg Config) (*App, error) {
 			Divisions: divisions, Surnames: surnames,
 			Patronymics: patronymics, Estates: estates, Titles: titles, GivenNames: givenNames,
 			Repositories: repositories, Churches: churches, Parishes: parishes, Archives: archives,
-			Notes:       notes,
-			Attachments: attachments,
-			Sources:     sources,
-			Citations:   citations,
+			ArchiveNodes: archiveNodes,
+			ArchiveDocs:  archiveDocs,
+			Notes:        notes,
+			Attachments:  attachments,
+			Sources:      sources,
+			Citations:    citations,
 		}),
 	)))
 	mux.Handle("/api/", httpapi.NewAPIHandler(httpapi.Deps{
@@ -801,6 +907,8 @@ func New(cfg Config) (*App, error) {
 		Churches:     churches,
 		Parishes:     parishes,
 		Archives:     archives,
+		ArchiveNodes: archiveNodes,
+		ArchiveDocs:  archiveDocs,
 		Notes:        notes,
 		Attachments:  attachments,
 		Sources:      sources,

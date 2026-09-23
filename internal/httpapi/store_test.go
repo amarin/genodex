@@ -14,6 +14,8 @@ import (
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
 	create_archive "github.com/amarin/genodex/internal/usecases/create_archive"
+	create_archive_document "github.com/amarin/genodex/internal/usecases/create_archive_document"
+	create_archive_node "github.com/amarin/genodex/internal/usecases/create_archive_node"
 	create_attachment "github.com/amarin/genodex/internal/usecases/create_attachment"
 	create_church "github.com/amarin/genodex/internal/usecases/create_church"
 	create_citation "github.com/amarin/genodex/internal/usecases/create_citation"
@@ -28,6 +30,8 @@ import (
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	create_title "github.com/amarin/genodex/internal/usecases/create_title"
 	delete_archive "github.com/amarin/genodex/internal/usecases/delete_archive"
+	delete_archive_document "github.com/amarin/genodex/internal/usecases/delete_archive_document"
+	delete_archive_node "github.com/amarin/genodex/internal/usecases/delete_archive_node"
 	delete_attachment "github.com/amarin/genodex/internal/usecases/delete_attachment"
 	delete_church "github.com/amarin/genodex/internal/usecases/delete_church"
 	delete_citation "github.com/amarin/genodex/internal/usecases/delete_citation"
@@ -42,6 +46,8 @@ import (
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	delete_title "github.com/amarin/genodex/internal/usecases/delete_title"
 	get_archive "github.com/amarin/genodex/internal/usecases/get_archive"
+	get_archive_document "github.com/amarin/genodex/internal/usecases/get_archive_document"
+	get_archive_node "github.com/amarin/genodex/internal/usecases/get_archive_node"
 	get_attachment "github.com/amarin/genodex/internal/usecases/get_attachment"
 	get_church "github.com/amarin/genodex/internal/usecases/get_church"
 	get_citation "github.com/amarin/genodex/internal/usecases/get_citation"
@@ -55,6 +61,8 @@ import (
 	get_source "github.com/amarin/genodex/internal/usecases/get_source"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	get_title "github.com/amarin/genodex/internal/usecases/get_title"
+	list_archive_documents "github.com/amarin/genodex/internal/usecases/list_archive_documents"
+	list_archive_nodes "github.com/amarin/genodex/internal/usecases/list_archive_nodes"
 	list_archives "github.com/amarin/genodex/internal/usecases/list_archives"
 	list_attachments "github.com/amarin/genodex/internal/usecases/list_attachments"
 	list_churches "github.com/amarin/genodex/internal/usecases/list_churches"
@@ -69,6 +77,8 @@ import (
 	list_sources "github.com/amarin/genodex/internal/usecases/list_sources"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	list_titles "github.com/amarin/genodex/internal/usecases/list_titles"
+	search_archive_documents "github.com/amarin/genodex/internal/usecases/search_archive_documents"
+	search_archive_nodes "github.com/amarin/genodex/internal/usecases/search_archive_nodes"
 	search_archives "github.com/amarin/genodex/internal/usecases/search_archives"
 	search_attachments "github.com/amarin/genodex/internal/usecases/search_attachments"
 	search_churches "github.com/amarin/genodex/internal/usecases/search_churches"
@@ -84,6 +94,8 @@ import (
 	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
 	search_titles "github.com/amarin/genodex/internal/usecases/search_titles"
 	update_archive "github.com/amarin/genodex/internal/usecases/update_archive"
+	update_archive_document "github.com/amarin/genodex/internal/usecases/update_archive_document"
+	update_archive_node "github.com/amarin/genodex/internal/usecases/update_archive_node"
 	update_attachment "github.com/amarin/genodex/internal/usecases/update_attachment"
 	update_church "github.com/amarin/genodex/internal/usecases/update_church"
 	update_citation "github.com/amarin/genodex/internal/usecases/update_citation"
@@ -586,6 +598,104 @@ func newArchiveService(t *testing.T, st *sqlstore.Store) *archiveService {
 		create: create_archive.New(st, idgen.New()),
 		update: update_archive.New(st),
 		del:    delete_archive.New(st),
+	}
+}
+
+// archiveNodeService — фасад httpapi.ArchiveNodeService на настоящих
+// сценариях (так же собран internal/app's archiveNodeService).
+type archiveNodeService struct {
+	list   *list_archive_nodes.Scenario
+	search *search_archive_nodes.Scenario
+	get    *get_archive_node.Scenario
+	create *create_archive_node.Scenario
+	update *update_archive_node.Scenario
+	del    *delete_archive_node.Scenario
+}
+
+func (s *archiveNodeService) ListArchiveNodes(ctx context.Context, access models.Access, q models.ArchiveNodeQuery) ([]models.ArchiveNode, error) {
+	return s.list.ListArchiveNodes(ctx, access, q)
+}
+
+func (s *archiveNodeService) SearchArchiveNodes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.ArchiveNode, error) {
+	return s.search.SearchArchiveNodes(ctx, access, q)
+}
+
+func (s *archiveNodeService) GetArchiveNode(ctx context.Context, access models.Access, id models.ID) (models.ArchiveNode, error) {
+	return s.get.GetArchiveNode(ctx, access, id)
+}
+
+func (s *archiveNodeService) CreateArchiveNode(ctx context.Context, n models.ArchiveNode) (models.ArchiveNode, error) {
+	return s.create.CreateArchiveNode(ctx, n)
+}
+
+func (s *archiveNodeService) UpdateArchiveNode(ctx context.Context, n models.ArchiveNode) error {
+	return s.update.UpdateArchiveNode(ctx, n)
+}
+
+func (s *archiveNodeService) DeleteArchiveNode(ctx context.Context, id models.ID) error {
+	return s.del.DeleteArchiveNode(ctx, id)
+}
+
+// newArchiveNodeService собирает фасад на настоящем хранилище.
+func newArchiveNodeService(t *testing.T, st *sqlstore.Store) *archiveNodeService {
+	t.Helper()
+
+	return &archiveNodeService{
+		list:   list_archive_nodes.New(st),
+		search: search_archive_nodes.New(st),
+		get:    get_archive_node.New(st),
+		create: create_archive_node.New(st, idgen.New()),
+		update: update_archive_node.New(st),
+		del:    delete_archive_node.New(st),
+	}
+}
+
+// archiveDocumentService — фасад httpapi.ArchiveDocumentService на настоящих
+// сценариях (так же собран internal/app's archiveDocumentService).
+type archiveDocumentService struct {
+	list   *list_archive_documents.Scenario
+	search *search_archive_documents.Scenario
+	get    *get_archive_document.Scenario
+	create *create_archive_document.Scenario
+	update *update_archive_document.Scenario
+	del    *delete_archive_document.Scenario
+}
+
+func (s *archiveDocumentService) ListArchiveDocuments(ctx context.Context, access models.Access, page models.Page) ([]models.ArchiveDocument, error) {
+	return s.list.ListArchiveDocuments(ctx, access, page)
+}
+
+func (s *archiveDocumentService) SearchArchiveDocuments(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.ArchiveDocument, error) {
+	return s.search.SearchArchiveDocuments(ctx, access, q)
+}
+
+func (s *archiveDocumentService) GetArchiveDocument(ctx context.Context, access models.Access, id models.ID) (models.ArchiveDocument, error) {
+	return s.get.GetArchiveDocument(ctx, access, id)
+}
+
+func (s *archiveDocumentService) CreateArchiveDocument(ctx context.Context, d models.ArchiveDocument) (models.ArchiveDocument, error) {
+	return s.create.CreateArchiveDocument(ctx, d)
+}
+
+func (s *archiveDocumentService) UpdateArchiveDocument(ctx context.Context, d models.ArchiveDocument) error {
+	return s.update.UpdateArchiveDocument(ctx, d)
+}
+
+func (s *archiveDocumentService) DeleteArchiveDocument(ctx context.Context, id models.ID) error {
+	return s.del.DeleteArchiveDocument(ctx, id)
+}
+
+// newArchiveDocumentService собирает фасад на настоящем хранилище.
+func newArchiveDocumentService(t *testing.T, st *sqlstore.Store) *archiveDocumentService {
+	t.Helper()
+
+	return &archiveDocumentService{
+		list:   list_archive_documents.New(st),
+		search: search_archive_documents.New(st),
+		get:    get_archive_document.New(st),
+		create: create_archive_document.New(st, idgen.New()),
+		update: update_archive_document.New(st),
+		del:    delete_archive_document.New(st),
 	}
 }
 

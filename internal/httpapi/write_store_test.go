@@ -1353,6 +1353,341 @@ func putArchiveReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, b
 	return rec
 }
 
+// TestArchiveNodeWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» (по образцу TestArchiveWriteContractWithRealStore) для
+// узлов архивного дерева: bootstrap-регистрация → создание архива → создание
+// корневого узла → создание дочернего узла → список с фильтром по
+// archive_id (оба узла видны, корректно вложены) → изменение → удаление →
+// повторное чтение — 404. Дополнительно закрывает новый для этого
+// подпункта инвариант «родитель из того же архива»: несуществующий
+// parent_id — 422 на поле parent_id; parent_id, указывающий на реальный
+// узел, но из ДРУГОГО архива — тоже 422 на поле parent_id (не archive_id).
+func TestArchiveNodeWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:    newDivisionService(t, st),
+		Archives:     newArchiveService(t, st),
+		ArchiveNodes: newArchiveNodeService(t, st),
+		Sources:      newSourceService(t, st),
+		Citations:    newCitationService(t, st),
+		Auth:         authSvc,
+		DocsFS:       fstest.MapFS{},
+		TrustProxy:   false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	archive := createArchive(t, h, owner, `{"name":"ГАВО, архив","notes":[],"private":false}`, http.StatusCreated)
+	otherArchive := createArchive(t, h, owner, `{"name":"РГАДА","notes":[],"private":false}`, http.StatusCreated)
+
+	// Корневой узел (без parent_id).
+	root := createArchiveNode(t, h, owner,
+		fmt.Sprintf(`{"type":"fond","archive_id":%q,"label":"Фонд 1"}`, archive.ID), http.StatusCreated)
+	if root.ArchiveID != archive.ID || root.ParentID != nil {
+		t.Fatalf("root = %+v", root)
+	}
+	if !strings.HasPrefix(string(root.ID), "AN-") {
+		t.Fatalf("id = %q", root.ID)
+	}
+
+	// Дочерний узел под корневым, в том же архиве.
+	child := createArchiveNode(t, h, owner,
+		fmt.Sprintf(`{"type":"opis","archive_id":%q,"parent_id":%q,"label":"Опись 1"}`, archive.ID, root.ID), http.StatusCreated)
+	if child.ParentID == nil || *child.ParentID != root.ID {
+		t.Fatalf("child = %+v", child)
+	}
+
+	// Список с фильтром по archive_id, без parent_id — только корень
+	// (models.ArchiveNodeQuery: ParentID nil — корень внутри архива).
+	rec := getReq(t, h, "/api/archive-nodes?archive_id="+string(archive.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	rootList := decodeArchiveNodeListS(t, rec)
+	if len(rootList) != 1 || rootList[0].ID != root.ID {
+		t.Fatalf("rootList = %+v, want exactly [root]", rootList)
+	}
+
+	// Список с parent_id=root — только прямые дети (child).
+	rec = getReq(t, h, "/api/archive-nodes?archive_id="+string(archive.ID)+"&parent_id="+string(root.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	childList := decodeArchiveNodeListS(t, rec)
+	if len(childList) != 1 || childList[0].ID != child.ID {
+		t.Fatalf("childList = %+v, want exactly [child]", childList)
+	}
+
+	// Список без archive_id — 400.
+	requireStatusS(t, getReq(t, h, "/api/archive-nodes"), http.StatusBadRequest)
+
+	// Изменение: полная замена label.
+	rec = putArchiveNodeReq(t, h, owner, "/api/archive-nodes/"+string(root.ID),
+		fmt.Sprintf(`{"type":"fond","archive_id":%q,"label":"Фонд 1 (испр.)"}`, archive.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeArchiveNodeS(t, rec)
+	if updated.Label != "Фонд 1 (испр.)" || updated.ID != root.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Несуществующий parent_id — 422 на поле parent_id.
+	rec = postArchiveNodeReq(t, h, owner,
+		fmt.Sprintf(`{"type":"delo","archive_id":%q,"parent_id":"AN-01ARZ3NDEKTSV4RRFFQ69G5FA9","label":"Дело-призрак"}`, archive.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"parent_id"`) {
+		t.Fatalf("body = %s, want field=parent_id", rec.Body)
+	}
+
+	// parent_id из ДРУГОГО архива — тоже 422 на поле parent_id (не archive_id):
+	// сам родитель существует, инвариант — «родитель из того же архива».
+	rec = postArchiveNodeReq(t, h, owner,
+		fmt.Sprintf(`{"type":"delo","archive_id":%q,"parent_id":%q,"label":"Дело из чужого архива"}`, otherArchive.ID, root.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"parent_id"`) {
+		t.Fatalf("body = %s, want field=parent_id (родитель из другого архива)", rec.Body)
+	}
+
+	// Ретрофит: строгий FK sources[i].citation_id.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Опись фонда","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createArchiveNode(t, h, owner,
+		fmt.Sprintf(`{"type":"fond","archive_id":%q,"label":"Фонд с цитатой","sources":[{"citation_id":%q}]}`, archive.ID, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	rec = postArchiveNodeReq(t, h, owner,
+		fmt.Sprintf(`{"type":"fond","archive_id":%q,"label":"Фонд-призрак","sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}]}`, archive.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
+
+	// Удаление корня, занятого дочерним узлом — 409.
+	requireStatusS(t, delReq(t, h, owner, "/api/archive-nodes/"+string(root.ID)), http.StatusConflict)
+
+	// Удаление дочернего узла, затем корня — оба 204.
+	requireStatusS(t, delReq(t, h, owner, "/api/archive-nodes/"+string(child.ID)), http.StatusNoContent)
+	requireStatusS(t, delReq(t, h, owner, "/api/archive-nodes/"+string(root.ID)), http.StatusNoContent)
+
+	requireStatusS(t, getReq(t, h, "/api/archive-nodes/"+string(root.ID)), http.StatusNotFound)
+}
+
+func createArchiveNode(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.ArchiveNode {
+	t.Helper()
+
+	rec := postArchiveNodeReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeArchiveNodeS(t, rec)
+}
+
+func decodeArchiveNodeS(t *testing.T, rec *httptest.ResponseRecorder) transport.ArchiveNode {
+	t.Helper()
+
+	var n transport.ArchiveNode
+	if err := json.Unmarshal(rec.Body.Bytes(), &n); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return n
+}
+
+func decodeArchiveNodeListS(t *testing.T, rec *httptest.ResponseRecorder) []transport.ArchiveNode {
+	t.Helper()
+
+	var list []transport.ArchiveNode
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return list
+}
+
+func postArchiveNodeReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/archive-nodes", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putArchiveNodeReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestArchiveDocumentWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» для документов внутри единиц учёта: bootstrap-регистрация
+// → создание архива → создание узла → создание документа под этим узлом →
+// чтение → изменение → удаление → повторное чтение — 404. Дополнительно
+// закрывает строгий FK unit_id (несуществующий — 422 на поле unit_id) и
+// sources[i].citation_id (несуществующий — 422).
+func TestArchiveDocumentWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:    newDivisionService(t, st),
+		Archives:     newArchiveService(t, st),
+		ArchiveNodes: newArchiveNodeService(t, st),
+		ArchiveDocs:  newArchiveDocumentService(t, st),
+		Sources:      newSourceService(t, st),
+		Citations:    newCitationService(t, st),
+		Auth:         authSvc,
+		DocsFS:       fstest.MapFS{},
+		TrustProxy:   false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	archive := createArchive(t, h, owner, `{"name":"ГАВО, архив","notes":[],"private":false}`, http.StatusCreated)
+	unit := createArchiveNode(t, h, owner,
+		fmt.Sprintf(`{"type":"delo","archive_id":%q,"label":"Дело 1"}`, archive.ID), http.StatusCreated)
+
+	created := createArchiveDocument(t, h, owner,
+		fmt.Sprintf(`{"unit_id":%q,"title":"Метрическая книга 1890"}`, unit.ID), http.StatusCreated)
+	if created.UnitID != unit.ID || created.Title != "Метрическая книга 1890" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "DC-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	rec := getReq(t, h, "/api/archive-documents/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"title":"Метрическая книга 1890"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	rec = putArchiveDocumentReq(t, h, owner, "/api/archive-documents/"+string(created.ID),
+		fmt.Sprintf(`{"unit_id":%q,"title":"Метрическая книга 1890 (испр.)"}`, unit.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeArchiveDocumentS(t, rec)
+	if updated.Title != "Метрическая книга 1890 (испр.)" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	requireStatusS(t, delReq(t, h, owner, "/api/archive-documents/"+string(created.ID)), http.StatusNoContent)
+	requireStatusS(t, getReq(t, h, "/api/archive-documents/"+string(created.ID)), http.StatusNotFound)
+
+	// Строгий FK: несуществующий unit_id — 422 на поле unit_id.
+	rec = postArchiveDocumentReq(t, h, owner, `{"unit_id":"AN-01ARZ3NDEKTSV4RRFFQ69G5FA9","title":"Документ-призрак"}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"unit_id"`) {
+		t.Fatalf("body = %s, want field=unit_id", rec.Body)
+	}
+
+	// Ретрофит: строгий FK sources[i].citation_id.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Метрическая книга","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createArchiveDocument(t, h, owner,
+		fmt.Sprintf(`{"unit_id":%q,"title":"Документ с цитатой","sources":[{"citation_id":%q}]}`, unit.ID, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	rec = postArchiveDocumentReq(t, h, owner,
+		fmt.Sprintf(`{"unit_id":%q,"title":"Документ-призрак 2","sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}]}`, unit.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
+}
+
+func createArchiveDocument(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.ArchiveDocument {
+	t.Helper()
+
+	rec := postArchiveDocumentReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeArchiveDocumentS(t, rec)
+}
+
+func decodeArchiveDocumentS(t *testing.T, rec *httptest.ResponseRecorder) transport.ArchiveDocument {
+	t.Helper()
+
+	var d transport.ArchiveDocument
+	if err := json.Unmarshal(rec.Body.Bytes(), &d); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return d
+}
+
+func postArchiveDocumentReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/archive-documents", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putArchiveDocumentReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
 // TestNoteWriteContractWithRealStore: сквозной путь «хранилище → сценарии →
 // HTTP» (по образцу TestArchiveWriteContractWithRealStore) для заметок:
 // bootstrap-регистрация → создание → чтение → изменение → удаление →

@@ -124,6 +124,26 @@
   `internal/mcp/{division,repository,church,parish,archive,note}.go`,
   `web/src/pages/{Division,Repository,Church,Parish,Archive,Note}
   {Form,View}.tsx`).
+- Архивные деревья (`ArchiveNode`/`ArchiveDocument`, backend) — подпроект 6,
+  бэкенд: usecase-сценарии, HTTP (`/api/archive-nodes*`, `/api/archive-
+  documents*`) и MCP (`archive_node_*`/`archive_document_*` — по 6 тулов на
+  сущность). `ArchiveNode` — первое дерево, скопированное per-owner
+  (обязательный `ArchiveID`), а не единственное глобальное, как у
+  `AdministrativeDivision`: список без `ParentID` — корень внутри архива,
+  без выделенного метода хранилища «дети узла» — полный проход по окнам
+  generic `ListArchiveNodes` с фильтром по `ArchiveID`+`ParentID` (масштаб
+  данных это позволяет). Новый вид кросс-полевой проверки — «родитель
+  существует И принадлежит тому же архиву, что и сам узел», не только «X
+  существует»: несуществующий/чужого-архива `parent_id` — 422 на поле
+  `parent_id`, отдельно от 422 на `archive_id` (несуществующий архив).
+  `ArchiveDocument` — плоская сущность со строгим `UnitID` на `ArchiveNode`.
+  Обе — первые совершенно новые сущности программы, получившие `Sources
+  []SourceLink` сразу редактируемым (не ретрофит, как у 6 сущностей выше)
+  (`internal/models/query.go` (`ArchiveNodeQuery`), `internal/usecases/
+  {list,search,get,create,update,delete}_archive_{node,document}*`,
+  `internal/transport/archive_{node,document}{,_write}.go`,
+  `internal/httpapi/archive_{node,document}{,_write}.go`,
+  `internal/mcp/archive_{node,document}.go`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

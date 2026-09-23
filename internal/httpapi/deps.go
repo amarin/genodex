@@ -117,6 +117,30 @@ type ArchiveService interface {
 	DeleteArchive(ctx context.Context, id models.ID) error
 }
 
+// ArchiveNodeService — контракт сценариев узлов архивного дерева, отдаваемых
+// в HTTP: список (обязательный archive_id — см. models.ArchiveNodeQuery),
+// поиск, чтение, создание, изменение, удаление.
+type ArchiveNodeService interface {
+	ListArchiveNodes(ctx context.Context, access models.Access, q models.ArchiveNodeQuery) ([]models.ArchiveNode, error)
+	SearchArchiveNodes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.ArchiveNode, error)
+	GetArchiveNode(ctx context.Context, access models.Access, id models.ID) (models.ArchiveNode, error)
+	CreateArchiveNode(ctx context.Context, n models.ArchiveNode) (models.ArchiveNode, error)
+	UpdateArchiveNode(ctx context.Context, n models.ArchiveNode) error
+	DeleteArchiveNode(ctx context.Context, id models.ID) error
+}
+
+// ArchiveDocumentService — контракт сценариев документов внутри единиц
+// учёта, отдаваемых в HTTP: список, поиск, чтение, создание, изменение,
+// удаление.
+type ArchiveDocumentService interface {
+	ListArchiveDocuments(ctx context.Context, access models.Access, page models.Page) ([]models.ArchiveDocument, error)
+	SearchArchiveDocuments(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.ArchiveDocument, error)
+	GetArchiveDocument(ctx context.Context, access models.Access, id models.ID) (models.ArchiveDocument, error)
+	CreateArchiveDocument(ctx context.Context, d models.ArchiveDocument) (models.ArchiveDocument, error)
+	UpdateArchiveDocument(ctx context.Context, d models.ArchiveDocument) error
+	DeleteArchiveDocument(ctx context.Context, id models.ID) error
+}
+
 // NoteService — контракт сценариев заметок, отдаваемых в HTTP: список,
 // поиск, чтение, создание, изменение, удаление.
 type NoteService interface {

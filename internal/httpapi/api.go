@@ -21,6 +21,8 @@ type Deps struct {
 	Churches     ChurchService
 	Parishes     ParishService
 	Archives     ArchiveService
+	ArchiveNodes ArchiveNodeService
+	ArchiveDocs  ArchiveDocumentService
 	Notes        NoteService
 	Attachments  AttachmentService
 	Sources      SourceService
@@ -75,6 +77,14 @@ func NewAPIHandler(deps Deps) http.Handler {
 
 	if deps.Archives != nil {
 		registerArchiveRoutes(mux, deps.Archives)
+	}
+
+	if deps.ArchiveNodes != nil {
+		registerArchiveNodeRoutes(mux, deps.ArchiveNodes)
+	}
+
+	if deps.ArchiveDocs != nil {
+		registerArchiveDocumentRoutes(mux, deps.ArchiveDocs)
 	}
 
 	if deps.Notes != nil {

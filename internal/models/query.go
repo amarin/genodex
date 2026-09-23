@@ -146,3 +146,38 @@ func (q SearchQuery) Validate() error {
 
 	return nil
 }
+
+// ArchiveNodeQuery — запрос списка узлов архивного дерева: обязательный
+// фильтр по архиву (у узла нет смысла вне архива), необязательный —
+// прямой родитель. ParentID — nil — корень (внутри ArchiveID); иначе
+// только прямые дети этого узла.
+type ArchiveNodeQuery struct {
+	ArchiveID ID
+	ParentID  *ID
+	Page      Page
+}
+
+// Validate проверяет запрос: archive_id обязателен и должен быть валидным
+// id архива; parent_id (если задан) — валидным id узла; отрицательные
+// размер и сдвиг окна — *ValidationError. Размер окна больше MaxPageLimit
+// не ошибка: Page.Normalized сужает его.
+func (q ArchiveNodeQuery) Validate() error {
+	if err := idErr("archive_id", q.ArchiveID, TypeArchive); err != nil {
+		return err
+	}
+
+	switch {
+	case q.Page.Limit < 0:
+		return fieldErr("limit", "не может быть отрицательным: %d", q.Page.Limit)
+	case q.Page.Offset < 0:
+		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
+	}
+
+	if q.ParentID != nil {
+		if err := idErr("parent_id", *q.ParentID, TypeArchiveNode); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

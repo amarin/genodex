@@ -18,6 +18,8 @@ type Deps struct {
 	Churches     ChurchService
 	Parishes     ParishService
 	Archives     ArchiveService
+	ArchiveNodes ArchiveNodeService
+	ArchiveDocs  ArchiveDocumentService
 	Notes        NoteService
 	Attachments  AttachmentService
 	Sources      SourceService
@@ -67,6 +69,14 @@ func NewServer(deps Deps) *server.MCPServer {
 
 	if deps.Archives != nil {
 		registerArchiveTools(s, deps.Archives)
+	}
+
+	if deps.ArchiveNodes != nil {
+		registerArchiveNodeTools(s, deps.ArchiveNodes)
+	}
+
+	if deps.ArchiveDocs != nil {
+		registerArchiveDocumentTools(s, deps.ArchiveDocs)
 	}
 
 	if deps.Notes != nil {

@@ -56,6 +56,14 @@ func NewHandler(deps Deps) http.Handler {
 		registerArchiveRoutes(mux, deps.Archives)
 	}
 
+	if deps.ArchiveNodes != nil {
+		registerArchiveNodeRoutes(mux, deps.ArchiveNodes)
+	}
+
+	if deps.ArchiveDocs != nil {
+		registerArchiveDocumentRoutes(mux, deps.ArchiveDocs)
+	}
+
 	if deps.Notes != nil {
 		registerNoteRoutes(mux, deps.Notes)
 	}
@@ -178,6 +186,28 @@ func registerArchiveRoutes(mux *http.ServeMux, archives ArchiveService) {
 	mux.HandleFunc("POST /api/archives", handleArchiveCreate(archives))
 	mux.HandleFunc("PUT /api/archives/{id}", handleArchiveUpdate(archives))
 	mux.HandleFunc("DELETE /api/archives/{id}", handleArchiveDelete(archives))
+}
+
+// registerArchiveNodeRoutes регистрирует маршруты /api/archive-nodes на
+// переданном mux. archive_id обязателен для списка (см. parseArchiveNodeQuery).
+func registerArchiveNodeRoutes(mux *http.ServeMux, archiveNodes ArchiveNodeService) {
+	mux.HandleFunc("GET /api/archive-nodes", handleArchiveNodeList(archiveNodes))
+	mux.HandleFunc("GET /api/archive-nodes/search", handleArchiveNodeSearch(archiveNodes))
+	mux.HandleFunc("GET /api/archive-nodes/{id}", handleArchiveNodeGet(archiveNodes))
+	mux.HandleFunc("POST /api/archive-nodes", handleArchiveNodeCreate(archiveNodes))
+	mux.HandleFunc("PUT /api/archive-nodes/{id}", handleArchiveNodeUpdate(archiveNodes))
+	mux.HandleFunc("DELETE /api/archive-nodes/{id}", handleArchiveNodeDelete(archiveNodes))
+}
+
+// registerArchiveDocumentRoutes регистрирует маршруты /api/archive-documents
+// на переданном mux.
+func registerArchiveDocumentRoutes(mux *http.ServeMux, archiveDocuments ArchiveDocumentService) {
+	mux.HandleFunc("GET /api/archive-documents", handleArchiveDocumentList(archiveDocuments))
+	mux.HandleFunc("GET /api/archive-documents/search", handleArchiveDocumentSearch(archiveDocuments))
+	mux.HandleFunc("GET /api/archive-documents/{id}", handleArchiveDocumentGet(archiveDocuments))
+	mux.HandleFunc("POST /api/archive-documents", handleArchiveDocumentCreate(archiveDocuments))
+	mux.HandleFunc("PUT /api/archive-documents/{id}", handleArchiveDocumentUpdate(archiveDocuments))
+	mux.HandleFunc("DELETE /api/archive-documents/{id}", handleArchiveDocumentDelete(archiveDocuments))
 }
 
 // registerNoteRoutes регистрирует маршруты /api/notes на переданном mux.
