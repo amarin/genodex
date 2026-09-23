@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"net/http"
+	"strings"
 
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/transport"
@@ -12,10 +13,16 @@ import (
 
 // NewHandler возвращает http.Handler с маршрутами /api (без auth-
 // оборачивания) — используется юнит-тестами этого пакета напрямую.
-// Реальное приложение монтирует NewAPIHandler (api.go).
-func NewHandler(divisions DivisionService, docsFS fs.FS) http.Handler {
+// Реальное приложение монтирует NewAPIHandler (api.go). Deps.Auth/TrustProxy
+// не используются (без auth-обёртки), Deps.Surnames может быть nil, если
+// тесту нужны только маршруты делений.
+func NewHandler(deps Deps) http.Handler {
 	mux := http.NewServeMux()
-	registerDivisionRoutes(mux, divisions, docsFS)
+	registerDivisionRoutes(mux, deps.Divisions, deps.DocsFS)
+
+	if deps.Surnames != nil {
+		registerSurnameRoutes(mux, deps.Surnames)
+	}
 
 	return mux
 }
@@ -35,8 +42,24 @@ func registerDivisionRoutes(mux *http.ServeMux, divisions DivisionService, docsF
 	mux.HandleFunc("GET /api/docs/{path}", handleDocContent(docsFS))
 }
 
+// registerSurnameRoutes регистрирует маршруты /api/surnames на переданном mux.
+func registerSurnameRoutes(mux *http.ServeMux, surnames SurnameService) {
+	mux.HandleFunc("GET /api/surnames", handleSurnameList(surnames))
+	mux.HandleFunc("GET /api/surnames/search", handleSurnameSearch(surnames))
+	mux.HandleFunc("GET /api/surnames/{id}", handleSurnameGet(surnames))
+	mux.HandleFunc("POST /api/surnames", handleSurnameCreate(surnames))
+	mux.HandleFunc("PUT /api/surnames/{id}", handleSurnameUpdate(surnames))
+	mux.HandleFunc("DELETE /api/surnames/{id}", handleSurnameDelete(surnames))
+}
+
 func handleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+// pathID читает {id} из пути запроса — общий хелпер для всех сущностей
+// (division.go's pathDivisionID — исторический синоним, оставлен как есть).
+func pathID(r *http.Request) models.ID {
+	return models.ID(strings.TrimPrefix(r.PathValue("id"), "/"))
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

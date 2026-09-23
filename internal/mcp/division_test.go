@@ -258,7 +258,7 @@ func TestDivisionListToolWithParent(t *testing.T) {
 
 // TestNewServerRegistersDivisionSearchTool: тул division_search зарегистрирован.
 func TestNewServerRegistersDivisionSearchTool(t *testing.T) {
-	tools := NewServer(&fakeDivisions{}).ListTools()
+	tools := NewServer(Deps{Divisions: &fakeDivisions{}}).ListTools()
 
 	if _, ok := tools["division_search"]; !ok {
 		t.Errorf("тул division_search не зарегистрирован: %v", tools)
@@ -268,7 +268,7 @@ func TestNewServerRegistersDivisionSearchTool(t *testing.T) {
 // TestNewServerRegistersDivisionListOnly: тул зарегистрирован под новым именем,
 // прежнего settlement_list нет.
 func TestNewServerRegistersDivisionListOnly(t *testing.T) {
-	tools := NewServer(&fakeDivisions{}).ListTools()
+	tools := NewServer(Deps{Divisions: &fakeDivisions{}}).ListTools()
 
 	if _, ok := tools["division_list"]; !ok {
 		t.Errorf("тул division_list не зарегистрирован: %v", tools)

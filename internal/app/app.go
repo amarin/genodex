@@ -17,11 +17,17 @@ import (
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
+	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
+	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
+	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
+	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
+	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
+	update_surname "github.com/amarin/genodex/internal/usecases/update_surname"
 	"github.com/amarin/genodex/web"
 )
 
@@ -74,9 +80,47 @@ func (s *divisionService) DeleteDivision(ctx context.Context, id models.ID) erro
 	return s.del.DeleteDivision(ctx, id)
 }
 
+// surnameService — фасад всех сценариев словарных записей фамилий, отдаваемых
+// HTTP и MCP. Тот же приём, что divisionService — по одному полю на
+// сценарий, тонкие методы-делегаты (docs/data-model/entity-write.md §3).
+type surnameService struct {
+	list   *list_surnames.Scenario
+	search *search_surnames.Scenario
+	get    *get_surname.Scenario
+	create *create_surname.Scenario
+	update *update_surname.Scenario
+	del    *delete_surname.Scenario
+}
+
+func (s *surnameService) ListSurnames(ctx context.Context, access models.Access, page models.Page) ([]models.Surname, error) {
+	return s.list.ListSurnames(ctx, access, page)
+}
+
+func (s *surnameService) SearchSurnames(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Surname, error) {
+	return s.search.SearchSurnames(ctx, access, q)
+}
+
+func (s *surnameService) GetSurname(ctx context.Context, id models.ID) (models.Surname, error) {
+	return s.get.GetSurname(ctx, id)
+}
+
+func (s *surnameService) CreateSurname(ctx context.Context, sn models.Surname) (models.Surname, error) {
+	return s.create.CreateSurname(ctx, sn)
+}
+
+func (s *surnameService) UpdateSurname(ctx context.Context, sn models.Surname) error {
+	return s.update.UpdateSurname(ctx, sn)
+}
+
+func (s *surnameService) DeleteSurname(ctx context.Context, id models.ID) error {
+	return s.del.DeleteSurname(ctx, id)
+}
+
 var (
 	_ httpapi.DivisionService = (*divisionService)(nil)
 	_ mcp.DivisionService     = (*divisionService)(nil)
+	_ httpapi.SurnameService  = (*surnameService)(nil)
+	_ mcp.SurnameService      = (*surnameService)(nil)
 	_ httpapi.AuthService     = (*auth.Service)(nil)
 	_ mcp.TokenResolver       = (*auth.Service)(nil)
 )
@@ -97,13 +141,30 @@ func New(cfg Config) (*App, error) {
 		del:    delete_division.New(st),
 	}
 
+	surnames := &surnameService{
+		list:   list_surnames.New(st),
+		search: search_surnames.New(st),
+		get:    get_surname.New(st),
+		create: create_surname.New(st, idgen.New()),
+		update: update_surname.New(st),
+		del:    delete_surname.New(st),
+	}
+
 	// auth-хранилище — на том же соединении, что и общий store (см.
 	// sqlstore.Store.DB), файл БД один и тот же (internal/storage/schema_auth.go).
 	authService := auth.New(auth.NewSQLStore(st.DB()))
 
 	mux := http.NewServeMux()
-	mux.Handle("/mcp", mcp.RequireAPIToken(authService)(server.NewStreamableHTTPServer(mcp.NewServer(divisions))))
-	mux.Handle("/api/", httpapi.NewAPIHandler(divisions, authService, genodex.DocsFS(cfg.WebMode), cfg.TrustProxy))
+	mux.Handle("/mcp", mcp.RequireAPIToken(authService)(server.NewStreamableHTTPServer(
+		mcp.NewServer(mcp.Deps{Divisions: divisions, Surnames: surnames}),
+	)))
+	mux.Handle("/api/", httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  divisions,
+		Surnames:   surnames,
+		Auth:       authService,
+		DocsFS:     genodex.DocsFS(cfg.WebMode),
+		TrustProxy: cfg.TrustProxy,
+	}))
 	mux.Handle("/static/", http.StripPrefix("/static/", web.StaticHandler(cfg.WebMode)))
 	mux.Handle("/", web.SPAHandler(cfg.WebMode))
 

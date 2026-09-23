@@ -64,7 +64,7 @@ func requireStatus(t *testing.T, rec *httptest.ResponseRecorder, want int) {
 func TestDivisionGetContract(t *testing.T) {
 	svc := &fakeDivisions{getDiv: models.AdministrativeDivision{ID: writeID, Name: "Давыдово", Type: models.AdminDivisionSelo}}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/"+writeID)
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID)
 
 	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null}`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != want {
@@ -79,7 +79,7 @@ func TestDivisionGetContract(t *testing.T) {
 func TestDivisionGetNotFoundIs404(t *testing.T) {
 	svc := &fakeDivisions{err: models.ErrNotFound}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/"+writeID)
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID)
 
 	requireStatus(t, rec, http.StatusNotFound)
 	if got, want := strings.TrimSpace(rec.Body.String()), `{"error":"не найдено"}`; got != want {
@@ -91,7 +91,7 @@ func TestDivisionGetNotFoundIs404(t *testing.T) {
 func TestDivisionGetInvalidIDIs422(t *testing.T) {
 	svc := &fakeDivisions{err: &models.ValidationError{Field: "id", Reason: "неверный формат"}}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/ad-1")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/ad-1")
 
 	requireStatus(t, rec, http.StatusUnprocessableEntity)
 	if !strings.Contains(rec.Body.String(), `"field":"id"`) {
@@ -102,7 +102,7 @@ func TestDivisionGetInvalidIDIs422(t *testing.T) {
 func TestDivisionCreateContract(t *testing.T) {
 	svc := &fakeDivisions{created: models.AdministrativeDivision{ID: writeID, Name: "Давыдово", Type: models.AdminDivisionSelo}}
 
-	rec := postD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions", `{"name":"Давыдово","type":"selo"}`)
+	rec := postD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions", `{"name":"Давыдово","type":"selo"}`)
 
 	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null}`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusCreated || got != want {
@@ -118,7 +118,7 @@ func TestDivisionCreateWithParentPassesModel(t *testing.T) {
 	svc := &fakeDivisions{created: models.AdministrativeDivision{ID: writeID, Name: "Давыдово", Type: models.AdminDivisionSelo}}
 
 	body := `{"name":"Давыдово","type":"selo","parent_id":"` + writeRefID + `"}`
-	rec := postD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions", body)
+	rec := postD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions", body)
 
 	requireStatus(t, rec, http.StatusCreated)
 	if svc.gotCreate.ParentID == nil || *svc.gotCreate.ParentID != writeRefID {
@@ -127,7 +127,7 @@ func TestDivisionCreateWithParentPassesModel(t *testing.T) {
 }
 
 func TestDivisionCreateBadJSONIs400(t *testing.T) {
-	rec := postD(t, NewHandler(&fakeDivisions{}, fstest.MapFS{}), "/api/admin-divisions", `{`)
+	rec := postD(t, NewHandler(Deps{Divisions: &fakeDivisions{}, DocsFS: fstest.MapFS{}}), "/api/admin-divisions", `{`)
 
 	requireStatus(t, rec, http.StatusBadRequest)
 	if !strings.Contains(rec.Body.String(), "не удалось разобрать тело") {
@@ -138,7 +138,7 @@ func TestDivisionCreateBadJSONIs400(t *testing.T) {
 func TestDivisionCreateValidationErrorIs422(t *testing.T) {
 	svc := &fakeDivisions{err: &models.ValidationError{Field: "name", Reason: "пустое значение"}}
 
-	rec := postD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions", `{"name":"","type":"selo"}`)
+	rec := postD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions", `{"name":"","type":"selo"}`)
 
 	requireStatus(t, rec, http.StatusUnprocessableEntity)
 	if !strings.Contains(rec.Body.String(), `"field":"name"`) {
@@ -155,7 +155,7 @@ func TestDivisionUpdateMergesFields(t *testing.T) {
 		ParentID: &parent, Variants: []string{"Давыдова"},
 	}}
 
-	rec := putD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/"+writeID, `{"name":"Давыдово","type":"selo","parent_id":null}`)
+	rec := putD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID, `{"name":"Давыдово","type":"selo","parent_id":null}`)
 
 	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null}`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != want {
@@ -176,7 +176,7 @@ func TestDivisionUpdateMergesFields(t *testing.T) {
 func TestDivisionUpdateNotFoundIs404(t *testing.T) {
 	svc := &fakeDivisions{err: models.ErrNotFound}
 
-	rec := putD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/"+writeID, `{"name":"Давыдово","type":"selo"}`)
+	rec := putD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID, `{"name":"Давыдово","type":"selo"}`)
 
 	requireStatus(t, rec, http.StatusNotFound)
 }
@@ -184,7 +184,7 @@ func TestDivisionUpdateNotFoundIs404(t *testing.T) {
 func TestDivisionUpdateInvalidIDIs422(t *testing.T) {
 	svc := &fakeDivisions{err: &models.ValidationError{Field: "id", Reason: "неверный формат"}}
 
-	rec := putD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/ad-1", `{"name":"Давыдово","type":"selo"}`)
+	rec := putD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/ad-1", `{"name":"Давыдово","type":"selo"}`)
 
 	requireStatus(t, rec, http.StatusUnprocessableEntity)
 }
@@ -192,7 +192,7 @@ func TestDivisionUpdateInvalidIDIs422(t *testing.T) {
 func TestDivisionDeleteNoContent(t *testing.T) {
 	svc := &fakeDivisions{}
 
-	rec := delD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/"+writeID)
+	rec := delD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID)
 
 	requireStatus(t, rec, http.StatusNoContent)
 	if rec.Body.Len() != 0 {
@@ -206,7 +206,7 @@ func TestDivisionDeleteNoContent(t *testing.T) {
 func TestDivisionDeleteNotFoundIs404(t *testing.T) {
 	svc := &fakeDivisions{deleteErr: models.ErrNotFound}
 
-	rec := delD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/"+writeID)
+	rec := delD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID)
 
 	requireStatus(t, rec, http.StatusNotFound)
 }
@@ -214,7 +214,7 @@ func TestDivisionDeleteNotFoundIs404(t *testing.T) {
 func TestDivisionDeleteInvalidIDIs422(t *testing.T) {
 	svc := &fakeDivisions{deleteErr: &models.ValidationError{Field: "id", Reason: "неверный формат"}}
 
-	rec := delD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/ad-1")
+	rec := delD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/ad-1")
 
 	requireStatus(t, rec, http.StatusUnprocessableEntity)
 }
@@ -226,7 +226,7 @@ func TestDivisionDeleteInUseIs409WithReferrers(t *testing.T) {
 		Referrers: []models.EntityRef{{Type: models.TypeAdministrativeDivision, ID: writeRefID}},
 	}}
 
-	rec := delD(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/"+writeID)
+	rec := delD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID)
 
 	requireStatus(t, rec, http.StatusConflict)
 	want := `{"error":"administrative_division \"` + writeID + `\" используется: administrative_division ` + writeRefID +
@@ -243,7 +243,7 @@ func TestDivisionCreateAnonymousIs401(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/admin-divisions", strings.NewReader(`{"name":"x","type":"selo"}`))
-	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+	NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}).ServeHTTP(rec, req)
 
 	requireStatus(t, rec, http.StatusUnauthorized)
 	if svc.gotCreate.ID != "" {
@@ -257,7 +257,7 @@ func TestDivisionUpdateAnonymousIs401(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPut, "/api/admin-divisions/"+writeID, strings.NewReader(`{}`))
-	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+	NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}).ServeHTTP(rec, req)
 
 	requireStatus(t, rec, http.StatusUnauthorized)
 	if len(svc.gotIDs) != 0 {
@@ -271,7 +271,7 @@ func TestDivisionDeleteAnonymousIs401(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodDelete, "/api/admin-divisions/"+writeID, nil)
-	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+	NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}).ServeHTTP(rec, req)
 
 	requireStatus(t, rec, http.StatusUnauthorized)
 	if len(svc.gotIDs) != 0 {

@@ -18,6 +18,17 @@ type DivisionService interface {
 	DeleteDivision(ctx context.Context, id models.ID) error
 }
 
+// SurnameService — контракт сценариев словарных записей фамилий, отдаваемых
+// в HTTP: список, поиск, чтение, создание, изменение, удаление.
+type SurnameService interface {
+	ListSurnames(ctx context.Context, access models.Access, page models.Page) ([]models.Surname, error)
+	SearchSurnames(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Surname, error)
+	GetSurname(ctx context.Context, id models.ID) (models.Surname, error)
+	CreateSurname(ctx context.Context, sn models.Surname) (models.Surname, error)
+	UpdateSurname(ctx context.Context, sn models.Surname) error
+	DeleteSurname(ctx context.Context, id models.ID) error
+}
+
 // AuthService — контракт auth.Service, отдаваемый в HTTP-обработчики.
 type AuthService interface {
 	Bootstrap(ctx context.Context) (bool, error)

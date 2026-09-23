@@ -124,3 +124,25 @@ func (q DivisionSearchQuery) Validate() error {
 
 	return nil
 }
+
+// SearchQuery — запрос поиска по началу названия/канонической формы (включая
+// варианты), общий для сущностей без собственных доп. фильтров (см.
+// DivisionSearchQuery для сущности с фильтрами). Окно применяется после
+// отбора хитов own-типа.
+type SearchQuery struct {
+	Text string // начало текста; пустое (после обрезки) — пустой результат
+	Page Page
+}
+
+// Validate проверяет запрос: отрицательные размер и сдвиг окна — *ValidationError.
+// Пустой текст не ошибка.
+func (q SearchQuery) Validate() error {
+	switch {
+	case q.Page.Limit < 0:
+		return fieldErr("limit", "не может быть отрицательным: %d", q.Page.Limit)
+	case q.Page.Offset < 0:
+		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
+	}
+
+	return nil
+}

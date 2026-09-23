@@ -99,7 +99,7 @@ func TestAdminDivisionsWithRealStore(t *testing.T) {
 		}
 	}
 
-	h := httpapi.NewHandler(newDivisionService(t, st), fstest.MapFS{})
+	h := httpapi.NewHandler(httpapi.Deps{Divisions: newDivisionService(t, st), DocsFS: fstest.MapFS{}})
 
 	cases := []struct {
 		target string

@@ -97,7 +97,7 @@ func TestDivisionListContract(t *testing.T) {
 		{ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo, ParentID: &root},
 	}}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions")
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
@@ -115,7 +115,7 @@ func TestDivisionListContract(t *testing.T) {
 }
 
 func TestDivisionListEmptyIsJSONArray(t *testing.T) {
-	rec := get(t, NewHandler(&fakeDivisions{}, fstest.MapFS{}), "/api/admin-divisions")
+	rec := get(t, NewHandler(Deps{Divisions: &fakeDivisions{}, DocsFS: fstest.MapFS{}}), "/api/admin-divisions")
 
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != `[]` {
 		t.Fatalf("status = %d, body = %s; ожидалось 200 и []", rec.Code, got)
@@ -126,7 +126,7 @@ func TestDivisionListEmptyIsJSONArray(t *testing.T) {
 func TestDivisionListPassesParameters(t *testing.T) {
 	svc := &fakeDivisions{}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions?kind=settlement&type=selo&limit=20&offset=40")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions?kind=settlement&type=selo&limit=20&offset=40")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
@@ -144,7 +144,7 @@ func TestDivisionListPassesParameters(t *testing.T) {
 func TestDivisionListBadNumberIs400(t *testing.T) {
 	for _, target := range []string{"/api/admin-divisions?limit=abc", "/api/admin-divisions?offset=1.5"} {
 		svc := &fakeDivisions{}
-		rec := get(t, NewHandler(svc, fstest.MapFS{}), target)
+		rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), target)
 
 		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"error"`) {
 			t.Errorf("%s: status = %d, body = %s; ожидался 400 с error", target, rec.Code, rec.Body)
@@ -160,7 +160,7 @@ func TestDivisionListBadNumberIs400(t *testing.T) {
 func TestDivisionListValidationErrorIs422(t *testing.T) {
 	svc := &fakeDivisions{err: &models.ValidationError{Field: "kind", Reason: "неизвестный вид"}}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions?kind=village")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions?kind=village")
 
 	want := `{"error":"kind: неизвестный вид","field":"kind"}`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusUnprocessableEntity || got != want {
@@ -171,7 +171,7 @@ func TestDivisionListValidationErrorIs422(t *testing.T) {
 func TestDivisionListServiceErrorIs500(t *testing.T) {
 	svc := &fakeDivisions{err: errors.New("хранилище недоступно")}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions")
 
 	if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Body.String(), "хранилище недоступно") {
 		t.Fatalf("status = %d, body = %s; ожидался 500 с текстом ошибки", rec.Code, rec.Body)
@@ -182,7 +182,7 @@ func TestDivisionListServiceErrorIs500(t *testing.T) {
 func TestDivisionListPassesParentID(t *testing.T) {
 	svc := &fakeDivisions{}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions?parent_id=ad-root")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions?parent_id=ad-root")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body = %s", rec.Code, rec.Body)
 	}
@@ -198,7 +198,7 @@ func TestDivisionSearch(t *testing.T) {
 		{ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo},
 	}}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/search?q=давы")
 
 	want := `[{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":null}]`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != want {
@@ -213,7 +213,7 @@ func TestDivisionSearch(t *testing.T) {
 // TestDivisionSearchRouteDoesNotHitID: литеральный маршрут /search побеждает {id};
 // пустой фейк отвечает 200 пустым массивом, не 422 «неверный формат id».
 func TestDivisionSearchRouteDoesNotHitID(t *testing.T) {
-	rec := get(t, NewHandler(&fakeDivisions{}, fstest.MapFS{}), "/api/admin-divisions/search?q=давы")
+	rec := get(t, NewHandler(Deps{Divisions: &fakeDivisions{}, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/search?q=давы")
 
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != `[]` {
 		t.Fatalf("status = %d, body = %s; ожидалось 200 []", rec.Code, got)
@@ -224,7 +224,7 @@ func TestDivisionSearchRouteDoesNotHitID(t *testing.T) {
 func TestDivisionSearchBadNumberIs400(t *testing.T) {
 	svc := &fakeDivisions{}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы&limit=abc")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/search?q=давы&limit=abc")
 
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), `"error"`) {
 		t.Fatalf("status = %d, body = %s; ожидался 400 с error", rec.Code, rec.Body)
@@ -235,7 +235,7 @@ func TestDivisionSearchBadNumberIs400(t *testing.T) {
 func TestDivisionSearchNegativeLimitIs422(t *testing.T) {
 	svc := &fakeDivisions{searchErr: &models.ValidationError{Field: "limit", Reason: "не может быть отрицательным"}}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы&limit=-1")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/search?q=давы&limit=-1")
 
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, body = %s; ожидался 422", rec.Code, rec.Body)
@@ -246,7 +246,7 @@ func TestDivisionSearchNegativeLimitIs422(t *testing.T) {
 func TestDivisionSearchServiceErrorIs500(t *testing.T) {
 	svc := &fakeDivisions{searchErr: errors.New("хранилище недоступно")}
 
-	rec := get(t, NewHandler(svc, fstest.MapFS{}), "/api/admin-divisions/search?q=давы")
+	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/search?q=давы")
 
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, body = %s; ожидался 500", rec.Code, rec.Body)
@@ -255,7 +255,7 @@ func TestDivisionSearchServiceErrorIs500(t *testing.T) {
 
 // TestOldSettlementsRouteIsGone: прежнего имени контракта нет.
 func TestOldSettlementsRouteIsGone(t *testing.T) {
-	rec := get(t, NewHandler(&fakeDivisions{}, fstest.MapFS{}), "/api/settlements")
+	rec := get(t, NewHandler(Deps{Divisions: &fakeDivisions{}, DocsFS: fstest.MapFS{}}), "/api/settlements")
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("GET /api/settlements = %d, ожидался 404", rec.Code)
@@ -272,7 +272,7 @@ func TestDivisionListPassesAccessFromContext(t *testing.T) {
 	req = req.WithContext(context.WithValue(req.Context(), accessCtxKey, models.AccessPublic))
 
 	rec := httptest.NewRecorder()
-	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+	NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
@@ -290,7 +290,7 @@ func TestDivisionSearchPassesAccessFromContext(t *testing.T) {
 	req = req.WithContext(context.WithValue(req.Context(), accessCtxKey, models.AccessPublic))
 
 	rec := httptest.NewRecorder()
-	NewHandler(svc, fstest.MapFS{}).ServeHTTP(rec, req)
+	NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)

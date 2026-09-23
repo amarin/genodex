@@ -169,7 +169,7 @@ func TestDivisionDeleteToolInUseIsError(t *testing.T) {
 
 // TestNewServerRegistersDivisionWriteTools: тулы записи зарегистрированы.
 func TestNewServerRegistersDivisionWriteTools(t *testing.T) {
-	tools := NewServer(&fakeDivisions{}).ListTools()
+	tools := NewServer(Deps{Divisions: &fakeDivisions{}}).ListTools()
 
 	for _, name := range []string{"division_get", "division_create", "division_update", "division_delete"} {
 		if _, ok := tools[name]; !ok {
