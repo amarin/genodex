@@ -34,12 +34,16 @@ function updateTreeData(list: DataNode[], key: string, children: DataNode[]): Da
   });
 }
 
-// DivisionsList — «Административное деление»: дерево от корня (parent_id не
-// передан ⇒ models.DivisionQuery.ParentID == nil ⇒ бэк отдаёт корень,
-// internal/models/query.go:67), дети подгружаются по клику на
-// раскрывашку. Поиск по названию временно подменяет дерево плоским списком
-// найденного (как SettlementsTab). Клик по названию узла — переход на
-// View (/divisions/:id).
+// DivisionsList — «Административное деление»: дерево от корня. Без
+// parent_id бэк (internal/usecases/list_divisions/scenario.go:31-33)
+// отдаёт ВЕСЬ список без фильтра по родителю (комментарий
+// "nil — корень" в internal/models/query.go:67 вводит в заблуждение —
+// настоящей фильтрации на корень там нет), поэтому корень фильтруем на
+// клиенте по parent_id === null. Дети подгружаются по клику на
+// раскрывашку — там parent_id передаётся явно, и бэк (listChildren, та
+// же scenario.go) фильтрует по-настоящему. Поиск по названию временно
+// подменяет дерево плоским списком найденного (как SettlementsTab). Клик
+// по названию узла — переход на View (/divisions/:id).
 export default function DivisionsList() {
   const navigate = useNavigate();
   const { session } = useSession();
@@ -54,7 +58,9 @@ export default function DivisionsList() {
     setLoading(true);
     setError(null);
     fetchAdminDivisions({ limit: MAX_PAGE_LIMIT })
-      .then((items) => setTreeData(items.map(toTreeNode)))
+      .then((items) =>
+        setTreeData(items.filter((d) => d.parent_id == null).map(toTreeNode)),
+      )
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   };
