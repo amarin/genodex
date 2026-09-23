@@ -150,8 +150,9 @@ Person и др.).
   пока у `Citation` не было CRUD). С подпроекта 5 (`Citation` теперь имеет
   CRUD) поле редактируемое у всех шести ретрофитнутых сущностей
   (`AdministrativeDivision`/`Repository`/`Church`/`Parish`/`Archive`/`Note`)
-  — подробности контракта, проверки `citation_id` и MCP/HTTP-семантики
-  «отсутствие поля» — см. §3.3 ниже.
+  — подробности контракта и проверки `citation_id` см. §3.3 ниже;
+  MCP/HTTP-семантика «отсутствие поля» (MCP сохраняет текущие источники,
+  HTTP полностью заменяет) описана в `docs/usage.md`.
 - **`Private` действует и на чтении по id, не только в List/Search.**
   Любая будущая сущность с полем `Private bool` обязана прокидывать
   `access models.Access` в свой usecase-уровневый `Get<Entity>` и
