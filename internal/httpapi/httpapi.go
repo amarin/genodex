@@ -24,6 +24,22 @@ func NewHandler(deps Deps) http.Handler {
 		registerSurnameRoutes(mux, deps.Surnames)
 	}
 
+	if deps.Patronymics != nil {
+		registerPatronymicRoutes(mux, deps.Patronymics)
+	}
+
+	if deps.Estates != nil {
+		registerEstateRoutes(mux, deps.Estates)
+	}
+
+	if deps.Titles != nil {
+		registerTitleRoutes(mux, deps.Titles)
+	}
+
+	if deps.GivenNames != nil {
+		registerGivenNameRoutes(mux, deps.GivenNames)
+	}
+
 	return mux
 }
 
@@ -50,6 +66,46 @@ func registerSurnameRoutes(mux *http.ServeMux, surnames SurnameService) {
 	mux.HandleFunc("POST /api/surnames", handleSurnameCreate(surnames))
 	mux.HandleFunc("PUT /api/surnames/{id}", handleSurnameUpdate(surnames))
 	mux.HandleFunc("DELETE /api/surnames/{id}", handleSurnameDelete(surnames))
+}
+
+// registerPatronymicRoutes регистрирует маршруты /api/patronymics на переданном mux.
+func registerPatronymicRoutes(mux *http.ServeMux, patronymics PatronymicService) {
+	mux.HandleFunc("GET /api/patronymics", handlePatronymicList(patronymics))
+	mux.HandleFunc("GET /api/patronymics/search", handlePatronymicSearch(patronymics))
+	mux.HandleFunc("GET /api/patronymics/{id}", handlePatronymicGet(patronymics))
+	mux.HandleFunc("POST /api/patronymics", handlePatronymicCreate(patronymics))
+	mux.HandleFunc("PUT /api/patronymics/{id}", handlePatronymicUpdate(patronymics))
+	mux.HandleFunc("DELETE /api/patronymics/{id}", handlePatronymicDelete(patronymics))
+}
+
+// registerEstateRoutes регистрирует маршруты /api/estates на переданном mux.
+func registerEstateRoutes(mux *http.ServeMux, estates EstateService) {
+	mux.HandleFunc("GET /api/estates", handleEstateList(estates))
+	mux.HandleFunc("GET /api/estates/search", handleEstateSearch(estates))
+	mux.HandleFunc("GET /api/estates/{id}", handleEstateGet(estates))
+	mux.HandleFunc("POST /api/estates", handleEstateCreate(estates))
+	mux.HandleFunc("PUT /api/estates/{id}", handleEstateUpdate(estates))
+	mux.HandleFunc("DELETE /api/estates/{id}", handleEstateDelete(estates))
+}
+
+// registerTitleRoutes регистрирует маршруты /api/titles на переданном mux.
+func registerTitleRoutes(mux *http.ServeMux, titles TitleService) {
+	mux.HandleFunc("GET /api/titles", handleTitleList(titles))
+	mux.HandleFunc("GET /api/titles/search", handleTitleSearch(titles))
+	mux.HandleFunc("GET /api/titles/{id}", handleTitleGet(titles))
+	mux.HandleFunc("POST /api/titles", handleTitleCreate(titles))
+	mux.HandleFunc("PUT /api/titles/{id}", handleTitleUpdate(titles))
+	mux.HandleFunc("DELETE /api/titles/{id}", handleTitleDelete(titles))
+}
+
+// registerGivenNameRoutes регистрирует маршруты /api/given-names на переданном mux.
+func registerGivenNameRoutes(mux *http.ServeMux, givenNames GivenNameService) {
+	mux.HandleFunc("GET /api/given-names", handleGivenNameList(givenNames))
+	mux.HandleFunc("GET /api/given-names/search", handleGivenNameSearch(givenNames))
+	mux.HandleFunc("GET /api/given-names/{id}", handleGivenNameGet(givenNames))
+	mux.HandleFunc("POST /api/given-names", handleGivenNameCreate(givenNames))
+	mux.HandleFunc("PUT /api/given-names/{id}", handleGivenNameUpdate(givenNames))
+	mux.HandleFunc("DELETE /api/given-names/{id}", handleGivenNameDelete(givenNames))
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

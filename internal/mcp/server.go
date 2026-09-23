@@ -8,8 +8,12 @@ import (
 // списка позиционных параметров (docs/data-model/entity-write.md §3) — новая
 // сущность добавляется полем структуры, не меняя сигнатуру NewServer.
 type Deps struct {
-	Divisions DivisionService
-	Surnames  SurnameService
+	Divisions   DivisionService
+	Surnames    SurnameService
+	Patronymics PatronymicService
+	Estates     EstateService
+	Titles      TitleService
+	GivenNames  GivenNameService
 }
 
 // NewServer создаёт MCP-сервер и регистрирует доступные тулы.
@@ -23,6 +27,22 @@ func NewServer(deps Deps) *server.MCPServer {
 
 	if deps.Surnames != nil {
 		registerSurnameTools(s, deps.Surnames)
+	}
+
+	if deps.Patronymics != nil {
+		registerPatronymicTools(s, deps.Patronymics)
+	}
+
+	if deps.Estates != nil {
+		registerEstateTools(s, deps.Estates)
+	}
+
+	if deps.Titles != nil {
+		registerTitleTools(s, deps.Titles)
+	}
+
+	if deps.GivenNames != nil {
+		registerGivenNameTools(s, deps.GivenNames)
 	}
 
 	return s

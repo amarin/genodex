@@ -29,6 +29,50 @@ type SurnameService interface {
 	DeleteSurname(ctx context.Context, id models.ID) error
 }
 
+// PatronymicService — контракт сценариев словарных записей (отчеств), отдаваемых
+// в HTTP: список, поиск, чтение, создание, изменение, удаление.
+type PatronymicService interface {
+	ListPatronymics(ctx context.Context, access models.Access, page models.Page) ([]models.Patronymic, error)
+	SearchPatronymics(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Patronymic, error)
+	GetPatronymic(ctx context.Context, id models.ID) (models.Patronymic, error)
+	CreatePatronymic(ctx context.Context, x models.Patronymic) (models.Patronymic, error)
+	UpdatePatronymic(ctx context.Context, x models.Patronymic) error
+	DeletePatronymic(ctx context.Context, id models.ID) error
+}
+
+// EstateService — контракт сценариев словарных записей (сословий), отдаваемых
+// в HTTP: список, поиск, чтение, создание, изменение, удаление.
+type EstateService interface {
+	ListEstates(ctx context.Context, access models.Access, page models.Page) ([]models.Estate, error)
+	SearchEstates(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Estate, error)
+	GetEstate(ctx context.Context, id models.ID) (models.Estate, error)
+	CreateEstate(ctx context.Context, x models.Estate) (models.Estate, error)
+	UpdateEstate(ctx context.Context, x models.Estate) error
+	DeleteEstate(ctx context.Context, id models.ID) error
+}
+
+// TitleService — контракт сценариев словарных записей (званий/титулов), отдаваемых
+// в HTTP: список, поиск, чтение, создание, изменение, удаление.
+type TitleService interface {
+	ListTitles(ctx context.Context, access models.Access, page models.Page) ([]models.Title, error)
+	SearchTitles(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Title, error)
+	GetTitle(ctx context.Context, id models.ID) (models.Title, error)
+	CreateTitle(ctx context.Context, x models.Title) (models.Title, error)
+	UpdateTitle(ctx context.Context, x models.Title) error
+	DeleteTitle(ctx context.Context, id models.ID) error
+}
+
+// GivenNameService — контракт сценариев словарных записей имён, отдаваемых
+// в HTTP: список, поиск, чтение, создание, изменение, удаление.
+type GivenNameService interface {
+	ListGivenNames(ctx context.Context, access models.Access, page models.Page) ([]models.GivenName, error)
+	SearchGivenNames(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.GivenName, error)
+	GetGivenName(ctx context.Context, id models.ID) (models.GivenName, error)
+	CreateGivenName(ctx context.Context, x models.GivenName) (models.GivenName, error)
+	UpdateGivenName(ctx context.Context, x models.GivenName) error
+	DeleteGivenName(ctx context.Context, id models.ID) error
+}
+
 // AuthService — контракт auth.Service, отдаваемый в HTTP-обработчики.
 type AuthService interface {
 	Bootstrap(ctx context.Context) (bool, error)
