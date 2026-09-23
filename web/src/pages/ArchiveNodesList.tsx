@@ -52,9 +52,11 @@ export default function ArchiveNodesList() {
   const [searching, setSearching] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  // loadRoot — как DivisionsList.loadRoot: бэк без parent_id отдаёт узлы
-  // окнами (limit/offset), не «только корни», поэтому фильтруем на клиенте
-  // по parent_id == null и проходим все страницы до конца.
+  // loadRoot — как DivisionsList.loadRoot: бэк без parent_id уже отдаёт
+  // только корни архива (list_archive_nodes фильтрует по ParentID == nil),
+  // просто окнами (limit/offset) — проходим все страницы до конца; фильтр
+  // по parent_id == null на клиенте — no-op-подстраховка, не реальная
+  // фильтрация.
   const loadRoot = async (forArchiveId: string) => {
     setLoading(true);
     setError(null);

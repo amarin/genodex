@@ -161,6 +161,35 @@ func TestUpdateArchiveNodeValidatesBeforeTx(t *testing.T) {
 	}
 }
 
+// TestUpdateArchiveNodeArchiveIDImmutable: попытка сменить archive_id узла
+// при обновлении отвергается — иначе дочерние узлы молча пропадают из
+// обоих деревьев (list_archive_nodes фильтрует строго по ArchiveID).
+func TestUpdateArchiveNodeArchiveIDImmutable(t *testing.T) {
+	archive := arID('0')
+	otherArchive := arID('1')
+	existing := node(anID('V'), archive, nil)
+
+	tx := newFakeTx().
+		withArchive(&models.Archive{ID: archive, Name: "ГАВО"}).
+		withArchive(&models.Archive{ID: otherArchive, Name: "РГАДА"}).
+		withNode(existing)
+	st := &fakeStore{tx: tx}
+
+	updated := *existing
+	updated.ArchiveID = otherArchive
+
+	err := New(st).UpdateArchiveNode(context.Background(), updated)
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "archive_id" {
+		t.Fatalf("err = %v, ожидалась *ValidationError по полю archive_id (смена archive_id)", err)
+	}
+
+	if len(st.tx.saved) != 0 {
+		t.Fatalf("сохранено %d узлов при попытке сменить archive_id", len(st.tx.saved))
+	}
+}
+
 func TestUpdateArchiveNodeArchiveNotFound(t *testing.T) {
 	archive := arID('0')
 	existing := node(anID('V'), archive, nil)

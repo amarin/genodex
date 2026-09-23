@@ -1362,6 +1362,8 @@ func putArchiveReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, b
 // подпункта инвариант «родитель из того же архива»: несуществующий
 // parent_id — 422 на поле parent_id; parent_id, указывающий на реальный
 // узел, но из ДРУГОГО архива — тоже 422 на поле parent_id (не archive_id).
+// Также проверяет неизменность archive_id при обновлении: попытка перенести
+// существующий узел в другой архив — 422 на поле archive_id.
 func TestArchiveNodeWriteContractWithRealStore(t *testing.T) {
 	st, err := sqlstore.Open(t.TempDir())
 	if err != nil {
@@ -1450,6 +1452,16 @@ func TestArchiveNodeWriteContractWithRealStore(t *testing.T) {
 	requireStatusS(t, rec, http.StatusUnprocessableEntity)
 	if !strings.Contains(rec.Body.String(), `"field":"parent_id"`) {
 		t.Fatalf("body = %s, want field=parent_id (родитель из другого архива)", rec.Body)
+	}
+
+	// Попытка сменить archive_id узла при обновлении — 422 на поле
+	// archive_id: принадлежность архиву неизменна после создания, иначе
+	// дочерний узел (child) молча пропал бы из обоих деревьев.
+	rec = putArchiveNodeReq(t, h, owner, "/api/archive-nodes/"+string(root.ID),
+		fmt.Sprintf(`{"type":"fond","archive_id":%q,"label":"Фонд 1 (испр.)"}`, otherArchive.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"archive_id"`) {
+		t.Fatalf("body = %s, want field=archive_id (смена archive_id при обновлении)", rec.Body)
 	}
 
 	// Ретрофит: строгий FK sources[i].citation_id.

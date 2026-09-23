@@ -20,22 +20,30 @@ func New(st ArchiveNodeStore) *Scenario {
 }
 
 // UpdateArchiveNode полностью заменяет узел по n.ID: проверяет инварианты, в
-// одной транзакции убеждается, что узел существует, архив существует,
-// родитель (если задан) существует и принадлежит тому же архиву, а цепочка
-// родителей не проходит через сам узел (цикл), и сохраняет.
+// одной транзакции убеждается, что узел существует, его archive_id не
+// меняется (принадлежность архиву неизменна после создания — иначе дочерние
+// узлы молча выпадают из обоих деревьев), архив существует, родитель (если
+// задан) существует и принадлежит тому же архиву, а цепочка родителей не
+// проходит через сам узел (цикл), и сохраняет.
 //
 // Ошибки: невалидная сущность — *models.ValidationError соответствующего
-// поля; несуществующий архив/родитель, родитель из другого архива, цикл по
-// parent_id — *models.ValidationError (archive_id/parent_id); нет такого
-// узла — models.ErrNotFound; прочее — ошибки хранилища как есть.
+// поля; попытка сменить archive_id, несуществующий архив/родитель, родитель
+// из другого архива, цикл по parent_id — *models.ValidationError
+// (archive_id/parent_id); нет такого узла — models.ErrNotFound; прочее —
+// ошибки хранилища как есть.
 func (s *Scenario) UpdateArchiveNode(ctx context.Context, n models.ArchiveNode) error {
 	if err := n.Validate(); err != nil {
 		return err
 	}
 
 	return s.store.InTx(ctx, func(tx store.Store) error {
-		if _, err := tx.GetArchiveNode(ctx, n.ID); err != nil {
+		cur, err := tx.GetArchiveNode(ctx, n.ID)
+		if err != nil {
 			return err
+		}
+
+		if cur.ArchiveID != n.ArchiveID {
+			return archiveErr("архив узла нельзя переносить в другой архив (текущий: %q, запрошенный: %q)", cur.ArchiveID, n.ArchiveID)
 		}
 
 		if _, err := tx.GetArchive(ctx, n.ArchiveID); err != nil {

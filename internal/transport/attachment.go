@@ -4,14 +4,14 @@ import "github.com/amarin/genodex/internal/models"
 
 // Attachment — контракт файлового вложения (GET /api/attachments, MCP-тул
 // attachment_list). NodeID — обязательная строгая ссылка на архивный узел
-// (просто id — ArchiveNode ещё не имеет CRUD, подпроект 6; существование
-// проверяется в сценарии, generic-хранилище уже умеет читать любую сущность
-// по id независимо от готовности её orchestration-слоя). DocumentID —
-// необязательная мягкая ссылка на архивный документ (ON DELETE SET NULL в
-// схеме — при удалении документа поле обнуляется автоматически, но
-// существование при создании/изменении сценарий всё равно проверяет, как и
-// для NodeID). Sources у Attachment нет (в отличие от Repository/Church/
-// Parish/Archive/Note).
+// (просто id — существование проверяется в сценарии через generic-хранилище,
+// читающее любую сущность по id независимо от готовности её
+// orchestration-слоя; ArchiveNode/ArchiveDocument теперь имеют собственный
+// CRUD-слой тоже). DocumentID — необязательная мягкая ссылка на архивный
+// документ (ON DELETE SET NULL в схеме — при удалении документа поле
+// обнуляется автоматически, но существование при создании/изменении
+// сценарий всё равно проверяет, как и для NodeID). Sources у Attachment нет
+// (в отличие от Repository/Church/Parish/Archive/Note).
 type Attachment struct {
 	ID         models.ID `json:"id"`
 	Kind       string    `json:"kind"`

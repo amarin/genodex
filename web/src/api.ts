@@ -1041,10 +1041,10 @@ export async function deleteNote(id: string): Promise<void> {
 }
 
 // Attachment — файловое вложение. node_id — обязательная строгая ссылка на
-// архивный узел (просто id — ArchiveNode ещё без CRUD, подпроект 6).
-// document_id — необязательная мягкая ссылка (ON DELETE SET NULL). Оба поля
-// в v1 — обычные текстовые поля ввода id (без picker'а, тот появится вместе
-// с ArchiveNode/ArchiveDocument).
+// архивный узел (просто id — строка, не объект). document_id —
+// необязательная мягкая ссылка (ON DELETE SET NULL). Оба поля в веб-форме
+// заполняются через ArchiveNodePicker/ArchiveDocumentSelect (см.
+// ArchiveNodePicker.tsx).
 export interface Attachment {
   id: string;
   kind: string;

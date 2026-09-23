@@ -174,17 +174,19 @@ Person и др.).
   родителей (`checkParentChain`, образец: `update_division`), чтобы
   поймать переустановку `parent_id` в цепочку собственных потомков —
   прямую или транзитивную.
-- **Строгий FK на сущность без своего CRUD-слоя.** `Attachment.NodeID`
-  (обязателен) и `Attachment.DocumentID` (необязателен, `ON DELETE SET
-  NULL`) ссылаются на `ArchiveNode`/`ArchiveDocument`, у которых ещё нет
-  usecase/httpapi/mcp-слоя (появится в подпроекте 6) — но
-  generic-хранилище (`store.Store`, `internal/store/deps.go`) уже умеет
-  читать любую сущность по id независимо от готовности её
-  orchestration-слоя. `create_attachment`/`update_attachment` вызывают
-  `tx.GetArchiveNode`/`tx.GetArchiveDocument` напрямую, в той же
-  транзакции, что и сохранение — 422 на поле `node_id`/`document_id`.
-  Веб-форма в v1 — обычные текстовые поля ввода id (без `Select`/picker'а,
-  тот появится вместе с CRUD-слоем цели).
+- **Строгий FK на сущность без своего CRUD-слоя (на момент этого
+  подпроекта).** `Attachment.NodeID` (обязателен) и `Attachment.DocumentID`
+  (необязателен, `ON DELETE SET NULL`) ссылаются на
+  `ArchiveNode`/`ArchiveDocument`, у которых на момент подпроекта 4 ещё не
+  было usecase/httpapi/mcp-слоя — но generic-хранилище (`store.Store`,
+  `internal/store/deps.go`) уже умеет читать любую сущность по id
+  независимо от готовности её orchestration-слоя. `create_attachment`/
+  `update_attachment` вызывают `tx.GetArchiveNode`/`tx.GetArchiveDocument`
+  напрямую, в той же транзакции, что и сохранение — 422 на поле
+  `node_id`/`document_id`. Веб-форма в v1 была обычными текстовыми полями
+  ввода id (без `Select`/picker'а); подпроект 6 добавил CRUD-слой для
+  `ArchiveNode`/`ArchiveDocument` и ретрофитнул форму на
+  `ArchiveNodePicker`/`ArchiveDocumentSelect` — подробности в §3.4/§3.5.
 - **Осторожно с описанием search.** Полнотекстовый поиск индексирует
   только те поля, что явно переданы в `replaceSearchIndex` при сохранении
   (см. `internal/store/sqlstore`), а не все текстовые поля модели — для
@@ -304,6 +306,26 @@ Person и др.).
   (появившиеся уже после того, как `Citation` получил CRUD) — их
   Create/Update DTO несут `sources` с первого дня, никакого read-only-этапа
   не было.
+
+### 3.5. Подпроект 6 (веб): `ArchiveNodePicker`/`ArchiveDocumentSelect`
+
+- **Archive-select-then-tree модалка.** Поскольку `ArchiveNode` — не одно
+  глобальное дерево, а по одному на архив (§3.4), выбор узла не может быть
+  просто деревом — сперва нужен архив. `ArchiveNodePicker` (`web/src/
+  ArchiveNodePicker.tsx`) — кнопка, открывающая `Modal`: если `archiveId` не
+  передан пропом, сначала `Select` архива (через `useArchiveOptions`), и
+  только после выбора рендерится `Tree`, scoped к этому `archiveId`; если
+  вызывающая сторона уже знает `archiveId` (например, переродительствование
+  внутри `ArchiveNodeView`), шаг выбора архива пропускается. Дерево
+  использует тот же приём, что `DivisionsList.tsx`: корень — постраничная
+  загрузка до конца, дети — лениво по `loadData`/`onLoadData`.
+- **`ArchiveDocumentSelect` — каскадный `Select`.** Документ бессмысленен
+  без узла (`ArchiveDocument.unit_id` обязателен), поэтому выбор документа
+  становится доступен только после того, как выбран узел — `Select`
+  подгружает документы, отфильтрованные по выбранному `unit_id`.
+- **Ретрофит потребителей.** `AttachmentForm`/`AttachmentView` (`node_id`/
+  `document_id`) и `AnchorEditor` (архивный вариант `Citation.Anchor`)
+  переведены с обычных текстовых полей ввода id на эту пару компонентов.
 
 ## 4. Веб-UI конвенции
 

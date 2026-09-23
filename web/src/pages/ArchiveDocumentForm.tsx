@@ -28,7 +28,7 @@ const FORM_FIELDS: (keyof ArchiveDocumentFormValues)[] = ["title", "kind"];
 // ссылка на ArchiveNode через ArchiveNodePicker БЕЗ заранее известного
 // archiveId: свободностоящее создание документа не привязано к конкретному
 // архиву заранее — picker сперва просит выбрать архив, потом узел внутри
-// него (docs/data-model/entity-write.md §3.4/§6).
+// него (docs/data-model/entity-write.md §3.5).
 export function CreateArchiveDocumentModal({
   open,
   onClose,

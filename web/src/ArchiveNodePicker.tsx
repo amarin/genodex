@@ -53,7 +53,7 @@ export function useArchiveOptions() {
 // места использования: ArchiveNodeForm/ArchiveNodeView (parent_id),
 // ArchiveDocumentForm/ArchiveDocumentView (unit_id), ретрофит
 // AttachmentForm/AttachmentView (node_id) и AnchorEditor (archive-kind
-// node_id) — docs/data-model/entity-write.md §3.4/§6.
+// node_id) — docs/data-model/entity-write.md §3.5.
 //
 // Кнопка открывает Modal. Если archiveId не передан пропом — сначала нужно
 // выбрать архив (Select), пока архив не выбран — дерево не рендерится
@@ -63,11 +63,12 @@ export function useArchiveOptions() {
 // этому archiveId.
 //
 // Дерево — тот же приём, что DivisionsList.tsx: root = fetchArchiveNodes с
-// parent_id не заданным, отфильтрованный на клиенте до parent_id == null
-// (бэк отдаёт окна limit/offset, а не «только корни» — проходим все
-// страницы до короткой, тот же MAX_PAGE_LIMIT-приём, что
-// DivisionsList.loadRoot), дети — по клику раскрывашки через
-// loadData/onLoadData, где бэк уже фильтрует по-настоящему.
+// parent_id не заданным — бэк (list_archive_nodes) уже отдаёт только корни
+// архива в этом случае, клиентский фильтр до parent_id == null — no-op,
+// подстраховка на будущее, а не реальная фильтрация; окна listим до
+// короткой страницы, тот же MAX_PAGE_LIMIT-приём, что DivisionsList.loadRoot,
+// дети — по клику раскрывашки через loadData/onLoadData, где бэк фильтрует
+// по parent_id напрямую.
 export function ArchiveNodePicker({
   value,
   label,
@@ -199,7 +200,7 @@ export function ArchiveNodePicker({
 // заданного узла: unit_id === nodeId, отфильтровано на клиенте (тот же
 // приём "flat Select, лимит 500, не picker", что у SourceLinkListEditor's
 // Select цитат — ArchiveDocument не иерархична, docs/data-model/
-// entity-write.md §3.4/§6). Используется рядом с ArchiveNodePicker для
+// entity-write.md §3.5). Используется рядом с ArchiveNodePicker для
 // необязательного document_id-подполя (Attachment.document_id,
 // Anchor.document_id).
 export function ArchiveDocumentSelect({

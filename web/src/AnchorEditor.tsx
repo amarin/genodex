@@ -42,7 +42,7 @@ export function AnchorEditor({
 }) {
   const attachmentOptions = useAttachmentOptions();
   // nodeLabel — метка выбранного узла ТОЛЬКО для отображения в picker'е (Anchor
-  // не несёт свою метку в контракте, docs/data-model/entity-write.md §3.4/§6);
+  // не несёт свою метку в контракте, docs/data-model/entity-write.md §3.5);
   // до выбора нового узла ArchiveNodePicker сам покажет сырой node_id как
   // fallback (см. ArchiveNodePicker.tsx).
   const [nodeLabel, setNodeLabel] = useState<string | null>(null);

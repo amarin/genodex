@@ -124,8 +124,8 @@
   `internal/mcp/{division,repository,church,parish,archive,note}.go`,
   `web/src/pages/{Division,Repository,Church,Parish,Archive,Note}
   {Form,View}.tsx`).
-- Архивные деревья (`ArchiveNode`/`ArchiveDocument`, backend) — подпроект 6,
-  бэкенд: usecase-сценарии, HTTP (`/api/archive-nodes*`, `/api/archive-
+- Архивные деревья (`ArchiveNode`/`ArchiveDocument`) — подпроект 6, полный
+  стек: usecase-сценарии, HTTP (`/api/archive-nodes*`, `/api/archive-
   documents*`) и MCP (`archive_node_*`/`archive_document_*` — по 6 тулов на
   сущность). `ArchiveNode` — первое дерево, скопированное per-owner
   (обязательный `ArchiveID`), а не единственное глобальное, как у
@@ -135,15 +135,29 @@
   данных это позволяет). Новый вид кросс-полевой проверки — «родитель
   существует И принадлежит тому же архиву, что и сам узел», не только «X
   существует»: несуществующий/чужого-архива `parent_id` — 422 на поле
-  `parent_id`, отдельно от 422 на `archive_id` (несуществующий архив).
-  `ArchiveDocument` — плоская сущность со строгим `UnitID` на `ArchiveNode`.
-  Обе — первые совершенно новые сущности программы, получившие `Sources
-  []SourceLink` сразу редактируемым (не ретрофит, как у 6 сущностей выше)
+  `parent_id`, отдельно от 422 на `archive_id` (несуществующий архив);
+  `archive_id` самого узла неизменен при обновлении (перенос узла между
+  архивами запрещён — иначе дочерние узлы молча пропадают из обоих
+  деревьев). `ArchiveDocument` — плоская сущность со строгим `UnitID` на
+  `ArchiveNode`. Обе — первые совершенно новые сущности программы,
+  получившие `Sources []SourceLink` сразу редактируемым (не ретрофит, как у
+  6 сущностей выше). Веб: страницы «Архивные единицы»/«Архивные документы»
+  (дерево узлов по архиву, список/просмотр/редактирование/создание
+  документов); новые переиспользуемые компоненты `ArchiveNodePicker`/
+  `ArchiveDocumentSelect` (archive-select-then-tree модалка — выбор архива,
+  затем дерево его узлов; каскадный `Select` документов внутри выбранного
+  узла), заменившие собой ретрофитом обычные текстовые поля ввода id в
+  `AttachmentForm`/`AttachmentView` и `AnchorEditor`; ссылка «Архивные
+  единицы →» на `ArchiveView`, ведущая прямо в дерево своего архива
   (`internal/models/query.go` (`ArchiveNodeQuery`), `internal/usecases/
   {list,search,get,create,update,delete}_archive_{node,document}*`,
   `internal/transport/archive_{node,document}{,_write}.go`,
   `internal/httpapi/archive_{node,document}{,_write}.go`,
-  `internal/mcp/archive_{node,document}.go`).
+  `internal/mcp/archive_{node,document}.go`, `web/src/ArchiveNodePicker.tsx`,
+  `web/src/pages/{ArchiveNodesList,ArchiveNodeView,ArchiveNodeForm,
+  ArchiveDocumentsList,ArchiveDocumentView,ArchiveDocumentForm}.tsx`,
+  `web/src/pages/ArchiveView.tsx`, `web/src/pages/{AttachmentForm,
+  AttachmentView}.tsx`, `web/src/AnchorEditor.tsx`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

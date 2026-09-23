@@ -26,8 +26,8 @@ func New(st CitationStore, ids IDGenerator) *Scenario {
 // и, если якорь задан и ссылается на другую сущность (ArchiveAnchor.NodeID/
 // DocumentID, FileAnchor.AttachmentID), убеждается в её существовании тоже —
 // по тому же принципу, что create_attachment проверяет NodeID/DocumentID
-// через generic-хранилище, даже если у цели ещё нет своего CRUD-слоя
-// (ArchiveNode/ArchiveDocument — подпроект 6). URLAnchor ссылок не несёт.
+// через generic-хранилище (ArchiveNode/ArchiveDocument), независимо от
+// собственного CRUD-слоя цели. URLAnchor ссылок не несёт.
 //
 // Ошибки: непустой входной ID, невалидная сущность и несуществующая
 // ссылка — *models.ValidationError (поля id, source_id, anchor.node_id,

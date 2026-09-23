@@ -15,9 +15,8 @@ import (
 // вложениями. node_id/document_id — просто id (не объекты): node_id
 // обязателен, document_id — необязателен (пусто — не задан).
 // attachment_create/attachment_update проверяют существование обоих
-// (document_id — если задан); ArchiveNode/ArchiveDocument ещё не имеют
-// своего CRUD-слоя (подпроект 6), но generic-хранилище уже умеет проверять
-// существование любого id.
+// (document_id — если задан) через generic-хранилище, независимо от
+// собственного CRUD-слоя ArchiveNode/ArchiveDocument.
 func registerAttachmentTools(s *server.MCPServer, attachments AttachmentService) {
 	tool := mcp.NewTool(
 		"attachment_list",
