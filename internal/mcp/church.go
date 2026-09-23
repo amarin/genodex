@@ -55,6 +55,10 @@ func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 		mcp.WithArray("settlements", mcp.WithStringItems(), mcp.Description("Населённые пункты (текстом)")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты названия")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, churchCreateHandler(churches))
 
@@ -67,6 +71,10 @@ func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 		mcp.WithArray("settlements", mcp.WithStringItems(), mcp.Description("Населённые пункты")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты названия")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, churchUpdateHandler(churches))
 
@@ -142,12 +150,18 @@ func churchCreateHandler(churches ChurchService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		c := models.Church{
 			Name:        req.GetString("name", ""),
 			Parish:      parish,
 			Settlements: textRefsFromStrings(req.GetStringSlice("settlements", nil)),
 			Variants:    req.GetStringSlice("variants", nil),
 			Notes:       textRefsFromStrings(req.GetStringSlice("notes", nil)),
+			Sources:     sources,
 		}
 
 		created, err := churches.CreateChurch(ctx, c)
@@ -173,11 +187,17 @@ func churchUpdateHandler(churches ChurchService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		cur.Name = req.GetString("name", "")
 		cur.Parish = parish
 		cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
 		cur.Variants = req.GetStringSlice("variants", nil)
 		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		cur.Sources = sources
 
 		if err := churches.UpdateChurch(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

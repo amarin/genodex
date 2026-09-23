@@ -16,6 +16,7 @@ import (
 	create_archive "github.com/amarin/genodex/internal/usecases/create_archive"
 	create_attachment "github.com/amarin/genodex/internal/usecases/create_attachment"
 	create_church "github.com/amarin/genodex/internal/usecases/create_church"
+	create_citation "github.com/amarin/genodex/internal/usecases/create_citation"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
 	create_estate "github.com/amarin/genodex/internal/usecases/create_estate"
 	create_given_name "github.com/amarin/genodex/internal/usecases/create_given_name"
@@ -23,11 +24,13 @@ import (
 	create_parish "github.com/amarin/genodex/internal/usecases/create_parish"
 	create_patronymic "github.com/amarin/genodex/internal/usecases/create_patronymic"
 	create_repository "github.com/amarin/genodex/internal/usecases/create_repository"
+	create_source "github.com/amarin/genodex/internal/usecases/create_source"
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	create_title "github.com/amarin/genodex/internal/usecases/create_title"
 	delete_archive "github.com/amarin/genodex/internal/usecases/delete_archive"
 	delete_attachment "github.com/amarin/genodex/internal/usecases/delete_attachment"
 	delete_church "github.com/amarin/genodex/internal/usecases/delete_church"
+	delete_citation "github.com/amarin/genodex/internal/usecases/delete_citation"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
 	delete_estate "github.com/amarin/genodex/internal/usecases/delete_estate"
 	delete_given_name "github.com/amarin/genodex/internal/usecases/delete_given_name"
@@ -35,11 +38,13 @@ import (
 	delete_parish "github.com/amarin/genodex/internal/usecases/delete_parish"
 	delete_patronymic "github.com/amarin/genodex/internal/usecases/delete_patronymic"
 	delete_repository "github.com/amarin/genodex/internal/usecases/delete_repository"
+	delete_source "github.com/amarin/genodex/internal/usecases/delete_source"
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	delete_title "github.com/amarin/genodex/internal/usecases/delete_title"
 	get_archive "github.com/amarin/genodex/internal/usecases/get_archive"
 	get_attachment "github.com/amarin/genodex/internal/usecases/get_attachment"
 	get_church "github.com/amarin/genodex/internal/usecases/get_church"
+	get_citation "github.com/amarin/genodex/internal/usecases/get_citation"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
 	get_estate "github.com/amarin/genodex/internal/usecases/get_estate"
 	get_given_name "github.com/amarin/genodex/internal/usecases/get_given_name"
@@ -47,11 +52,13 @@ import (
 	get_parish "github.com/amarin/genodex/internal/usecases/get_parish"
 	get_patronymic "github.com/amarin/genodex/internal/usecases/get_patronymic"
 	get_repository "github.com/amarin/genodex/internal/usecases/get_repository"
+	get_source "github.com/amarin/genodex/internal/usecases/get_source"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	get_title "github.com/amarin/genodex/internal/usecases/get_title"
 	list_archives "github.com/amarin/genodex/internal/usecases/list_archives"
 	list_attachments "github.com/amarin/genodex/internal/usecases/list_attachments"
 	list_churches "github.com/amarin/genodex/internal/usecases/list_churches"
+	list_citations "github.com/amarin/genodex/internal/usecases/list_citations"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
 	list_estates "github.com/amarin/genodex/internal/usecases/list_estates"
 	list_given_names "github.com/amarin/genodex/internal/usecases/list_given_names"
@@ -59,11 +66,13 @@ import (
 	list_parishes "github.com/amarin/genodex/internal/usecases/list_parishes"
 	list_patronymics "github.com/amarin/genodex/internal/usecases/list_patronymics"
 	list_repositories "github.com/amarin/genodex/internal/usecases/list_repositories"
+	list_sources "github.com/amarin/genodex/internal/usecases/list_sources"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	list_titles "github.com/amarin/genodex/internal/usecases/list_titles"
 	search_archives "github.com/amarin/genodex/internal/usecases/search_archives"
 	search_attachments "github.com/amarin/genodex/internal/usecases/search_attachments"
 	search_churches "github.com/amarin/genodex/internal/usecases/search_churches"
+	search_citations "github.com/amarin/genodex/internal/usecases/search_citations"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
 	search_estates "github.com/amarin/genodex/internal/usecases/search_estates"
 	search_given_names "github.com/amarin/genodex/internal/usecases/search_given_names"
@@ -71,11 +80,13 @@ import (
 	search_parishes "github.com/amarin/genodex/internal/usecases/search_parishes"
 	search_patronymics "github.com/amarin/genodex/internal/usecases/search_patronymics"
 	search_repositories "github.com/amarin/genodex/internal/usecases/search_repositories"
+	search_sources "github.com/amarin/genodex/internal/usecases/search_sources"
 	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
 	search_titles "github.com/amarin/genodex/internal/usecases/search_titles"
 	update_archive "github.com/amarin/genodex/internal/usecases/update_archive"
 	update_attachment "github.com/amarin/genodex/internal/usecases/update_attachment"
 	update_church "github.com/amarin/genodex/internal/usecases/update_church"
+	update_citation "github.com/amarin/genodex/internal/usecases/update_citation"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
 	update_estate "github.com/amarin/genodex/internal/usecases/update_estate"
 	update_given_name "github.com/amarin/genodex/internal/usecases/update_given_name"
@@ -83,6 +94,7 @@ import (
 	update_parish "github.com/amarin/genodex/internal/usecases/update_parish"
 	update_patronymic "github.com/amarin/genodex/internal/usecases/update_patronymic"
 	update_repository "github.com/amarin/genodex/internal/usecases/update_repository"
+	update_source "github.com/amarin/genodex/internal/usecases/update_source"
 	update_surname "github.com/amarin/genodex/internal/usecases/update_surname"
 	update_title "github.com/amarin/genodex/internal/usecases/update_title"
 )
@@ -577,6 +589,104 @@ func newArchiveService(t *testing.T, st *sqlstore.Store) *archiveService {
 	}
 }
 
+// sourceService — фасад httpapi.SourceService на настоящих сценариях (так же
+// собран internal/app's sourceService).
+type sourceService struct {
+	list   *list_sources.Scenario
+	search *search_sources.Scenario
+	get    *get_source.Scenario
+	create *create_source.Scenario
+	update *update_source.Scenario
+	del    *delete_source.Scenario
+}
+
+func (s *sourceService) ListSources(ctx context.Context, access models.Access, page models.Page) ([]models.Source, error) {
+	return s.list.ListSources(ctx, access, page)
+}
+
+func (s *sourceService) SearchSources(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Source, error) {
+	return s.search.SearchSources(ctx, access, q)
+}
+
+func (s *sourceService) GetSource(ctx context.Context, access models.Access, id models.ID) (models.Source, error) {
+	return s.get.GetSource(ctx, access, id)
+}
+
+func (s *sourceService) CreateSource(ctx context.Context, src models.Source) (models.Source, error) {
+	return s.create.CreateSource(ctx, src)
+}
+
+func (s *sourceService) UpdateSource(ctx context.Context, src models.Source) error {
+	return s.update.UpdateSource(ctx, src)
+}
+
+func (s *sourceService) DeleteSource(ctx context.Context, id models.ID) error {
+	return s.del.DeleteSource(ctx, id)
+}
+
+// newSourceService собирает фасад на настоящем хранилище.
+func newSourceService(t *testing.T, st *sqlstore.Store) *sourceService {
+	t.Helper()
+
+	return &sourceService{
+		list:   list_sources.New(st),
+		search: search_sources.New(st),
+		get:    get_source.New(st),
+		create: create_source.New(st, idgen.New()),
+		update: update_source.New(st),
+		del:    delete_source.New(st),
+	}
+}
+
+// citationService — фасад httpapi.CitationService на настоящих сценариях
+// (так же собран internal/app's citationService).
+type citationService struct {
+	list   *list_citations.Scenario
+	search *search_citations.Scenario
+	get    *get_citation.Scenario
+	create *create_citation.Scenario
+	update *update_citation.Scenario
+	del    *delete_citation.Scenario
+}
+
+func (s *citationService) ListCitations(ctx context.Context, access models.Access, page models.Page) ([]models.Citation, error) {
+	return s.list.ListCitations(ctx, access, page)
+}
+
+func (s *citationService) SearchCitations(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Citation, error) {
+	return s.search.SearchCitations(ctx, access, q)
+}
+
+func (s *citationService) GetCitation(ctx context.Context, access models.Access, id models.ID) (models.Citation, error) {
+	return s.get.GetCitation(ctx, access, id)
+}
+
+func (s *citationService) CreateCitation(ctx context.Context, c models.Citation) (models.Citation, error) {
+	return s.create.CreateCitation(ctx, c)
+}
+
+func (s *citationService) UpdateCitation(ctx context.Context, c models.Citation) error {
+	return s.update.UpdateCitation(ctx, c)
+}
+
+func (s *citationService) DeleteCitation(ctx context.Context, id models.ID) error {
+	return s.del.DeleteCitation(ctx, id)
+}
+
+// newCitationService собирает фасад на настоящем хранилище.
+func newCitationService(t *testing.T, st *sqlstore.Store) *citationService {
+	t.Helper()
+
+	return &citationService{
+		list:   list_citations.New(st),
+		search: search_citations.New(st),
+		get:    get_citation.New(st),
+		create: create_citation.New(st, idgen.New()),
+		update: update_citation.New(st),
+		del:    delete_citation.New(st),
+	}
+}
+
 // noteService — фасад httpapi.NoteService на настоящих сценариях (так же
 // собран internal/app's noteService).
 type noteService struct {
@@ -712,30 +822,30 @@ func TestAdminDivisionsWithRealStore(t *testing.T) {
 		body   string // пусто — не сверять
 	}{
 		{"/api/admin-divisions?kind=settlement", http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Давыдово","type":"selo","parent_id":%q},`+
-				`{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q}]`, ad1, root, ad3, root)},
+			fmt.Sprintf(`[{"id":%q,"name":"Давыдово","type":"selo","parent_id":%q,"sources":[]},`+
+				`{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q,"sources":[]}]`, ad1, root, ad3, root)},
 		{"/api/admin-divisions?kind=settlement&limit=1&offset=1", http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q}]`, ad3, root)},
+			fmt.Sprintf(`[{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q,"sources":[]}]`, ad3, root)},
 		{"/api/admin-divisions?type=governorate", http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Московская","type":"governorate","parent_id":null}]`, root)},
+			fmt.Sprintf(`[{"id":%q,"name":"Московская","type":"governorate","parent_id":null,"sources":[]}]`, root)},
 		{"/api/admin-divisions?type=castle", http.StatusUnprocessableEntity,
 			`{"error":"type: неизвестный тип единицы деления \"castle\"","field":"type"}`},
 		{"/api/admin-divisions?limit=x", http.StatusBadRequest,
 			`{"error":"параметр limit: ожидалось целое число, получено \"x\""}`},
 		{"/api/settlements", http.StatusNotFound, ""},
 		{"/api/admin-divisions/search?q=давы", http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Давыдово","type":"selo","parent_id":%q}]`, ad1, root)},
+			fmt.Sprintf(`[{"id":%q,"name":"Давыдово","type":"selo","parent_id":%q,"sources":[]}]`, ad1, root)},
 		{"/api/admin-divisions/search?q=", http.StatusOK, `[]`},
 		{"/api/admin-divisions/search?q=ник", http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Никифоровская","type":"volost","parent_id":%q},`+
-				`{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q}]`, ad2, root, ad3, root)},
+			fmt.Sprintf(`[{"id":%q,"name":"Никифоровская","type":"volost","parent_id":%q,"sources":[]},`+
+				`{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q,"sources":[]}]`, ad2, root, ad3, root)},
 		{"/api/admin-divisions/search?q=никол", http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Никифоровская","type":"volost","parent_id":%q}]`, ad2, root)},
+			fmt.Sprintf(`[{"id":%q,"name":"Никифоровская","type":"volost","parent_id":%q,"sources":[]}]`, ad2, root)},
 		{"/api/admin-divisions/search?q=ик", http.StatusOK, `[]`},
 		{"/api/admin-divisions?parent_id=" + string(root), http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Давыдово","type":"selo","parent_id":%q},`+
-				`{"id":%q,"name":"Никифоровская","type":"volost","parent_id":%q},`+
-				`{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q}]`,
+			fmt.Sprintf(`[{"id":%q,"name":"Давыдово","type":"selo","parent_id":%q,"sources":[]},`+
+				`{"id":%q,"name":"Никифоровская","type":"volost","parent_id":%q,"sources":[]},`+
+				`{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q,"sources":[]}]`,
 				ad1, root, ad2, root, ad3, root)},
 		{"/api/admin-divisions?parent_id=" + missingParent, http.StatusNotFound, ""},
 		{"/api/admin-divisions?parent_id=not-an-id", http.StatusUnprocessableEntity, ""},

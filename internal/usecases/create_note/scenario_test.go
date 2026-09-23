@@ -14,6 +14,11 @@ func nID(last byte) models.ID {
 	return models.ID("N-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
 }
 
+// cID возвращает корректный идентификатор цитаты.
+func cID(last byte) models.ID {
+	return models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
+}
+
 type stubIDs struct {
 	id      models.ID
 	gotType models.Type
@@ -29,19 +34,30 @@ func (s *stubIDs) New(t models.Type) models.ID {
 // остальные методы порта паникуют через nil-встраивание.
 type fakeTx struct {
 	store.Store
-	notes   map[models.ID]*models.Note
-	saved   []*models.Note
-	getErr  error
-	saveErr error
+	notes     map[models.ID]*models.Note
+	citations map[models.ID]*models.Citation
+	saved     []*models.Note
+	getErr    error
+	saveErr   error
 }
 
 func newFakeTx(existing ...*models.Note) *fakeTx {
-	tx := &fakeTx{notes: map[models.ID]*models.Note{}}
+	tx := &fakeTx{notes: map[models.ID]*models.Note{}, citations: map[models.ID]*models.Citation{}}
 	for _, n := range existing {
 		tx.notes[n.ID] = n
 	}
 
 	return tx
+}
+
+func (f *fakeTx) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+	cp := *c
+
+	return &cp, nil
 }
 
 func (f *fakeTx) GetNote(_ context.Context, id models.ID) (*models.Note, error) {
@@ -221,5 +237,26 @@ func TestCreateNotePropagatesParentGetError(t *testing.T) {
 	var ve *models.ValidationError
 	if errors.As(err, &ve) {
 		t.Fatalf("сбой хранилища превращён в *ValidationError: %v", err)
+	}
+}
+
+// TestCreateNoteSourceCitationNotFound: Sources ссылается на несуществующую
+// цитату — *models.ValidationError по полю sources[0].citation_id, ничего не
+// сохраняется.
+func TestCreateNoteSourceCitationNotFound(t *testing.T) {
+	st := &fakeStore{tx: newFakeTx()}
+
+	in := validInput()
+	in.Sources = []models.SourceLink{{CitationID: cID('0')}}
+
+	_, err := New(st, &stubIDs{id: nID('V')}).CreateNote(context.Background(), in)
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "sources[0].citation_id" {
+		t.Fatalf("err = %v, ожидалась *ValidationError по полю sources[0].citation_id", err)
+	}
+
+	if len(st.tx.saved) != 0 {
+		t.Fatalf("сохранено %d заметок при несуществующей цитате", len(st.tx.saved))
 	}
 }

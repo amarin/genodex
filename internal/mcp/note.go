@@ -50,6 +50,10 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 		mcp.WithString("title", mcp.Description("Заголовок")),
 		mcp.WithString("text", mcp.Description("Текст (markdown)")),
 		mcp.WithString("parent_id", mcp.Description("id родительской заметки (необязательно; пусто — без родителя)")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
 	s.AddTool(tool, noteCreateHandler(notes))
@@ -62,6 +66,10 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 		mcp.WithString("title", mcp.Description("Заголовок")),
 		mcp.WithString("text", mcp.Description("Текст (markdown)")),
 		mcp.WithString("parent_id", mcp.Description("id родительской заметки (необязательно)")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
 	s.AddTool(tool, noteUpdateHandler(notes))
@@ -133,10 +141,16 @@ func noteGetHandler(notes NoteService) server.ToolHandlerFunc {
 
 func noteCreateHandler(notes NoteService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		n := models.Note{
 			Kind:    models.NoteKind(req.GetString("kind", "")),
 			Title:   req.GetString("title", ""),
 			Text:    req.GetString("text", ""),
+			Sources: sources,
 			Private: req.GetBool("private", false),
 		}
 
@@ -163,9 +177,15 @@ func noteUpdateHandler(notes NoteService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
+		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		cur.Kind = models.NoteKind(req.GetString("kind", ""))
 		cur.Title = req.GetString("title", "")
 		cur.Text = req.GetString("text", "")
+		cur.Sources = sources
 		cur.Private = req.GetBool("private", false)
 
 		if pid := req.GetString("parent_id", ""); pid != "" {

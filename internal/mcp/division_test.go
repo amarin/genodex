@@ -115,8 +115,8 @@ func TestDivisionListToolContract(t *testing.T) {
 
 	res := callDivisionList(t, svc, nil)
 
-	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null},` +
-		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root"}]`
+	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null,"sources":[]},` +
+		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root","sources":[]}]`
 	if res.IsError || resultText(t, res) != want {
 		t.Fatalf("isError=%v text=%s, want %s", res.IsError, resultText(t, res), want)
 	}
@@ -211,7 +211,7 @@ func TestDivisionSearchTool(t *testing.T) {
 
 	res := callDivisionSearch(t, svc, map[string]any{"q": "давы"})
 
-	want := `[{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":null}]`
+	want := `[{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":null,"sources":[]}]`
 	if res.IsError || resultText(t, res) != want {
 		t.Fatalf("isError=%v text=%s, want %s", res.IsError, resultText(t, res), want)
 	}

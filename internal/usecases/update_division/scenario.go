@@ -40,6 +40,16 @@ func (s *Scenario) UpdateDivision(ctx context.Context, d models.AdministrativeDi
 			return err
 		}
 
+		for i, link := range d.Sources {
+			if _, err := tx.GetCitation(ctx, link.CitationID); err != nil {
+				if errors.Is(err, models.ErrNotFound) {
+					return sourceLinkErr(i, "цитата %q не найдена", link.CitationID)
+				}
+
+				return err
+			}
+		}
+
 		return tx.SaveAdministrativeDivision(ctx, &d)
 	})
 }
@@ -77,6 +87,15 @@ func parentErr(format string, args ...any) *models.ValidationError {
 	return &models.ValidationError{
 		Entity: models.TypeAdministrativeDivision,
 		Field:  "parent_id",
+		Reason: fmt.Sprintf(format, args...),
+	}
+}
+
+// sourceLinkErr — *models.ValidationError по полю sources[i].citation_id.
+func sourceLinkErr(i int, format string, args ...any) *models.ValidationError {
+	return &models.ValidationError{
+		Entity: models.TypeAdministrativeDivision,
+		Field:  fmt.Sprintf("sources[%d].citation_id", i),
 		Reason: fmt.Sprintf(format, args...),
 	}
 }

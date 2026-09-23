@@ -51,6 +51,10 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 		})),
 		mcp.WithString("repository_id", mcp.Description("id хранилища (необязательно; пусто — без хранилища)")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
 	s.AddTool(tool, archiveCreateHandler(archives))
@@ -65,6 +69,10 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 		})),
 		mcp.WithString("repository_id", mcp.Description("id хранилища (необязательно)")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 		mcp.WithBoolean("private", mcp.Description("Приватность записи")),
 	)
 	s.AddTool(tool, archiveUpdateHandler(archives))
@@ -141,11 +149,17 @@ func archiveCreateHandler(archives ArchiveService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		a := models.Archive{
 			Name:         req.GetString("name", ""),
 			System:       system,
 			RepositoryID: models.ID(req.GetString("repository_id", "")),
 			Notes:        textRefsFromStrings(req.GetStringSlice("notes", nil)),
+			Sources:      sources,
 			Private:      req.GetBool("private", false),
 		}
 
@@ -172,10 +186,16 @@ func archiveUpdateHandler(archives ArchiveService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		cur.Name = req.GetString("name", "")
 		cur.System = system
 		cur.RepositoryID = models.ID(req.GetString("repository_id", ""))
 		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		cur.Sources = sources
 		cur.Private = req.GetBool("private", false)
 
 		if err := archives.UpdateArchive(ctx, cur); err != nil {

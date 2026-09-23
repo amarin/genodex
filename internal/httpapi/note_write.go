@@ -35,9 +35,9 @@ func handleNoteCreate(notes NoteService) http.HandlerFunc {
 }
 
 // handleNoteUpdate — PUT /api/notes/{id}: полная замена
-// kind/title/text/parent_id. Читает текущую версию, накладывает поля
-// запроса (fetch-then-merge). Sources не в DTO — read-only в v1. Владелец
-// всегда видит запись при fetch (requireFull даёт полный доступ).
+// kind/title/text/parent_id/sources. Читает текущую версию, накладывает поля
+// запроса (fetch-then-merge). Владелец всегда видит запись при fetch
+// (requireFull даёт полный доступ).
 func handleNoteUpdate(notes NoteService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireFull(w, r); !ok {
@@ -65,6 +65,7 @@ func handleNoteUpdate(notes NoteService) http.HandlerFunc {
 		cur.Title = m.Title
 		cur.Text = m.Text
 		cur.ParentID = m.ParentID
+		cur.Sources = m.Sources
 		cur.Private = m.Private
 
 		if err := notes.UpdateNote(r.Context(), cur); err != nil {

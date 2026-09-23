@@ -13,17 +13,33 @@ import (
 // остальные методы порта паникуют через nil-встраивание.
 type fakeTx struct {
 	store.Store
-	parishes map[models.ID]*models.Parish
-	saved    []*models.Parish
+	parishes  map[models.ID]*models.Parish
+	citations map[models.ID]*models.Citation
+	saved     []*models.Parish
 }
 
 func newFakeTx(existing ...*models.Parish) *fakeTx {
-	tx := &fakeTx{parishes: map[models.ID]*models.Parish{}}
+	tx := &fakeTx{parishes: map[models.ID]*models.Parish{}, citations: map[models.ID]*models.Citation{}}
 	for _, s := range existing {
 		tx.parishes[s.ID] = s
 	}
 
 	return tx
+}
+
+// cID возвращает корректный идентификатор цитаты.
+func cID(last byte) models.ID {
+	return models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
+}
+
+func (f *fakeTx) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+	cp := *c
+
+	return &cp, nil
 }
 
 func (f *fakeTx) GetParish(_ context.Context, id models.ID) (*models.Parish, error) {
@@ -96,5 +112,27 @@ func TestUpdateParishRejectsEmptyName(t *testing.T) {
 
 	if st.calls != 0 {
 		t.Fatalf("InTx вызван %d раз при невалидной сущности", st.calls)
+	}
+}
+
+// TestUpdateParishSourceCitationNotFound: Sources ссылается на
+// несуществующую цитату — *models.ValidationError по полю
+// sources[0].citation_id, ничего не сохраняется.
+func TestUpdateParishSourceCitationNotFound(t *testing.T) {
+	existing := parish("PR-01ARZ3NDEKTSV4RRFFQ69G5FA1", "Никольский приход")
+	st := &fakeStore{tx: newFakeTx(existing)}
+
+	updated := *existing
+	updated.Sources = []models.SourceLink{{CitationID: cID('0')}}
+
+	err := New(st).UpdateParish(context.Background(), updated)
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "sources[0].citation_id" {
+		t.Fatalf("err = %v, ожидалась *ValidationError по полю sources[0].citation_id", err)
+	}
+
+	if len(st.tx.saved) != 0 {
+		t.Fatalf("сохранено %d записей при несуществующей цитате", len(st.tx.saved))
 	}
 }

@@ -92,6 +92,38 @@
   `internal/httpapi/{note,attachment}*.go`, `internal/mcp/{note,
   attachment}.go`, `web/src/pages/{NotesList,NoteView,NoteForm,
   AttachmentsList,AttachmentView,AttachmentForm}.tsx`).
+- Источники/Цитаты (`Source`/`Citation`) — цепочка доказательств, полный
+  CRUD: HTTP (`/api/sources*`, `/api/citations*`) и MCP (`source_*`/
+  `citation_*` — по 6 тулов на сущность), веб-страницы (список/просмотр/
+  редактирование/создание). Первый полиморфный тип в программе
+  (`Citation.Anchor` — архивный узел/документ, файл-вложение или внешняя
+  ссылка; плоское представление с дискриминатором `kind`, по образцу
+  `FactDate`, не вложенный union) и первый MCP-аргумент вида «массив
+  объектов» (`sources`, см. ниже — раньше массивы были только строками)
+  (`internal/transport/{source,source_write,citation,citation_write,
+  anchor}.go`, `internal/usecases/{list,search,get,create,update,delete}_
+  {source,citation}*`, `internal/httpapi/{source,citation}*.go`,
+  `internal/mcp/{source,citation}.go`, `internal/mcp/object_args.go`
+  (`anchorObjectProperties`/`optionalAnchor`,
+  `sourceLinkObjectProperties`/`optionalSourceLinks`), `web/src/
+  AnchorEditor.tsx`, `web/src/SourceLinkList.tsx`, `web/src/pages/
+  {SourcesList,SourceView,SourceForm,CitationsList,CitationView,
+  CitationForm}.tsx`).
+- `Sources []SourceLink` разблокирован для редактирования у всех 6
+  сущностей, где есть: `AdministrativeDivision` (впервые видим на чтении
+  тоже — раньше отсутствовал в контракте вовсе), `Repository`, `Church`,
+  `Parish`, `Archive`, `Note`. Несуществующий `citation_id` в списке
+  `sources` — 422 на поле `sources[i].citation_id` (проверка в той же
+  транзакции, что и сохранение — `Repository`/`Church`/`Parish` при этом
+  впервые стали транзакционными сценариями, раньше у них не было ни
+  одного FK для проверки) (`internal/transport/{admin_division,
+  admin_division_write,repository_write,church_write,parish_write,
+  archive_write,note_write}.go`, `internal/usecases/{create,update}_
+  {division,repository,church,parish,archive,note}/*`, `internal/httpapi/
+  {division,repository,church,parish,archive,note}_write.go`,
+  `internal/mcp/{division,repository,church,parish,archive,note}.go`,
+  `web/src/pages/{Division,Repository,Church,Parish,Archive,Note}
+  {Form,View}.tsx`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

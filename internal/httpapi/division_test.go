@@ -103,8 +103,8 @@ func TestDivisionListContract(t *testing.T) {
 		t.Fatalf("status = %d", rec.Code)
 	}
 
-	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null},` +
-		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root"}]`
+	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null,"sources":[]},` +
+		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root","sources":[]}]`
 	if got := strings.TrimSpace(rec.Body.String()); got != want {
 		t.Fatalf("body = %s, want %s", got, want)
 	}
@@ -200,7 +200,7 @@ func TestDivisionSearch(t *testing.T) {
 
 	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/search?q=давы")
 
-	want := `[{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":null}]`
+	want := `[{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":null,"sources":[]}]`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != want {
 		t.Fatalf("status = %d, body = %s; ожидалось 200 и %s", rec.Code, got, want)
 	}

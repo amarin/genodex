@@ -46,6 +46,16 @@ func (s *Scenario) UpdateArchive(ctx context.Context, a models.Archive) error {
 			}
 		}
 
+		for i, link := range a.Sources {
+			if _, err := tx.GetCitation(ctx, link.CitationID); err != nil {
+				if errors.Is(err, models.ErrNotFound) {
+					return sourceLinkErr(i, "цитата %q не найдена", link.CitationID)
+				}
+
+				return err
+			}
+		}
+
 		return tx.SaveArchive(ctx, &a)
 	})
 }
@@ -55,6 +65,15 @@ func repositoryErr(format string, args ...any) *models.ValidationError {
 	return &models.ValidationError{
 		Entity: models.TypeArchive,
 		Field:  "repository_id",
+		Reason: fmt.Sprintf(format, args...),
+	}
+}
+
+// sourceLinkErr — *models.ValidationError по полю sources[i].citation_id.
+func sourceLinkErr(i int, format string, args ...any) *models.ValidationError {
+	return &models.ValidationError{
+		Entity: models.TypeArchive,
+		Field:  fmt.Sprintf("sources[%d].citation_id", i),
 		Reason: fmt.Sprintf(format, args...),
 	}
 }

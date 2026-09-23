@@ -2,6 +2,8 @@ package update_church
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store"
@@ -32,6 +34,25 @@ func (s *Scenario) UpdateChurch(ctx context.Context, c models.Church) error {
 			return err
 		}
 
+		for i, link := range c.Sources {
+			if _, err := tx.GetCitation(ctx, link.CitationID); err != nil {
+				if errors.Is(err, models.ErrNotFound) {
+					return sourceLinkErr(i, "цитата %q не найдена", link.CitationID)
+				}
+
+				return err
+			}
+		}
+
 		return tx.SaveChurch(ctx, &c)
 	})
+}
+
+// sourceLinkErr — *models.ValidationError по полю sources[i].citation_id.
+func sourceLinkErr(i int, format string, args ...any) *models.ValidationError {
+	return &models.ValidationError{
+		Entity: models.TypeChurch,
+		Field:  fmt.Sprintf("sources[%d].citation_id", i),
+		Reason: fmt.Sprintf(format, args...),
+	}
 }

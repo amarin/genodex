@@ -35,8 +35,8 @@ func handleArchiveCreate(archives ArchiveService) http.HandlerFunc {
 }
 
 // handleArchiveUpdate — PUT /api/archives/{id}: полная замена
-// name/system/repository_id/notes/private. Читает текущую версию, накладывает
-// поля запроса (fetch-then-merge). Sources не в DTO — read-only в v1.
+// name/system/repository_id/notes/sources/private. Читает текущую версию,
+// накладывает поля запроса (fetch-then-merge).
 func handleArchiveUpdate(archives ArchiveService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireFull(w, r); !ok {
@@ -64,6 +64,7 @@ func handleArchiveUpdate(archives ArchiveService) http.HandlerFunc {
 		cur.System = m.System
 		cur.RepositoryID = m.RepositoryID
 		cur.Notes = m.Notes
+		cur.Sources = m.Sources
 		cur.Private = m.Private
 
 		if err := archives.UpdateArchive(r.Context(), cur); err != nil {

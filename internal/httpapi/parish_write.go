@@ -34,9 +34,8 @@ func handleParishCreate(parishes ParishService) http.HandlerFunc {
 }
 
 // handleParishUpdate — PUT /api/parishes/{id}: полная замена
-// name/church/settlements/since/until/notes. Читает текущую версию,
-// накладывает поля запроса (fetch-then-merge). Sources не в DTO — read-only
-// в v1.
+// name/church/settlements/since/until/notes/sources. Читает текущую версию,
+// накладывает поля запроса (fetch-then-merge).
 func handleParishUpdate(parishes ParishService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireFull(w, r); !ok {
@@ -66,6 +65,7 @@ func handleParishUpdate(parishes ParishService) http.HandlerFunc {
 		cur.Since = m.Since
 		cur.Until = m.Until
 		cur.Notes = m.Notes
+		cur.Sources = m.Sources
 
 		if err := parishes.UpdateParish(r.Context(), cur); err != nil {
 			writeError(w, err)

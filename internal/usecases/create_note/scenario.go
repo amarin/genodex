@@ -57,6 +57,16 @@ func (s *Scenario) CreateNote(ctx context.Context, n models.Note) (models.Note, 
 			}
 		}
 
+		for i, link := range n.Sources {
+			if _, err := tx.GetCitation(ctx, link.CitationID); err != nil {
+				if errors.Is(err, models.ErrNotFound) {
+					return sourceLinkErr(i, "цитата %q не найдена", link.CitationID)
+				}
+
+				return err
+			}
+		}
+
 		return tx.SaveNote(ctx, &n)
 	})
 	if err != nil {
@@ -71,6 +81,15 @@ func parentErr(format string, args ...any) *models.ValidationError {
 	return &models.ValidationError{
 		Entity: models.TypeNote,
 		Field:  "parent_id",
+		Reason: fmt.Sprintf(format, args...),
+	}
+}
+
+// sourceLinkErr — *models.ValidationError по полю sources[i].citation_id.
+func sourceLinkErr(i int, format string, args ...any) *models.ValidationError {
+	return &models.ValidationError{
+		Entity: models.TypeNote,
+		Field:  fmt.Sprintf("sources[%d].citation_id", i),
 		Reason: fmt.Sprintf(format, args...),
 	}
 }

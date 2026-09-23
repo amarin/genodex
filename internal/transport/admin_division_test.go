@@ -48,8 +48,8 @@ func TestAdminDivisionsJSONContract(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null},` +
-		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root"}]`
+	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null,"sources":[]},` +
+		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root","sources":[]}]`
 	if string(list) != want {
 		t.Fatalf("list = %s, want %s", list, want)
 	}

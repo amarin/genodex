@@ -8,6 +8,7 @@ type AdminDivisionCreate struct {
 	Name     string                   `json:"name"`
 	Type     models.AdminDivisionType `json:"type"`
 	ParentID *models.ID               `json:"parent_id"`
+	Sources  []SourceLink             `json:"sources"`
 }
 
 // Model возвращает доменную единицу с пустым ID.
@@ -16,6 +17,7 @@ func (d AdminDivisionCreate) Model() models.AdministrativeDivision {
 		Name:     d.Name,
 		Type:     d.Type,
 		ParentID: cloneParentID(d.ParentID),
+		Sources:  SourceLinksToModel(d.Sources),
 	}
 }
 
@@ -25,6 +27,7 @@ type AdminDivisionUpdate struct {
 	Name     string                   `json:"name"`
 	Type     models.AdminDivisionType `json:"type"`
 	ParentID *models.ID               `json:"parent_id"`
+	Sources  []SourceLink             `json:"sources"`
 }
 
 func (d AdminDivisionUpdate) Model() models.AdministrativeDivision {
@@ -32,6 +35,7 @@ func (d AdminDivisionUpdate) Model() models.AdministrativeDivision {
 		Name:     d.Name,
 		Type:     d.Type,
 		ParentID: cloneParentID(d.ParentID),
+		Sources:  SourceLinksToModel(d.Sources),
 	}
 }
 

@@ -66,7 +66,7 @@ func TestDivisionGetContract(t *testing.T) {
 
 	rec := get(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID)
 
-	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null}`
+	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null,"sources":[]}`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != want {
 		t.Fatalf("status = %d, body = %s; ожидались 200 и %s", rec.Code, got, want)
 	}
@@ -104,7 +104,7 @@ func TestDivisionCreateContract(t *testing.T) {
 
 	rec := postD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions", `{"name":"Давыдово","type":"selo"}`)
 
-	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null}`
+	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null,"sources":[]}`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusCreated || got != want {
 		t.Fatalf("status = %d, body = %s; ожидались 201 и %s", rec.Code, got, want)
 	}
@@ -157,7 +157,7 @@ func TestDivisionUpdateMergesFields(t *testing.T) {
 
 	rec := putD(t, NewHandler(Deps{Divisions: svc, DocsFS: fstest.MapFS{}}), "/api/admin-divisions/"+writeID, `{"name":"Давыдово","type":"selo","parent_id":null}`)
 
-	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null}`
+	want := `{"id":"` + writeID + `","name":"Давыдово","type":"selo","parent_id":null,"sources":[]}`
 	if got := strings.TrimSpace(rec.Body.String()); rec.Code != http.StatusOK || got != want {
 		t.Fatalf("status = %d, body = %s; ожидались 200 и %s", rec.Code, got, want)
 	}

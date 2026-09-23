@@ -55,6 +55,10 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 		mcp.WithObject("since", mcp.Description("Начало периода действия прихода"), mcp.Properties(factDateObjectProperties())),
 		mcp.WithObject("until", mcp.Description("Конец периода действия прихода"), mcp.Properties(factDateObjectProperties())),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, parishCreateHandler(parishes))
 
@@ -68,6 +72,10 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 		mcp.WithObject("since", mcp.Description("Начало периода"), mcp.Properties(factDateObjectProperties())),
 		mcp.WithObject("until", mcp.Description("Конец периода"), mcp.Properties(factDateObjectProperties())),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
+		mcp.WithArray("sources", mcp.Items(map[string]any{
+			"type":       "object",
+			"properties": sourceLinkObjectProperties(),
+		}), mcp.Description("Доказательства (ссылки на цитаты)")),
 	)
 	s.AddTool(tool, parishUpdateHandler(parishes))
 
@@ -155,6 +163,11 @@ func parishCreateHandler(parishes ParishService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		sources, err := optionalSourceLinks(args, "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		p := models.Parish{
 			Name:        req.GetString("name", ""),
 			Church:      church,
@@ -162,6 +175,7 @@ func parishCreateHandler(parishes ParishService) server.ToolHandlerFunc {
 			Since:       since,
 			Until:       until,
 			Notes:       textRefsFromStrings(req.GetStringSlice("notes", nil)),
+			Sources:     sources,
 		}
 
 		created, err := parishes.CreateParish(ctx, p)
@@ -199,12 +213,18 @@ func parishUpdateHandler(parishes ParishService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		sources, err := optionalSourceLinks(args, "sources")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		cur.Name = req.GetString("name", "")
 		cur.Church = church
 		cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
 		cur.Since = since
 		cur.Until = until
 		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		cur.Sources = sources
 
 		if err := parishes.UpdateParish(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

@@ -1147,6 +1147,8 @@ func TestArchiveWriteContractWithRealStore(t *testing.T) {
 		Divisions:    newDivisionService(t, st),
 		Repositories: newRepositoryService(t, st),
 		Archives:     newArchiveService(t, st),
+		Sources:      newSourceService(t, st),
+		Citations:    newCitationService(t, st),
 		Auth:         authSvc,
 		DocsFS:       fstest.MapFS{},
 		TrustProxy:   false,
@@ -1213,6 +1215,29 @@ func TestArchiveWriteContractWithRealStore(t *testing.T) {
 	}
 
 	requireStatusS(t, getReq(t, h, "/api/archives/"+string(private.ID)), http.StatusNotFound)
+
+	// Ретрофит: строгий FK sources[i].citation_id — сквозная проверка через
+	// реальный HTTP-хендлер → сценарий → SQLite, а не только на fake-store.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Метрическая книга","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createArchive(t, h, owner,
+		fmt.Sprintf(`{"name":"Фонд с цитатой","sources":[{"citation_id":%q}],"notes":[],"private":false}`, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий citation_id — 422 на sources[0].citation_id.
+	rec = postArchiveReq(t, h, owner,
+		`{"name":"Фонд-призрак 2","sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}],"notes":[],"private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
 }
 
 func createArchive(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Archive {
@@ -1513,6 +1538,304 @@ func postAttachmentReq(t *testing.T, h http.Handler, cookies []*http.Cookie, bod
 	t.Helper()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/attachments", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestSourceWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» (по образцу TestArchiveWriteContractWithRealStore) для источников
+// доказательств: bootstrap-регистрация → создание без хранилища → чтение →
+// изменение → удаление → повторное чтение — 404. Дополнительно: строгий FK
+// на Repository (валидный repository_id сохраняется; несуществующий, но
+// корректный по формату — 422 на поле repository_id) и Fix 1 (CRITICAL):
+// приватная запись, анонимный GET — 404, не 200.
+func TestSourceWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:    newDivisionService(t, st),
+		Repositories: newRepositoryService(t, st),
+		Sources:      newSourceService(t, st),
+		Auth:         authSvc,
+		DocsFS:       fstest.MapFS{},
+		TrustProxy:   false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание без хранилища.
+	created := createSource(t, h, owner,
+		`{"kind":"document","title":"Метрическая книга","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	if created.Title != "Метрическая книга" || created.RepositoryID != "" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "S-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id.
+	rec := getReq(t, h, "/api/sources/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"title":"Метрическая книга"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена kind/title/author/date/reliability/repository_id/notes/private.
+	rec = putSourceReq(t, h, owner, "/api/sources/"+string(created.ID),
+		`{"kind":"transcription","title":"Метрическая книга (испр.)","reliability":"contemporary","notes":[],"private":false}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeSourceS(t, rec)
+	if updated.Title != "Метрическая книга (испр.)" || updated.Kind != "transcription" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/sources/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/sources/"+string(created.ID)), http.StatusNotFound)
+
+	// Строгий FK: валидный repository_id создаётся и сохраняется как есть.
+	repo := createRepository(t, h, owner,
+		`{"name":"ГАВО","type":"archive","address":"","urls":[],"notes":[],"private":false}`, http.StatusCreated)
+
+	withRepo := createSource(t, h, owner,
+		fmt.Sprintf(`{"kind":"document","title":"Дело 1","reliability":"primary","repository_id":%q,"notes":[],"private":false}`, repo.ID),
+		http.StatusCreated)
+	if withRepo.RepositoryID != string(repo.ID) {
+		t.Fatalf("withRepo.RepositoryID = %q, want %q", withRepo.RepositoryID, repo.ID)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий repository_id — 422.
+	rec = postSourceReq(t, h, owner,
+		`{"kind":"document","title":"Дело-призрак","reliability":"primary","repository_id":"R-01ARZ3NDEKTSV4RRFFQ69G5FA9","notes":[],"private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"repository_id"`) {
+		t.Fatalf("body = %s, want field=repository_id", rec.Body)
+	}
+
+	// Fix 1: приватная запись, анонимный GET — 404, не 200.
+	private := createSource(t, h, owner,
+		`{"kind":"memory","title":"Частные воспоминания","reliability":"memory","notes":[],"private":true}`,
+		http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private = %+v, want Private=true", private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/sources/"+string(private.ID)), http.StatusNotFound)
+}
+
+func createSource(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Source {
+	t.Helper()
+
+	rec := postSourceReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeSourceS(t, rec)
+}
+
+func decodeSourceS(t *testing.T, rec *httptest.ResponseRecorder) transport.Source {
+	t.Helper()
+
+	var s transport.Source
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return s
+}
+
+func postSourceReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/sources", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putSourceReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestCitationWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» (по образцу TestArchiveWriteContractWithRealStore) для
+// цитат: bootstrap-регистрация → создание источника → создание цитаты без
+// якоря → чтение → изменение → удаление → повторное чтение — 404.
+// Дополнительно: строгий FK на Source (SourceID всегда обязателен, в
+// отличие от Archive.RepositoryID — несуществующий, но корректный по формату
+// — 422 на поле source_id), круговорот якоря (ArchiveAnchor — ссылка на
+// несуществующий ArchiveNode — 422 на поле anchor.node_id; URLAnchor —
+// круговорот без ссылок) и Fix 1 (CRITICAL): приватная запись, анонимный
+// GET — 404, не 200.
+func TestCitationWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Метрическая книга","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+
+	// Создание без якоря.
+	created := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+	if created.SourceID != string(src.ID) || created.Anchor != nil {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "C-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id.
+	rec := getReq(t, h, "/api/citations/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), fmt.Sprintf(`"source_id":%q`, src.ID)) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена source_id/anchor/text/note/private, всё ещё без якоря.
+	rec = putCitationReq(t, h, owner, "/api/citations/"+string(created.ID),
+		fmt.Sprintf(`{"source_id":%q,"text":"л. 12 об.","private":false}`, src.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeCitationS(t, rec)
+	if updated.Text != "л. 12 об." || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий source_id — 422.
+	rec = postCitationReq(t, h, owner,
+		`{"source_id":"S-01ARZ3NDEKTSV4RRFFQ69G5FA9","private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"source_id"`) {
+		t.Fatalf("body = %s, want field=source_id", rec.Body)
+	}
+
+	// Круговорот якоря: URLAnchor без ссылок на другие сущности.
+	withAnchor := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"anchor":{"kind":"url","url":"https://example.org/page"},"private":false}`, src.ID),
+		http.StatusCreated)
+	if withAnchor.Anchor == nil || withAnchor.Anchor.Kind != "url" || withAnchor.Anchor.URL != "https://example.org/page" {
+		t.Fatalf("withAnchor.Anchor = %+v", withAnchor.Anchor)
+	}
+
+	// Якорь со ссылкой на несуществующий ArchiveNode — 422 на поле anchor.node_id.
+	rec = postCitationReq(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"anchor":{"kind":"archive","node_id":"AN-01ARZ3NDEKTSV4RRFFQ69G5FA9","page":1},"private":false}`, src.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"anchor.node_id"`) {
+		t.Fatalf("body = %s, want field=anchor.node_id", rec.Body)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/citations/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/citations/"+string(created.ID)), http.StatusNotFound)
+
+	// Fix 1: приватная запись, анонимный GET — 404, не 200.
+	private := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":true}`, src.ID), http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private = %+v, want Private=true", private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/citations/"+string(private.ID)), http.StatusNotFound)
+}
+
+func createCitation(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Citation {
+	t.Helper()
+
+	rec := postCitationReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeCitationS(t, rec)
+}
+
+func decodeCitationS(t *testing.T, rec *httptest.ResponseRecorder) transport.Citation {
+	t.Helper()
+
+	var c transport.Citation
+	if err := json.Unmarshal(rec.Body.Bytes(), &c); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return c
+}
+
+func postCitationReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/citations", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putCitationReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
 	req.Header.Set("X-Requested-With", "genodex")
 	for _, c := range cookies {
 		req.AddCookie(c)

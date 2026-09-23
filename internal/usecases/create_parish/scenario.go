@@ -2,9 +2,11 @@ package create_parish
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/amarin/genodex/internal/models"
+	"github.com/amarin/genodex/internal/store"
 )
 
 // Scenario — сценарий «создание записи прихода».
@@ -19,13 +21,12 @@ func New(st ParishStore, ids IDGenerator) *Scenario {
 }
 
 // CreateParish создаёт запись: генерирует идентификатор, проверяет
-// инварианты, сохраняет. Возвращает созданную запись с заполненным ID.
-// Флат-сущность без FK — в отличие от create_division, без транзакционной
-// проверки родителя.
+// инварианты, в одной транзакции убеждается в существовании цитат из Sources
+// и сохраняет. Возвращает созданную запись с заполненным ID.
 //
 // Ошибки: непустой входной ID (явный идентификатор допустим только для
-// импорта) и невалидная сущность — *models.ValidationError; прочее —
-// ошибки хранилища как есть.
+// импорта), невалидная сущность и несуществующая цитата —
+// *models.ValidationError; прочее — ошибки хранилища как есть.
 func (s *Scenario) CreateParish(ctx context.Context, p models.Parish) (models.Parish, error) {
 	if p.ID != "" {
 		return models.Parish{}, &models.ValidationError{
@@ -41,9 +42,31 @@ func (s *Scenario) CreateParish(ctx context.Context, p models.Parish) (models.Pa
 		return models.Parish{}, err
 	}
 
-	if err := s.store.SaveParish(ctx, &p); err != nil {
+	err := s.store.InTx(ctx, func(tx store.Store) error {
+		for i, link := range p.Sources {
+			if _, err := tx.GetCitation(ctx, link.CitationID); err != nil {
+				if errors.Is(err, models.ErrNotFound) {
+					return sourceLinkErr(i, "цитата %q не найдена", link.CitationID)
+				}
+
+				return err
+			}
+		}
+
+		return tx.SaveParish(ctx, &p)
+	})
+	if err != nil {
 		return models.Parish{}, err
 	}
 
 	return p, nil
+}
+
+// sourceLinkErr — *models.ValidationError по полю sources[i].citation_id.
+func sourceLinkErr(i int, format string, args ...any) *models.ValidationError {
+	return &models.ValidationError{
+		Entity: models.TypeParish,
+		Field:  fmt.Sprintf("sources[%d].citation_id", i),
+		Reason: fmt.Sprintf(format, args...),
+	}
 }

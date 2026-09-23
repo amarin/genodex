@@ -7,11 +7,12 @@ import "github.com/amarin/genodex/internal/models"
 // без родителя); сценарий проверяет существование и отсутствие циклов, по
 // образцу create_division.
 type NoteCreate struct {
-	Kind     string `json:"kind"`
-	Title    string `json:"title,omitempty"`
-	Text     string `json:"text,omitempty"`
-	ParentID string `json:"parent_id,omitempty"`
-	Private  bool   `json:"private"`
+	Kind     string       `json:"kind"`
+	Title    string       `json:"title,omitempty"`
+	Text     string       `json:"text,omitempty"`
+	ParentID string       `json:"parent_id,omitempty"`
+	Sources  []SourceLink `json:"sources"`
+	Private  bool         `json:"private"`
 }
 
 // Model возвращает доменную запись с пустым ID.
@@ -27,18 +28,20 @@ func (n NoteCreate) Model() models.Note {
 		Title:    n.Title,
 		Text:     n.Text,
 		ParentID: parentID,
+		Sources:  SourceLinksToModel(n.Sources),
 		Private:  n.Private,
 	}
 }
 
 // NoteUpdate — тело PUT /api/notes/{id} и аргументы тула note_update:
-// полная замена kind/title/text/parent_id/private.
+// полная замена kind/title/text/parent_id/sources/private.
 type NoteUpdate struct {
-	Kind     string `json:"kind"`
-	Title    string `json:"title,omitempty"`
-	Text     string `json:"text,omitempty"`
-	ParentID string `json:"parent_id,omitempty"`
-	Private  bool   `json:"private"`
+	Kind     string       `json:"kind"`
+	Title    string       `json:"title,omitempty"`
+	Text     string       `json:"text,omitempty"`
+	ParentID string       `json:"parent_id,omitempty"`
+	Sources  []SourceLink `json:"sources"`
+	Private  bool         `json:"private"`
 }
 
 // Model возвращает доменную запись с пустым ID.
@@ -54,6 +57,7 @@ func (n NoteUpdate) Model() models.Note {
 		Title:    n.Title,
 		Text:     n.Text,
 		ParentID: parentID,
+		Sources:  SourceLinksToModel(n.Sources),
 		Private:  n.Private,
 	}
 }

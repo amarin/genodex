@@ -82,6 +82,7 @@ func handleDivisionUpdate(divisions DivisionService) http.HandlerFunc {
 		cur.Name = in.Name
 		cur.Type = in.Type
 		cur.ParentID = cloneID(in.ParentID)
+		cur.Sources = transport.SourceLinksToModel(in.Sources)
 
 		if err := divisions.UpdateDivision(r.Context(), cur); err != nil {
 			writeError(w, err)

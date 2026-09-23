@@ -34,7 +34,7 @@ func TestDivisionGetToolContract(t *testing.T) {
 
 	res := callDivisionWrite(t, divisionGetHandler(svc), svc, map[string]any{"id": "ad-root"})
 
-	want := `{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null}`
+	want := `{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null,"sources":[]}`
 	if res.IsError || resultText(t, res) != want {
 		t.Fatalf("isError=%v text=%s, want %s", res.IsError, resultText(t, res), want)
 	}
@@ -69,7 +69,7 @@ func TestDivisionCreateToolPassesModel(t *testing.T) {
 	res := callDivisionWrite(t, divisionCreateHandler(svc), svc,
 		map[string]any{"name": "Давыдово", "type": "selo", "parent_id": "ad-root"})
 
-	want := `{"id":"ad-new","name":"Давыдово","type":"selo","parent_id":null}`
+	want := `{"id":"ad-new","name":"Давыдово","type":"selo","parent_id":null,"sources":[]}`
 	if res.IsError || resultText(t, res) != want {
 		t.Fatalf("isError=%v text=%s, want %s", res.IsError, resultText(t, res), want)
 	}

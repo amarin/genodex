@@ -14,23 +14,39 @@ func adID(last byte) models.ID {
 	return models.ID("AD-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
 }
 
+// cID возвращает корректный идентификатор цитаты.
+func cID(last byte) models.ID {
+	return models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
+}
+
 // fakeTx реализует нужные сценарию методы store.Store поверх карты делений;
 // остальные методы порта паникуют через nil-встраивание.
 type fakeTx struct {
 	store.Store
 	divisions map[models.ID]*models.AdministrativeDivision
+	citations map[models.ID]*models.Citation
 	saved     []*models.AdministrativeDivision
 	saveErr   error
 	gets      int
 }
 
 func newFakeTx(existing ...*models.AdministrativeDivision) *fakeTx {
-	tx := &fakeTx{divisions: map[models.ID]*models.AdministrativeDivision{}}
+	tx := &fakeTx{divisions: map[models.ID]*models.AdministrativeDivision{}, citations: map[models.ID]*models.Citation{}}
 	for _, d := range existing {
 		tx.divisions[d.ID] = d
 	}
 
 	return tx
+}
+
+func (f *fakeTx) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+	cp := *c
+
+	return &cp, nil
 }
 
 func (f *fakeTx) GetAdministrativeDivision(_ context.Context, id models.ID) (*models.AdministrativeDivision, error) {
@@ -229,5 +245,27 @@ func TestUpdateDivisionPropagatesSaveError(t *testing.T) {
 
 	if err := New(st).UpdateDivision(context.Background(), *existing); !errors.Is(err, wantErr) {
 		t.Fatalf("err = %v, ожидалась %v", err, wantErr)
+	}
+}
+
+// TestUpdateDivisionSourceCitationNotFound: Sources ссылается на
+// несуществующую цитату — *models.ValidationError по полю
+// sources[0].citation_id, ничего не сохраняется.
+func TestUpdateDivisionSourceCitationNotFound(t *testing.T) {
+	existing := division(adID('V'), nil)
+	st := &fakeStore{tx: newFakeTx(existing)}
+
+	updated := *existing
+	updated.Sources = []models.SourceLink{{CitationID: cID('0')}}
+
+	err := New(st).UpdateDivision(context.Background(), updated)
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "sources[0].citation_id" {
+		t.Fatalf("err = %v, ожидалась *ValidationError по полю sources[0].citation_id", err)
+	}
+
+	if len(st.tx.saved) != 0 {
+		t.Fatalf("сохранено %d единиц при несуществующей цитате", len(st.tx.saved))
 	}
 }

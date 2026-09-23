@@ -14,16 +14,32 @@ import (
 type fakeTx struct {
 	store.Store
 	repositories map[models.ID]*models.Repository
+	citations    map[models.ID]*models.Citation
 	saved        []*models.Repository
 }
 
 func newFakeTx(existing ...*models.Repository) *fakeTx {
-	tx := &fakeTx{repositories: map[models.ID]*models.Repository{}}
+	tx := &fakeTx{repositories: map[models.ID]*models.Repository{}, citations: map[models.ID]*models.Citation{}}
 	for _, s := range existing {
 		tx.repositories[s.ID] = s
 	}
 
 	return tx
+}
+
+// cID возвращает корректный идентификатор цитаты.
+func cID(last byte) models.ID {
+	return models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
+}
+
+func (f *fakeTx) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+	cp := *c
+
+	return &cp, nil
 }
 
 func (f *fakeTx) GetRepository(_ context.Context, id models.ID) (*models.Repository, error) {
@@ -96,6 +112,28 @@ func TestUpdateRepositoryRejectsEmptyName(t *testing.T) {
 
 	if st.calls != 0 {
 		t.Fatalf("InTx вызван %d раз при невалидной сущности", st.calls)
+	}
+}
+
+// TestUpdateRepositorySourceCitationNotFound: Sources ссылается на
+// несуществующую цитату — *models.ValidationError по полю
+// sources[0].citation_id, ничего не сохраняется.
+func TestUpdateRepositorySourceCitationNotFound(t *testing.T) {
+	existing := repository("R-01ARZ3NDEKTSV4RRFFQ69G5FA1", "ГАВО")
+	st := &fakeStore{tx: newFakeTx(existing)}
+
+	updated := *existing
+	updated.Sources = []models.SourceLink{{CitationID: cID('0')}}
+
+	err := New(st).UpdateRepository(context.Background(), updated)
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "sources[0].citation_id" {
+		t.Fatalf("err = %v, ожидалась *ValidationError по полю sources[0].citation_id", err)
+	}
+
+	if len(st.tx.saved) != 0 {
+		t.Fatalf("сохранено %d записей при несуществующей цитате", len(st.tx.saved))
 	}
 }
 

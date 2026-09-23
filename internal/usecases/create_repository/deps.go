@@ -4,13 +4,16 @@ import (
 	"context"
 
 	"github.com/amarin/genodex/internal/models"
+	"github.com/amarin/genodex/internal/store"
 )
 
-// RepositoryStore — зависимость сценария: срез порта store.Store.
+// RepositoryStore — зависимость сценария: транзакция порта store.Store.
+// Проверка ссылок (Sources) и сохранение идут в одной транзакции на
+// переданном fn хранилище.
 //
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type RepositoryStore interface {
-	SaveRepository(ctx context.Context, s *models.Repository) error
+	InTx(ctx context.Context, fn func(store.Store) error) error
 }
 
 // IDGenerator — генератор идентификаторов сущностей (реализация — internal/idgen).

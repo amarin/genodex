@@ -34,8 +34,8 @@ func handleChurchCreate(churches ChurchService) http.HandlerFunc {
 }
 
 // handleChurchUpdate — PUT /api/churches/{id}: полная замена
-// name/parish/settlements/variants/notes. Читает текущую версию, накладывает
-// поля запроса (fetch-then-merge). Sources не в DTO — read-only в v1.
+// name/parish/settlements/variants/notes/sources. Читает текущую версию,
+// накладывает поля запроса (fetch-then-merge).
 func handleChurchUpdate(churches ChurchService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireFull(w, r); !ok {
@@ -64,6 +64,7 @@ func handleChurchUpdate(churches ChurchService) http.HandlerFunc {
 		cur.Settlements = m.Settlements
 		cur.Variants = m.Variants
 		cur.Notes = m.Notes
+		cur.Sources = m.Sources
 
 		if err := churches.UpdateChurch(r.Context(), cur); err != nil {
 			writeError(w, err)

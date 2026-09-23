@@ -34,10 +34,8 @@ func handleRepositoryCreate(repositories RepositoryService) http.HandlerFunc {
 }
 
 // handleRepositoryUpdate — PUT /api/repositories/{id}: полная замена
-// name/type/address/urls/notes/private. Читает текущую версию, накладывает
-// поля запроса (fetch-then-merge, docs/data-model/entity-write.md §3).
-// Sources не в DTO — read-only в v1 (internal/transport/source_link.go),
-// текущее значение cur.Sources не трогается, остаётся как было.
+// name/type/address/urls/notes/sources/private. Читает текущую версию,
+// накладывает поля запроса (fetch-then-merge, docs/data-model/entity-write.md §3).
 func handleRepositoryUpdate(repositories RepositoryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if _, ok := requireFull(w, r); !ok {
@@ -66,6 +64,7 @@ func handleRepositoryUpdate(repositories RepositoryService) http.HandlerFunc {
 		cur.Address = m.Address
 		cur.URLs = m.URLs
 		cur.Notes = m.Notes
+		cur.Sources = m.Sources
 		cur.Private = m.Private
 
 		if err := repositories.UpdateRepository(r.Context(), cur); err != nil {

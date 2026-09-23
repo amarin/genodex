@@ -17,23 +17,39 @@ func rID(last byte) models.ID {
 	return models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
 }
 
+// cID возвращает корректный идентификатор цитаты.
+func cID(last byte) models.ID {
+	return models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last))
+}
+
 // fakeTx реализует нужные сценарию методы store.Store поверх карт архивов и
 // хранилищ; остальные методы порта паникуют через nil-встраивание.
 type fakeTx struct {
 	store.Store
 	archives     map[models.ID]*models.Archive
 	repositories map[models.ID]*models.Repository
+	citations    map[models.ID]*models.Citation
 	saved        []*models.Archive
 	repoGetErr   error
 }
 
 func newFakeTx(existing ...*models.Archive) *fakeTx {
-	tx := &fakeTx{archives: map[models.ID]*models.Archive{}, repositories: map[models.ID]*models.Repository{}}
+	tx := &fakeTx{archives: map[models.ID]*models.Archive{}, repositories: map[models.ID]*models.Repository{}, citations: map[models.ID]*models.Citation{}}
 	for _, a := range existing {
 		tx.archives[a.ID] = a
 	}
 
 	return tx
+}
+
+func (f *fakeTx) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+	cp := *c
+
+	return &cp, nil
 }
 
 func (f *fakeTx) withRepository(r *models.Repository) *fakeTx {
@@ -187,5 +203,27 @@ func TestUpdateArchivePropagatesRepositoryGetError(t *testing.T) {
 	var ve *models.ValidationError
 	if errors.As(err, &ve) {
 		t.Fatalf("сбой хранилища превращён в *ValidationError: %v", err)
+	}
+}
+
+// TestUpdateArchiveSourceCitationNotFound: Sources ссылается на
+// несуществующую цитату — *models.ValidationError по полю
+// sources[0].citation_id, ничего не сохраняется.
+func TestUpdateArchiveSourceCitationNotFound(t *testing.T) {
+	existing := archive(arID('V'), "ГАВО, архив")
+	st := &fakeStore{tx: newFakeTx(existing)}
+
+	updated := *existing
+	updated.Sources = []models.SourceLink{{CitationID: cID('0')}}
+
+	err := New(st).UpdateArchive(context.Background(), updated)
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "sources[0].citation_id" {
+		t.Fatalf("err = %v, ожидалась *ValidationError по полю sources[0].citation_id", err)
+	}
+
+	if len(st.tx.saved) != 0 {
+		t.Fatalf("сохранено %d архивов при несуществующей цитате", len(st.tx.saved))
 	}
 }
