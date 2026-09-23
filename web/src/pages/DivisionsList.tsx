@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Alert, Button, Card, Input, List, Spin, Tree, Typography } from "antd";
+import { Link, useNavigate } from "react-router-dom";
+import { Alert, Breadcrumb, Button, Card, Input, List, Spin, Tree, Typography } from "antd";
 import type { DataNode, EventDataNode } from "antd/es/tree";
 import {
   adminDivisionTypeLabel,
@@ -125,52 +125,58 @@ export default function DivisionsList() {
   };
 
   return (
-    <Card
-      title="Административное деление"
-      extra={
-        session != null ? (
-          <Button type="primary" onClick={() => setCreateOpen(true)}>
-            + добавить в корень
-          </Button>
-        ) : undefined
-      }
-    >
-      <Input.Search
-        placeholder="Поиск по названию…"
-        allowClear
-        enterButton
-        loading={searching}
-        onSearch={onSearch}
-        onChange={(e) => onSearchChange(e.target.value)}
+    <>
+      <Breadcrumb
         style={{ marginBottom: 16 }}
+        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Административное деление" }]}
       />
-      {error != null && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
-      {searchResults != null ? (
-        <List
-          dataSource={searchResults}
-          locale={{ emptyText: "Найдено пусто" }}
-          renderItem={(d) => (
-            <List.Item>
-              <Typography.Link onClick={() => navigate(`/divisions/${d.id}`)}>
-                {divisionLabel(d)}
-              </Typography.Link>
-            </List.Item>
-          )}
+      <Card
+        title="Административное деление"
+        extra={
+          session != null ? (
+            <Button type="primary" onClick={() => setCreateOpen(true)}>
+              + добавить в корень
+            </Button>
+          ) : undefined
+        }
+      >
+        <Input.Search
+          placeholder="Поиск по названию…"
+          allowClear
+          enterButton
+          loading={searching}
+          onSearch={onSearch}
+          onChange={(e) => onSearchChange(e.target.value)}
+          style={{ marginBottom: 16 }}
         />
-      ) : loading ? (
-        <Spin />
-      ) : (
-        <Tree treeData={treeData} loadData={onLoadData} onSelect={onSelect} showLine />
-      )}
-      <CreateDivisionModal
-        open={createOpen}
-        parentId={null}
-        onClose={() => setCreateOpen(false)}
-        onCreated={(d) => {
-          setCreateOpen(false);
-          navigate(`/divisions/${d.id}`);
-        }}
-      />
-    </Card>
+        {error != null && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
+        {searchResults != null ? (
+          <List
+            dataSource={searchResults}
+            locale={{ emptyText: "Найдено пусто" }}
+            renderItem={(d) => (
+              <List.Item>
+                <Typography.Link onClick={() => navigate(`/divisions/${d.id}`)}>
+                  {divisionLabel(d)}
+                </Typography.Link>
+              </List.Item>
+            )}
+          />
+        ) : loading ? (
+          <Spin />
+        ) : (
+          <Tree treeData={treeData} loadData={onLoadData} onSelect={onSelect} showLine />
+        )}
+        <CreateDivisionModal
+          open={createOpen}
+          parentId={null}
+          onClose={() => setCreateOpen(false)}
+          onCreated={(d) => {
+            setCreateOpen(false);
+            navigate(`/divisions/${d.id}`);
+          }}
+        />
+      </Card>
+    </>
   );
 }

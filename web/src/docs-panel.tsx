@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { Alert, Breadcrumb, List, Spin, Typography } from "antd";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -136,6 +136,7 @@ export default function DocsPanel() {
       <>
         <Breadcrumb
           items={[
+            { title: <Link to="/">Сущности</Link> },
             { title: <a onClick={backToList}>Документация</a> },
             { title: currentFile.title },
           ]}
@@ -155,6 +156,10 @@ export default function DocsPanel() {
 
   return (
     <>
+      <Breadcrumb
+        style={{ marginBottom: 16 }}
+        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Документация" }]}
+      />
       {error != null && <Alert type="error" showIcon message={error} />}
       {!loading && error == null && (
         <List

@@ -263,6 +263,7 @@ export default function DivisionView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
+          { title: <Link to="/">Сущности</Link> },
           { title: <Link to="/divisions">Административное деление</Link> },
           ...(parent != null
             ? [{ title: <Link to={`/divisions/${parent.id}`}>{parent.name}</Link> }]
