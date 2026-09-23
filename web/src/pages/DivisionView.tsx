@@ -84,16 +84,18 @@ export default function DivisionView() {
     fetchDivision(divisionId)
       .then((d) => {
         setDivision(d);
-        if (d.parent_id != null) {
-          fetchDivision(d.parent_id)
-            .then(setParent)
-            .catch(() => setParent(null));
-        } else {
-          setParent(null);
-        }
-        return fetchAdminDivisions({ parent_id: divisionId, limit: MAX_PAGE_LIMIT });
+        const parentPromise =
+          d.parent_id != null
+            ? fetchDivision(d.parent_id)
+                .then(setParent)
+                .catch(() => setParent(null))
+            : Promise.resolve(setParent(null));
+        const childrenPromise = fetchAdminDivisions({
+          parent_id: divisionId,
+          limit: MAX_PAGE_LIMIT,
+        }).then(setChildren);
+        return Promise.all([parentPromise, childrenPromise]);
       })
-      .then(setChildren)
       .catch((e) => {
         if (e instanceof ApiError && e.status === 404) {
           setNotFound(true);
@@ -105,6 +107,9 @@ export default function DivisionView() {
   };
 
   useEffect(() => {
+    setEditing(false);
+    setParentPickerOpen(false);
+    setSaveError(null);
     if (id != null) {
       load(id);
     }
