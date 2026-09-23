@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button, Input, InputNumber, Select, Space } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { fetchAttachments, type Anchor, type AnchorKind, type Attachment } from "./api";
+import { ArchiveDocumentSelect, ArchiveNodePicker } from "./ArchiveNodePicker";
 
 const KIND_OPTIONS: { value: AnchorKind; label: string }[] = [
   { value: "archive", label: "Архив (узел/документ)" },
@@ -11,11 +12,8 @@ const KIND_OPTIONS: { value: AnchorKind; label: string }[] = [
 
 const EMPTY_ANCHOR: Anchor = { kind: "archive", page: 1 };
 
-// useAttachmentOptions — заполняет Select вложений для anchor.attachment_id.
-// В отличие от anchor.node_id/document_id (ArchiveNode/ArchiveDocument ещё
-// без CRUD, подпроект 6 — обычные текстовые поля), Attachment уже есть с
-// подпроекта 4, поэтому здесь — полноценный searchable Select, по образцу
-// useRepositoryOptions/ArchiveForm.tsx (обсуждение подпроекта 5).
+// useAttachmentOptions — заполняет Select вложений для anchor.attachment_id,
+// по образцу useRepositoryOptions/ArchiveForm.tsx (обсуждение подпроекта 5).
 function useAttachmentOptions() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
 
@@ -43,6 +41,11 @@ export function AnchorEditor({
   addLabel: string;
 }) {
   const attachmentOptions = useAttachmentOptions();
+  // nodeLabel — метка выбранного узла ТОЛЬКО для отображения в picker'е (Anchor
+  // не несёт свою метку в контракте, docs/data-model/entity-write.md §3.4/§6);
+  // до выбора нового узла ArchiveNodePicker сам покажет сырой node_id как
+  // fallback (см. ArchiveNodePicker.tsx).
+  const [nodeLabel, setNodeLabel] = useState<string | null>(null);
 
   if (value == null) {
     return (
@@ -72,17 +75,18 @@ export function AnchorEditor({
       </Space>
       {value.kind === "archive" && (
         <Space wrap style={{ width: "100%" }}>
-          <Input
-            placeholder="id архивного узла (AN-…)"
-            value={value.node_id}
-            onChange={(e) => set({ node_id: e.target.value })}
-            style={{ width: 260 }}
+          <ArchiveNodePicker
+            value={value.node_id ?? ""}
+            label={nodeLabel ?? undefined}
+            onChange={(nid, lbl) => {
+              setNodeLabel(lbl);
+              set({ node_id: nid, document_id: undefined });
+            }}
           />
-          <Input
-            placeholder="id архивного документа (DC-…, необязательно)"
+          <ArchiveDocumentSelect
+            nodeId={value.node_id || null}
             value={value.document_id}
-            onChange={(e) => set({ document_id: e.target.value })}
-            style={{ width: 300 }}
+            onChange={(v) => set({ document_id: v })}
           />
           <InputNumber
             placeholder="Страница"

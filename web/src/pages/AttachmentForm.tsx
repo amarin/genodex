@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Alert, Checkbox, Form, Input, InputNumber, Modal, Select } from "antd";
 import { createAttachment, type Attachment } from "../api";
 import { ApiError } from "../auth";
+import { ArchiveDocumentSelect, ArchiveNodePicker } from "../ArchiveNodePicker";
 
 interface AttachmentFormValues {
   kind: string;
@@ -9,22 +10,15 @@ interface AttachmentFormValues {
   filename?: string;
   mime?: string;
   page?: number;
-  node_id: string;
-  document_id?: string;
   note?: string;
   private?: boolean;
 }
 
-const FORM_FIELDS: (keyof AttachmentFormValues)[] = [
-  "kind",
-  "uri",
-  "filename",
-  "mime",
-  "page",
-  "node_id",
-  "document_id",
-  "note",
-];
+// FORM_FIELDS — node_id/document_id НЕ входят: они управляются отдельным
+// состоянием (nodeId/documentId, не полями antd Form — тот же приём, что
+// editParentId в ArchiveNodeView.tsx/editUnitId в ArchiveDocumentForm.tsx),
+// поэтому 422 на них попадает в общий error, а не в конкретное поле формы.
+const FORM_FIELDS: (keyof AttachmentFormValues)[] = ["kind", "uri", "filename", "mime", "page", "note"];
 
 const KIND_OPTIONS = [
   { value: "scan", label: "скан" },
@@ -33,11 +27,12 @@ const KIND_OPTIONS = [
   { value: "photo", label: "фото" },
 ];
 
-// CreateAttachmentModal — форма создания вложения. node_id/document_id — в
-// v1 обычные текстовые поля ввода id (без picker'а): ArchiveNode/
-// ArchiveDocument ещё не имеют своего списка, чтобы искать по нему (подпроект
-// 6 добавит их CRUD и вернёт сюда полноценный Select). node_id обязателен,
-// document_id — нет.
+// CreateAttachmentModal — форма создания вложения. node_id/document_id —
+// ArchiveNodePicker + ArchiveDocumentSelect (подпроект 6 — ArchiveNode/
+// ArchiveDocument теперь имеют CRUD и полноценный picker/Select, см.
+// ArchiveNodePicker.tsx). node_id обязателен, document_id — нет, и
+// становится доступен только после выбора узла (документ должен
+// принадлежать выбранному узлу).
 export function CreateAttachmentModal({
   open,
   onClose,
@@ -48,11 +43,17 @@ export function CreateAttachmentModal({
   onCreated: (created: Attachment) => void;
 }) {
   const [form] = Form.useForm<AttachmentFormValues>();
+  const [nodeId, setNodeId] = useState("");
+  const [nodeLabel, setNodeLabel] = useState<string | null>(null);
+  const [documentId, setDocumentId] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
     form.resetFields();
+    setNodeId("");
+    setNodeLabel(null);
+    setDocumentId(undefined);
     setError(null);
   };
 
@@ -62,6 +63,10 @@ export function CreateAttachmentModal({
   };
 
   const onFinish = async (values: AttachmentFormValues) => {
+    if (!nodeId) {
+      setError("Выберите архивный узел");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -71,8 +76,8 @@ export function CreateAttachmentModal({
         filename: values.filename,
         mime: values.mime,
         page: values.page,
-        node_id: values.node_id,
-        document_id: values.document_id,
+        node_id: nodeId,
+        document_id: documentId,
         note: values.note,
         private: values.private ?? false,
       });
@@ -117,15 +122,19 @@ export function CreateAttachmentModal({
         <Form.Item name="page" label="Страница">
           <InputNumber min={0} style={{ width: "100%" }} />
         </Form.Item>
-        <Form.Item
-          name="node_id"
-          label="Архивный узел (id)"
-          rules={[{ required: true, whitespace: true, message: "Введите id архивного узла" }]}
-        >
-          <Input placeholder="AN-…" />
+        <Form.Item label="Архивный узел" required>
+          <ArchiveNodePicker
+            value={nodeId}
+            label={nodeLabel ?? undefined}
+            onChange={(id, lbl) => {
+              setNodeId(id);
+              setNodeLabel(lbl);
+              setDocumentId(undefined);
+            }}
+          />
         </Form.Item>
-        <Form.Item name="document_id" label="Архивный документ (id)">
-          <Input placeholder="DC-… (необязательно)" />
+        <Form.Item label="Архивный документ (необязательно)">
+          <ArchiveDocumentSelect nodeId={nodeId || null} value={documentId} onChange={setDocumentId} />
         </Form.Item>
         <Form.Item name="note" label="Заметка">
           <Input.TextArea rows={3} />

@@ -21,6 +21,7 @@ import {
 import { deleteAttachment, fetchAttachment, updateAttachment, type Attachment } from "../api";
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
+import { ArchiveDocumentSelect, ArchiveNodePicker } from "../ArchiveNodePicker";
 
 interface EditFormValues {
   kind: string;
@@ -28,22 +29,15 @@ interface EditFormValues {
   filename?: string;
   mime?: string;
   page?: number;
-  node_id: string;
-  document_id?: string;
   note?: string;
   private?: boolean;
 }
 
-const EDIT_FORM_FIELDS: (keyof EditFormValues)[] = [
-  "kind",
-  "uri",
-  "filename",
-  "mime",
-  "page",
-  "node_id",
-  "document_id",
-  "note",
-];
+// EDIT_FORM_FIELDS — node_id/document_id НЕ входят: они управляются отдельным
+// состоянием (nodeId/documentId, не полями antd Form — тот же приём, что
+// editParentId в ArchiveNodeView.tsx), поэтому 422 на них попадает в общий
+// saveError.
+const EDIT_FORM_FIELDS: (keyof EditFormValues)[] = ["kind", "uri", "filename", "mime", "page", "note"];
 
 const KIND_OPTIONS = [
   { value: "scan", label: "скан" },
@@ -57,9 +51,9 @@ function attachmentLabel(a: Attachment): string {
 }
 
 // AttachmentView — просмотр вложения, переключаемый в форму редактирования
-// на той же странице. node_id/document_id — обычные текстовые поля ввода id
-// (см. AttachmentForm) — ArchiveNode/ArchiveDocument ещё без CRUD и своего
-// списка для Select (подпроект 6).
+// на той же странице. node_id/document_id в режиме редактирования —
+// ArchiveNodePicker + ArchiveDocumentSelect (подпроект 6 — ArchiveNode/
+// ArchiveDocument теперь имеют CRUD, см. AttachmentForm/ArchiveNodePicker.tsx).
 export default function AttachmentView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -72,6 +66,9 @@ export default function AttachmentView() {
 
   const [editing, setEditing] = useState(false);
   const [form] = Form.useForm<EditFormValues>();
+  const [nodeId, setNodeId] = useState("");
+  const [nodeLabel, setNodeLabel] = useState<string | null>(null);
+  const [documentId, setDocumentId] = useState<string | undefined>(undefined);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -113,11 +110,12 @@ export default function AttachmentView() {
       filename: attachment.filename ?? "",
       mime: attachment.mime ?? "",
       page: attachment.page,
-      node_id: attachment.node_id,
-      document_id: attachment.document_id ?? "",
       note: attachment.note ?? "",
       private: attachment.private,
     });
+    setNodeId(attachment.node_id);
+    setNodeLabel(null);
+    setDocumentId(attachment.document_id);
     setSaveError(null);
     setEditing(true);
   };
@@ -131,6 +129,10 @@ export default function AttachmentView() {
     if (attachment == null) {
       return;
     }
+    if (!nodeId) {
+      setSaveError("Выберите архивный узел");
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
@@ -140,8 +142,8 @@ export default function AttachmentView() {
         filename: values.filename,
         mime: values.mime,
         page: values.page,
-        node_id: values.node_id,
-        document_id: values.document_id,
+        node_id: nodeId,
+        document_id: documentId,
         note: values.note,
         private: values.private ?? false,
       });
@@ -264,15 +266,19 @@ export default function AttachmentView() {
           <Form.Item name="page" label="Страница">
             <InputNumber min={0} style={{ width: "100%" }} />
           </Form.Item>
-          <Form.Item
-            name="node_id"
-            label="Архивный узел (id)"
-            rules={[{ required: true, whitespace: true, message: "Введите id архивного узла" }]}
-          >
-            <Input placeholder="AN-…" />
+          <Form.Item label="Архивный узел" required>
+            <ArchiveNodePicker
+              value={nodeId}
+              label={nodeLabel ?? undefined}
+              onChange={(nid, lbl) => {
+                setNodeId(nid);
+                setNodeLabel(lbl);
+                setDocumentId(undefined);
+              }}
+            />
           </Form.Item>
-          <Form.Item name="document_id" label="Архивный документ (id)">
-            <Input placeholder="DC-… (необязательно)" />
+          <Form.Item label="Архивный документ (необязательно)">
+            <ArchiveDocumentSelect nodeId={nodeId || null} value={documentId} onChange={setDocumentId} />
           </Form.Item>
           <Form.Item name="note" label="Заметка">
             <Input.TextArea rows={3} />
