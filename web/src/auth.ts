@@ -24,17 +24,26 @@ export interface Invite {
   token: string;
 }
 
-// ApiError — тело {error, field?} из writeAuthError/writeJSON (Go). field
-// заполнен только для *auth.ValidationError (422) — остальные коды его не
-// несут.
+// ApiErrorReferrer — элемент Referrers из transport.InUseErrorBody (409 на
+// удалении занятой единицы).
+export interface ApiErrorReferrer {
+  type: string;
+  id: string;
+}
+
+// ApiError — тело {error, field?, referrers?} из writeAuthError/writeJSON
+// (Go). field заполнен только для *auth.ValidationError (422); referrers —
+// только для *models.InUseError (409, internal/transport/errors.go).
 export class ApiError extends Error {
   status: number;
   field?: string;
+  referrers?: ApiErrorReferrer[];
 
-  constructor(status: number, message: string, field?: string) {
+  constructor(status: number, message: string, field?: string, referrers?: ApiErrorReferrer[]) {
     super(message);
     this.status = status;
     this.field = field;
+    this.referrers = referrers;
   }
 }
 
@@ -50,7 +59,7 @@ const NO_REFRESH_RETRY_PATHS = new Set<string>([
   "/api/auth/logout",
 ]);
 
-async function authFetch<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
+export async function authFetch<T>(path: string, init: RequestInit = {}, retried = false): Promise<T> {
   const resp = await fetch(path, {
     ...init,
     headers: {
@@ -82,13 +91,13 @@ async function authFetch<T>(path: string, init: RequestInit = {}, retried = fals
   }
 
   if (!resp.ok) {
-    let body: { error?: string; field?: string } = {};
+    let body: { error?: string; field?: string; referrers?: ApiErrorReferrer[] } = {};
     try {
       body = await resp.json();
     } catch {
       // тело не JSON (не должно происходить у /api/auth/*, но не валим клиент)
     }
-    throw new ApiError(resp.status, body.error ?? `Ошибка ${resp.status}`, body.field);
+    throw new ApiError(resp.status, body.error ?? `Ошибка ${resp.status}`, body.field, body.referrers);
   }
 
   if (resp.status === 204) {
