@@ -2,7 +2,7 @@ package transport
 
 import "github.com/amarin/genodex/internal/models"
 
-// Estate — контракт словарной записи фамилии (GET /api/estates, MCP-тул estate_list).
+// Estate — контракт словарной записи сословия (GET /api/estates, MCP-тул estate_list).
 type Estate struct {
 	ID        models.ID `json:"id"`
 	Canonical string    `json:"canonical"`

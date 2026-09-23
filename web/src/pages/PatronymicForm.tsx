@@ -10,7 +10,7 @@ interface PatronymicFormValues {
 
 const FORM_FIELDS: (keyof PatronymicFormValues)[] = ["canonical"];
 
-// CreatePatronymicModal — форма создания словарной записи фамилии. variants/
+// CreatePatronymicModal — форма создания словарной записи отчества. variants/
 // items/notes редактируются вне antd Form (TextRefListEditor — не обычный
 // текстовый инпут), собираются в одно тело запроса на submit.
 export function CreatePatronymicModal({

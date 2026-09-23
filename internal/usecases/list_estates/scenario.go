@@ -6,7 +6,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «список словарных записей фамилий».
+// Scenario — сценарий «список словарных записей сословий».
 type Scenario struct {
 	estates EstateRepo
 }

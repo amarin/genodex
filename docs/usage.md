@@ -82,6 +82,10 @@ TLS-терминирующий реверс-прокси — подробнос�
 | `/api/health` | Проверка живости: `{"status":"ok"}`. |
 | `/api/admin-divisions` | Единицы административного деления (JSON): `GET` — список `[{"id", "name", "type", "parent_id"}]` (параметры, включая `parent_id`, — ниже); `POST` — создание; `GET/PUT/DELETE /api/admin-divisions/{id}` — чтение/изменение/удаление единицы; `GET /api/admin-divisions/search` — поиск по началу названия. |
 | `/api/surnames` | Словарные записи фамилий (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/surnames/{id}` — чтение/изменение/удаление записи; `GET /api/surnames/search?q=` — поиск по началу канонической формы (включая варианты). |
+| `/api/patronymics` | Словарные записи отчеств (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/patronymics/{id}` — чтение/изменение/удаление записи; `GET /api/patronymics/search?q=` — поиск по началу канонической формы (включая варианты). |
+| `/api/estates` | Словарные записи сословий (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/estates/{id}` — чтение/изменение/удаление записи; `GET /api/estates/search?q=` — поиск по началу канонической формы (включая варианты). |
+| `/api/titles` | Словарные записи титулов (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/titles/{id}` — чтение/изменение/удаление записи; `GET /api/titles/search?q=` — поиск по началу канонической формы (включая варианты). |
+| `/api/given-names` | Словарные записи имён (JSON): `GET` — список `[{"id", "canonical", "gender", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/given-names/{id}` — чтение/изменение/удаление записи; `GET /api/given-names/search?q=` — поиск по началу канонической формы (включая варианты). |
 | `/static/` | Собранные ассеты SPA (JS/CSS). |
 | `/` | Веб-интерфейс (SPA): `index.html`, для неизвестных путей — fallback на неё. |
 
@@ -112,6 +116,30 @@ curl -s -X POST http://localhost:9000/mcp \
 | `surname_create` | Создание записи: `canonical`, `variants`, `items`, `notes` (тексты); id генерирует сервер |
 | `surname_update` | Изменение записи: полная замена `canonical`/`variants`/`items`/`notes`; результат — обновлённая запись |
 | `surname_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `patronymic_list` | Список словарных записей отчеств; аргументы `limit`, `offset` |
+| `patronymic_search` | Поиск записей по началу канонической формы (включая варианты); аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `patronymic_get` | Запись по `id` (JSON контракта) |
+| `patronymic_create` | Создание записи: `canonical`, `variants`, `items`, `notes` (тексты); id генерирует сервер |
+| `patronymic_update` | Изменение записи: полная замена `canonical`/`variants`/`items`/`notes`; результат — обновлённая запись |
+| `patronymic_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `estate_list` | Список словарных записей сословий; аргументы `limit`, `offset` |
+| `estate_search` | Поиск записей по началу канонической формы (включая варианты); аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `estate_get` | Запись по `id` (JSON контракта) |
+| `estate_create` | Создание записи: `canonical`, `variants`, `items`, `notes` (тексты); id генерирует сервер |
+| `estate_update` | Изменение записи: полная замена `canonical`/`variants`/`items`/`notes`; результат — обновлённая запись |
+| `estate_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `title_list` | Список словарных записей титулов; аргументы `limit`, `offset` |
+| `title_search` | Поиск записей по началу канонической формы (включая варианты); аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `title_get` | Запись по `id` (JSON контракта) |
+| `title_create` | Создание записи: `canonical`, `variants`, `items`, `notes` (тексты); id генерирует сервер |
+| `title_update` | Изменение записи: полная замена `canonical`/`variants`/`items`/`notes`; результат — обновлённая запись |
+| `title_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `given_name_list` | Список словарных записей имён; аргументы `limit`, `offset` |
+| `given_name_search` | Поиск записей по началу канонической формы (включая варианты); аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `given_name_get` | Запись по `id` (JSON контракта) |
+| `given_name_create` | Создание записи: `canonical`, `gender` (обязателен, `male`/`female`/`neutral`), `variants`, `items`, `notes` (тексты); id генерирует сервер |
+| `given_name_update` | Изменение записи: полная замена `canonical`/`gender`/`variants`/`items`/`notes` (`gender` обязателен, `male`/`female`/`neutral`); результат — обновлённая запись |
+| `given_name_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
 
 ### HTTP API
 

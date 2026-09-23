@@ -216,6 +216,465 @@ func putSurnameReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, b
 	return rec
 }
 
+// TestPatronymicWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» (так же собран internal/app) для записи словарных
+// записей отчеств — через NewAPIHandler с реальной сессией владельца:
+// bootstrap-регистрация → создание → чтение → изменение → удаление →
+// повторное чтение — 404 (по образцу TestSurnameWriteContractWithRealStore,
+// без 409-сценария: у Patronymic нет строгих внешних ключей,
+// docs/data-model/entity-write.md).
+func TestPatronymicWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:   newDivisionService(t, st),
+		Patronymics: newPatronymicService(t, st),
+		Auth:        authSvc,
+		DocsFS:      fstest.MapFS{},
+		TrustProxy:  false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание записи.
+	created := createPatronymic(t, h, owner,
+		`{"canonical":"Иванович","variants":[{"text":"Иванычъ"}],"items":[],"notes":[]}`, http.StatusCreated)
+	if created.Canonical != "Иванович" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "PN-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю.
+	rec := getReq(t, h, "/api/patronymics/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"canonical":"Иванович"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена canonical/variants/items/notes.
+	rec = putPatronymicReq(t, h, owner, "/api/patronymics/"+string(created.ID),
+		`{"canonical":"Ивановна","variants":[],"items":[],"notes":[]}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodePatronymicS(t, rec)
+	if updated.Canonical != "Ивановна" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление — у Patronymic нет строгих FK, конфликта не бывает.
+	requireStatusS(t, delReq(t, h, owner, "/api/patronymics/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/patronymics/"+string(created.ID)), http.StatusNotFound)
+}
+
+func createPatronymic(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Patronymic {
+	t.Helper()
+
+	rec := postPatronymicReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodePatronymicS(t, rec)
+}
+
+func decodePatronymicS(t *testing.T, rec *httptest.ResponseRecorder) transport.Patronymic {
+	t.Helper()
+
+	var s transport.Patronymic
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return s
+}
+
+func postPatronymicReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/patronymics", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putPatronymicReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestEstateWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» (так же собран internal/app) для записи словарных записей
+// сословий — через NewAPIHandler с реальной сессией владельца:
+// bootstrap-регистрация → создание → чтение → изменение → удаление →
+// повторное чтение — 404 (по образцу TestSurnameWriteContractWithRealStore,
+// без 409-сценария: у Estate нет строгих внешних ключей,
+// docs/data-model/entity-write.md).
+func TestEstateWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Estates:    newEstateService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание записи.
+	created := createEstate(t, h, owner,
+		`{"canonical":"крестьяне","variants":[{"text":"крестьянство"}],"items":[],"notes":[]}`, http.StatusCreated)
+	if created.Canonical != "крестьяне" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "ES-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю.
+	rec := getReq(t, h, "/api/estates/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"canonical":"крестьяне"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена canonical/variants/items/notes.
+	rec = putEstateReq(t, h, owner, "/api/estates/"+string(created.ID),
+		`{"canonical":"мещане","variants":[],"items":[],"notes":[]}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeEstateS(t, rec)
+	if updated.Canonical != "мещане" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление — у Estate нет строгих FK, конфликта не бывает.
+	requireStatusS(t, delReq(t, h, owner, "/api/estates/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/estates/"+string(created.ID)), http.StatusNotFound)
+}
+
+func createEstate(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Estate {
+	t.Helper()
+
+	rec := postEstateReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeEstateS(t, rec)
+}
+
+func decodeEstateS(t *testing.T, rec *httptest.ResponseRecorder) transport.Estate {
+	t.Helper()
+
+	var s transport.Estate
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return s
+}
+
+func postEstateReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/estates", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putEstateReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestTitleWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» (так же собран internal/app) для записи словарных записей
+// титулов — через NewAPIHandler с реальной сессией владельца:
+// bootstrap-регистрация → создание → чтение → изменение → удаление →
+// повторное чтение — 404 (по образцу TestSurnameWriteContractWithRealStore,
+// без 409-сценария: у Title нет строгих внешних ключей,
+// docs/data-model/entity-write.md).
+func TestTitleWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Titles:     newTitleService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание записи.
+	created := createTitle(t, h, owner,
+		`{"canonical":"вдова","variants":[{"text":"вдовица"}],"items":[],"notes":[]}`, http.StatusCreated)
+	if created.Canonical != "вдова" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "TT-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю.
+	rec := getReq(t, h, "/api/titles/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"canonical":"вдова"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена canonical/variants/items/notes.
+	rec = putTitleReq(t, h, owner, "/api/titles/"+string(created.ID),
+		`{"canonical":"вдовец","variants":[],"items":[],"notes":[]}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeTitleS(t, rec)
+	if updated.Canonical != "вдовец" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление — у Title нет строгих FK, конфликта не бывает.
+	requireStatusS(t, delReq(t, h, owner, "/api/titles/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/titles/"+string(created.ID)), http.StatusNotFound)
+}
+
+func createTitle(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Title {
+	t.Helper()
+
+	rec := postTitleReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeTitleS(t, rec)
+}
+
+func decodeTitleS(t *testing.T, rec *httptest.ResponseRecorder) transport.Title {
+	t.Helper()
+
+	var s transport.Title
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return s
+}
+
+func postTitleReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/titles", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putTitleReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestGivenNameWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» (так же собран internal/app) для записи словарных
+// записей имён — через NewAPIHandler с реальной сессией владельца:
+// bootstrap-регистрация → создание → чтение → изменение → удаление →
+// повторное чтение — 404 (по образцу TestSurnameWriteContractWithRealStore,
+// без 409-сценария: у GivenName нет строгих внешних ключей,
+// docs/data-model/entity-write.md). Дополнительно проверяет поле gender —
+// единственное отличие GivenName от остальных трёх словарных сущностей.
+func TestGivenNameWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		GivenNames: newGivenNameService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание записи с полом male.
+	created := createGivenName(t, h, owner,
+		`{"canonical":"Иван","gender":"male","variants":[{"text":"Иоанн"}],"items":[],"notes":[]}`, http.StatusCreated)
+	if created.Canonical != "Иван" {
+		t.Fatalf("created = %+v", created)
+	}
+	if created.Gender != models.NameGenderMale {
+		t.Fatalf("created.Gender = %q, want male", created.Gender)
+	}
+	if !strings.HasPrefix(string(created.ID), "GN-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю, gender виден в ответе.
+	rec := getReq(t, h, "/api/given-names/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"canonical":"Иван"`) || !strings.Contains(rec.Body.String(), `"gender":"male"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена canonical/gender/variants/items/notes, gender → neutral.
+	rec = putGivenNameReq(t, h, owner, "/api/given-names/"+string(created.ID),
+		`{"canonical":"Саша","gender":"neutral","variants":[],"items":[],"notes":[]}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeGivenNameS(t, rec)
+	if updated.Canonical != "Саша" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+	if updated.Gender != models.NameGenderNeutral {
+		t.Fatalf("updated.Gender = %q, want neutral", updated.Gender)
+	}
+
+	// Удаление — у GivenName нет строгих FK, конфликта не бывает.
+	requireStatusS(t, delReq(t, h, owner, "/api/given-names/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/given-names/"+string(created.ID)), http.StatusNotFound)
+}
+
+func createGivenName(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.GivenName {
+	t.Helper()
+
+	rec := postGivenNameReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeGivenNameS(t, rec)
+}
+
+func decodeGivenNameS(t *testing.T, rec *httptest.ResponseRecorder) transport.GivenName {
+	t.Helper()
+
+	var s transport.GivenName
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return s
+}
+
+func postGivenNameReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/given-names", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putGivenNameReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
 // TestDivisionCreateWithoutCSRFHeaderIs400: валидная сессия владельца, но без
 // X-Requested-With — 400 (requireCSRFHeader), сценарий не вызывается. Пин на
 // то, что NewAPIHandler реально оборачивает division-записи, не только auth.

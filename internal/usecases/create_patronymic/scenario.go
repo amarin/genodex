@@ -7,7 +7,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «создание словарной записи фамилии».
+// Scenario — сценарий «создание словарной записи отчества».
 type Scenario struct {
 	store PatronymicStore
 	ids   IDGenerator

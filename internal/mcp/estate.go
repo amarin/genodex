@@ -12,7 +12,7 @@ import (
 )
 
 // registerEstateTools регистрирует тулы для работы со словарными записями
-// фамилий. Запись variants/items/notes — только текстом (v1, как и веб-форма,
+// сословий. Запись variants/items/notes — только текстом (v1, как и веб-форма,
 // docs/data-model/entity-write.md §4): элемент с уже существующей ссылкой
 // (Ref/Type) через эти тулы не создать, только прочитать (list/get/search
 // отдают полный TextRef, включая Ref/Type). ВАЖНО: estate_update заменяет
@@ -22,7 +22,7 @@ import (
 func registerEstateTools(s *server.MCPServer, estates EstateService) {
 	tool := mcp.NewTool(
 		"estate_list",
-		mcp.WithDescription("Список словарных записей фамилий в порядке сохранения; результат короче размера окна — конец списка"),
+		mcp.WithDescription("Список словарных записей сословий в порядке сохранения; результат короче размера окна — конец списка"),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
 	)
@@ -30,7 +30,7 @@ func registerEstateTools(s *server.MCPServer, estates EstateService) {
 
 	tool = mcp.NewTool(
 		"estate_search",
-		mcp.WithDescription("Поиск словарных записей фамилий по началу канонической формы (включая варианты); результат — JSON-массив записей. Пустой q — пустой результат"),
+		mcp.WithDescription("Поиск словарных записей сословий по началу канонической формы (включая варианты); результат — JSON-массив записей. Пустой q — пустой результат"),
 		mcp.WithString("q", mcp.Required(), mcp.Description("Начало канонической формы или варианта")),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
@@ -39,14 +39,14 @@ func registerEstateTools(s *server.MCPServer, estates EstateService) {
 
 	tool = mcp.NewTool(
 		"estate_get",
-		mcp.WithDescription("Словарная запись фамилии по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
+		mcp.WithDescription("Словарная запись сословия по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например ES-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, estateGetHandler(estates))
 
 	tool = mcp.NewTool(
 		"estate_create",
-		mcp.WithDescription("Создать словарную запись фамилии; id генерируется сервером; результат — JSON созданной записи. variants/items/notes — списки текста (без ссылок на другие сущности, v1)"),
+		mcp.WithDescription("Создать словарную запись сословия; id генерируется сервером; результат — JSON созданной записи. variants/items/notes — списки текста (без ссылок на другие сущности, v1)"),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
 		mcp.WithArray("items", mcp.WithStringItems(), mcp.Description("Носители/употребления — кто использует эту форму (текстом)")),
@@ -56,7 +56,7 @@ func registerEstateTools(s *server.MCPServer, estates EstateService) {
 
 	tool = mcp.NewTool(
 		"estate_update",
-		mcp.WithDescription("Изменить словарную запись фамилии: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из estate_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить словарную запись сословия: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из estate_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Новая каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
@@ -67,7 +67,7 @@ func registerEstateTools(s *server.MCPServer, estates EstateService) {
 
 	tool = mcp.NewTool(
 		"estate_delete",
-		mcp.WithDescription("Удалить словарную запись фамилии. Необратимо. Если на неё есть строгие ссылки от других сущностей — ошибка тула (для Estate такое сегодня не создаётся, но общий механизм проверки один для всех сущностей)"),
+		mcp.WithDescription("Удалить словарную запись сословия. Необратимо. Если на неё есть строгие ссылки от других сущностей — ошибка тула (для Estate такое сегодня не создаётся, но общий механизм проверки один для всех сущностей)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 	)
 	s.AddTool(tool, estateDeleteHandler(estates))

@@ -2,7 +2,7 @@ package transport
 
 import "github.com/amarin/genodex/internal/models"
 
-// Title — контракт словарной записи фамилии (GET /api/titles, MCP-тул title_list).
+// Title — контракт словарной записи титула (GET /api/titles, MCP-тул title_list).
 type Title struct {
 	ID        models.ID `json:"id"`
 	Canonical string    `json:"canonical"`

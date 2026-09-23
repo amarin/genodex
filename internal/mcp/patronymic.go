@@ -12,7 +12,7 @@ import (
 )
 
 // registerPatronymicTools регистрирует тулы для работы со словарными записями
-// фамилий. Запись variants/items/notes — только текстом (v1, как и веб-форма,
+// отчеств. Запись variants/items/notes — только текстом (v1, как и веб-форма,
 // docs/data-model/entity-write.md §4): элемент с уже существующей ссылкой
 // (Ref/Type) через эти тулы не создать, только прочитать (list/get/search
 // отдают полный TextRef, включая Ref/Type). ВАЖНО: patronymic_update заменяет
@@ -22,7 +22,7 @@ import (
 func registerPatronymicTools(s *server.MCPServer, patronymics PatronymicService) {
 	tool := mcp.NewTool(
 		"patronymic_list",
-		mcp.WithDescription("Список словарных записей фамилий в порядке сохранения; результат короче размера окна — конец списка"),
+		mcp.WithDescription("Список словарных записей отчеств в порядке сохранения; результат короче размера окна — конец списка"),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
 	)
@@ -30,7 +30,7 @@ func registerPatronymicTools(s *server.MCPServer, patronymics PatronymicService)
 
 	tool = mcp.NewTool(
 		"patronymic_search",
-		mcp.WithDescription("Поиск словарных записей фамилий по началу канонической формы (включая варианты); результат — JSON-массив записей. Пустой q — пустой результат"),
+		mcp.WithDescription("Поиск словарных записей отчеств по началу канонической формы (включая варианты); результат — JSON-массив записей. Пустой q — пустой результат"),
 		mcp.WithString("q", mcp.Required(), mcp.Description("Начало канонической формы или варианта")),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
@@ -39,14 +39,14 @@ func registerPatronymicTools(s *server.MCPServer, patronymics PatronymicService)
 
 	tool = mcp.NewTool(
 		"patronymic_get",
-		mcp.WithDescription("Словарная запись фамилии по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
+		mcp.WithDescription("Словарная запись отчества по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например PN-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, patronymicGetHandler(patronymics))
 
 	tool = mcp.NewTool(
 		"patronymic_create",
-		mcp.WithDescription("Создать словарную запись фамилии; id генерируется сервером; результат — JSON созданной записи. variants/items/notes — списки текста (без ссылок на другие сущности, v1)"),
+		mcp.WithDescription("Создать словарную запись отчества; id генерируется сервером; результат — JSON созданной записи. variants/items/notes — списки текста (без ссылок на другие сущности, v1)"),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
 		mcp.WithArray("items", mcp.WithStringItems(), mcp.Description("Носители/употребления — кто использует эту форму (текстом)")),
@@ -56,7 +56,7 @@ func registerPatronymicTools(s *server.MCPServer, patronymics PatronymicService)
 
 	tool = mcp.NewTool(
 		"patronymic_update",
-		mcp.WithDescription("Изменить словарную запись фамилии: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из patronymic_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить словарную запись отчества: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из patronymic_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Новая каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
@@ -67,7 +67,7 @@ func registerPatronymicTools(s *server.MCPServer, patronymics PatronymicService)
 
 	tool = mcp.NewTool(
 		"patronymic_delete",
-		mcp.WithDescription("Удалить словарную запись фамилии. Необратимо. Если на неё есть строгие ссылки от других сущностей — ошибка тула (для Patronymic такое сегодня не создаётся, но общий механизм проверки один для всех сущностей)"),
+		mcp.WithDescription("Удалить словарную запись отчества. Необратимо. Если на неё есть строгие ссылки от других сущностей — ошибка тула (для Patronymic такое сегодня не создаётся, но общий механизм проверки один для всех сущностей)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 	)
 	s.AddTool(tool, patronymicDeleteHandler(patronymics))

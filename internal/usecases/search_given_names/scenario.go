@@ -8,7 +8,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «поиск словарных записей фамилий».
+// Scenario — сценарий «поиск словарных записей имён».
 type Scenario struct {
 	givenNames GivenNameRepo
 }

@@ -10,7 +10,7 @@ interface TitleFormValues {
 
 const FORM_FIELDS: (keyof TitleFormValues)[] = ["canonical"];
 
-// CreateTitleModal — форма создания словарной записи фамилии. variants/
+// CreateTitleModal — форма создания словарной записи титула. variants/
 // items/notes редактируются вне antd Form (TextRefListEditor — не обычный
 // текстовый инпут), собираются в одно тело запроса на submit.
 export function CreateTitleModal({

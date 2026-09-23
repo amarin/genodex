@@ -248,10 +248,10 @@ func (s *titleService) DeleteTitle(ctx context.Context, id models.ID) error {
 	return s.del.DeleteTitle(ctx, id)
 }
 
-// given_nameService — фасад всех сценариев словарных записей (имён), отдаваемых
+// givenNameService — фасад всех сценариев словарных записей (имён), отдаваемых
 // HTTP и MCP. Тот же приём, что divisionService/surnameService — по одному
 // полю на сценарий, тонкие методы-делегаты (docs/data-model/entity-write.md §3).
-type given_nameService struct {
+type givenNameService struct {
 	list   *list_given_names.Scenario
 	search *search_given_names.Scenario
 	get    *get_given_name.Scenario
@@ -260,27 +260,27 @@ type given_nameService struct {
 	del    *delete_given_name.Scenario
 }
 
-func (s *given_nameService) ListGivenNames(ctx context.Context, access models.Access, page models.Page) ([]models.GivenName, error) {
+func (s *givenNameService) ListGivenNames(ctx context.Context, access models.Access, page models.Page) ([]models.GivenName, error) {
 	return s.list.ListGivenNames(ctx, access, page)
 }
 
-func (s *given_nameService) SearchGivenNames(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.GivenName, error) {
+func (s *givenNameService) SearchGivenNames(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.GivenName, error) {
 	return s.search.SearchGivenNames(ctx, access, q)
 }
 
-func (s *given_nameService) GetGivenName(ctx context.Context, id models.ID) (models.GivenName, error) {
+func (s *givenNameService) GetGivenName(ctx context.Context, id models.ID) (models.GivenName, error) {
 	return s.get.GetGivenName(ctx, id)
 }
 
-func (s *given_nameService) CreateGivenName(ctx context.Context, x models.GivenName) (models.GivenName, error) {
+func (s *givenNameService) CreateGivenName(ctx context.Context, x models.GivenName) (models.GivenName, error) {
 	return s.create.CreateGivenName(ctx, x)
 }
 
-func (s *given_nameService) UpdateGivenName(ctx context.Context, x models.GivenName) error {
+func (s *givenNameService) UpdateGivenName(ctx context.Context, x models.GivenName) error {
 	return s.update.UpdateGivenName(ctx, x)
 }
 
-func (s *given_nameService) DeleteGivenName(ctx context.Context, id models.ID) error {
+func (s *givenNameService) DeleteGivenName(ctx context.Context, id models.ID) error {
 	return s.del.DeleteGivenName(ctx, id)
 }
 
@@ -295,8 +295,8 @@ var (
 	_ mcp.EstateService         = (*estateService)(nil)
 	_ httpapi.TitleService      = (*titleService)(nil)
 	_ mcp.TitleService          = (*titleService)(nil)
-	_ httpapi.GivenNameService  = (*given_nameService)(nil)
-	_ mcp.GivenNameService      = (*given_nameService)(nil)
+	_ httpapi.GivenNameService  = (*givenNameService)(nil)
+	_ mcp.GivenNameService      = (*givenNameService)(nil)
 	_ httpapi.AuthService       = (*auth.Service)(nil)
 	_ mcp.TokenResolver         = (*auth.Service)(nil)
 )
@@ -353,7 +353,7 @@ func New(cfg Config) (*App, error) {
 		del:    delete_title.New(st),
 	}
 
-	given_names := &given_nameService{
+	givenNames := &givenNameService{
 		list:   list_given_names.New(st),
 		search: search_given_names.New(st),
 		get:    get_given_name.New(st),
@@ -370,7 +370,7 @@ func New(cfg Config) (*App, error) {
 	mux.Handle("/mcp", mcp.RequireAPIToken(authService)(server.NewStreamableHTTPServer(
 		mcp.NewServer(mcp.Deps{
 			Divisions: divisions, Surnames: surnames,
-			Patronymics: patronymics, Estates: estates, Titles: titles, GivenNames: given_names,
+			Patronymics: patronymics, Estates: estates, Titles: titles, GivenNames: givenNames,
 		}),
 	)))
 	mux.Handle("/api/", httpapi.NewAPIHandler(httpapi.Deps{
@@ -379,7 +379,7 @@ func New(cfg Config) (*App, error) {
 		Patronymics: patronymics,
 		Estates:     estates,
 		Titles:      titles,
-		GivenNames:  given_names,
+		GivenNames:  givenNames,
 		Auth:        authService,
 		DocsFS:      genodex.DocsFS(cfg.WebMode),
 		TrustProxy:  cfg.TrustProxy,

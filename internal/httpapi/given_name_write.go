@@ -34,7 +34,7 @@ func handleGivenNameCreate(givenNames GivenNameService) http.HandlerFunc {
 }
 
 // handleGivenNameUpdate — PUT /api/given-names/{id}: полная замена
-// canonical/variants/items/notes. Читает текущую версию, накладывает поля
+// canonical/gender/variants/items/notes. Читает текущую версию, накладывает поля
 // запроса (fetch-then-merge — как handleDivisionUpdate; у GivenName сейчас DTO
 // покрывает всю модель, но конвенция общая для будущих сущностей, чей DTO
 // v1 не покрывает всех полей модели, docs/data-model/entity-write.md §3).

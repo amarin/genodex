@@ -44,7 +44,7 @@ function TextRefListView({ items }: { items: TextRef[] }) {
   );
 }
 
-// EstateView — просмотр словарной записи фамилии, переключаемый в форму
+// EstateView — просмотр словарной записи сословия, переключаемый в форму
 // редактирования на той же странице (тот же toggle+explicit-save, что
 // DivisionView — PUT заменяет запись целиком, docs/data-model/entity-write.md
 // §4). Без родителя/детей/дерева — Estate не иерархична, в отличие от

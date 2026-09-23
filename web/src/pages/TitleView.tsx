@@ -44,7 +44,7 @@ function TextRefListView({ items }: { items: TextRef[] }) {
   );
 }
 
-// TitleView — просмотр словарной записи фамилии, переключаемый в форму
+// TitleView — просмотр словарной записи титула, переключаемый в форму
 // редактирования на той же странице (тот же toggle+explicit-save, что
 // DivisionView — PUT заменяет запись целиком, docs/data-model/entity-write.md
 // §4). Без родителя/детей/дерева — Title не иерархична, в отличие от

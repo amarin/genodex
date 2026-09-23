@@ -14,17 +14,41 @@ import (
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
+	create_estate "github.com/amarin/genodex/internal/usecases/create_estate"
+	create_given_name "github.com/amarin/genodex/internal/usecases/create_given_name"
+	create_patronymic "github.com/amarin/genodex/internal/usecases/create_patronymic"
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
+	create_title "github.com/amarin/genodex/internal/usecases/create_title"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
+	delete_estate "github.com/amarin/genodex/internal/usecases/delete_estate"
+	delete_given_name "github.com/amarin/genodex/internal/usecases/delete_given_name"
+	delete_patronymic "github.com/amarin/genodex/internal/usecases/delete_patronymic"
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
+	delete_title "github.com/amarin/genodex/internal/usecases/delete_title"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
+	get_estate "github.com/amarin/genodex/internal/usecases/get_estate"
+	get_given_name "github.com/amarin/genodex/internal/usecases/get_given_name"
+	get_patronymic "github.com/amarin/genodex/internal/usecases/get_patronymic"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
+	get_title "github.com/amarin/genodex/internal/usecases/get_title"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
+	list_estates "github.com/amarin/genodex/internal/usecases/list_estates"
+	list_given_names "github.com/amarin/genodex/internal/usecases/list_given_names"
+	list_patronymics "github.com/amarin/genodex/internal/usecases/list_patronymics"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
+	list_titles "github.com/amarin/genodex/internal/usecases/list_titles"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
+	search_estates "github.com/amarin/genodex/internal/usecases/search_estates"
+	search_given_names "github.com/amarin/genodex/internal/usecases/search_given_names"
+	search_patronymics "github.com/amarin/genodex/internal/usecases/search_patronymics"
 	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
+	search_titles "github.com/amarin/genodex/internal/usecases/search_titles"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
+	update_estate "github.com/amarin/genodex/internal/usecases/update_estate"
+	update_given_name "github.com/amarin/genodex/internal/usecases/update_given_name"
+	update_patronymic "github.com/amarin/genodex/internal/usecases/update_patronymic"
 	update_surname "github.com/amarin/genodex/internal/usecases/update_surname"
+	update_title "github.com/amarin/genodex/internal/usecases/update_title"
 )
 
 // divisionService — сборка httpapi.DivisionService на настоящих сценариях
@@ -122,6 +146,202 @@ func newSurnameService(t *testing.T, st *sqlstore.Store) *surnameService {
 		create: create_surname.New(st, idgen.New()),
 		update: update_surname.New(st),
 		del:    delete_surname.New(st),
+	}
+}
+
+// patronymicService — сборка httpapi.PatronymicService на настоящих сценариях
+// (так же собран internal/app's patronymicService).
+type patronymicService struct {
+	list   *list_patronymics.Scenario
+	search *search_patronymics.Scenario
+	get    *get_patronymic.Scenario
+	create *create_patronymic.Scenario
+	update *update_patronymic.Scenario
+	del    *delete_patronymic.Scenario
+}
+
+func (s *patronymicService) ListPatronymics(ctx context.Context, access models.Access, page models.Page) ([]models.Patronymic, error) {
+	return s.list.ListPatronymics(ctx, access, page)
+}
+
+func (s *patronymicService) SearchPatronymics(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Patronymic, error) {
+	return s.search.SearchPatronymics(ctx, access, q)
+}
+
+func (s *patronymicService) GetPatronymic(ctx context.Context, id models.ID) (models.Patronymic, error) {
+	return s.get.GetPatronymic(ctx, id)
+}
+
+func (s *patronymicService) CreatePatronymic(ctx context.Context, x models.Patronymic) (models.Patronymic, error) {
+	return s.create.CreatePatronymic(ctx, x)
+}
+
+func (s *patronymicService) UpdatePatronymic(ctx context.Context, x models.Patronymic) error {
+	return s.update.UpdatePatronymic(ctx, x)
+}
+
+func (s *patronymicService) DeletePatronymic(ctx context.Context, id models.ID) error {
+	return s.del.DeletePatronymic(ctx, id)
+}
+
+// newPatronymicService собирает фасад на настоящем хранилище.
+func newPatronymicService(t *testing.T, st *sqlstore.Store) *patronymicService {
+	t.Helper()
+
+	return &patronymicService{
+		list:   list_patronymics.New(st),
+		search: search_patronymics.New(st),
+		get:    get_patronymic.New(st),
+		create: create_patronymic.New(st, idgen.New()),
+		update: update_patronymic.New(st),
+		del:    delete_patronymic.New(st),
+	}
+}
+
+// estateService — сборка httpapi.EstateService на настоящих сценариях
+// (так же собран internal/app's estateService).
+type estateService struct {
+	list   *list_estates.Scenario
+	search *search_estates.Scenario
+	get    *get_estate.Scenario
+	create *create_estate.Scenario
+	update *update_estate.Scenario
+	del    *delete_estate.Scenario
+}
+
+func (s *estateService) ListEstates(ctx context.Context, access models.Access, page models.Page) ([]models.Estate, error) {
+	return s.list.ListEstates(ctx, access, page)
+}
+
+func (s *estateService) SearchEstates(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Estate, error) {
+	return s.search.SearchEstates(ctx, access, q)
+}
+
+func (s *estateService) GetEstate(ctx context.Context, id models.ID) (models.Estate, error) {
+	return s.get.GetEstate(ctx, id)
+}
+
+func (s *estateService) CreateEstate(ctx context.Context, x models.Estate) (models.Estate, error) {
+	return s.create.CreateEstate(ctx, x)
+}
+
+func (s *estateService) UpdateEstate(ctx context.Context, x models.Estate) error {
+	return s.update.UpdateEstate(ctx, x)
+}
+
+func (s *estateService) DeleteEstate(ctx context.Context, id models.ID) error {
+	return s.del.DeleteEstate(ctx, id)
+}
+
+// newEstateService собирает фасад на настоящем хранилище.
+func newEstateService(t *testing.T, st *sqlstore.Store) *estateService {
+	t.Helper()
+
+	return &estateService{
+		list:   list_estates.New(st),
+		search: search_estates.New(st),
+		get:    get_estate.New(st),
+		create: create_estate.New(st, idgen.New()),
+		update: update_estate.New(st),
+		del:    delete_estate.New(st),
+	}
+}
+
+// titleService — сборка httpapi.TitleService на настоящих сценариях
+// (так же собран internal/app's titleService).
+type titleService struct {
+	list   *list_titles.Scenario
+	search *search_titles.Scenario
+	get    *get_title.Scenario
+	create *create_title.Scenario
+	update *update_title.Scenario
+	del    *delete_title.Scenario
+}
+
+func (s *titleService) ListTitles(ctx context.Context, access models.Access, page models.Page) ([]models.Title, error) {
+	return s.list.ListTitles(ctx, access, page)
+}
+
+func (s *titleService) SearchTitles(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Title, error) {
+	return s.search.SearchTitles(ctx, access, q)
+}
+
+func (s *titleService) GetTitle(ctx context.Context, id models.ID) (models.Title, error) {
+	return s.get.GetTitle(ctx, id)
+}
+
+func (s *titleService) CreateTitle(ctx context.Context, x models.Title) (models.Title, error) {
+	return s.create.CreateTitle(ctx, x)
+}
+
+func (s *titleService) UpdateTitle(ctx context.Context, x models.Title) error {
+	return s.update.UpdateTitle(ctx, x)
+}
+
+func (s *titleService) DeleteTitle(ctx context.Context, id models.ID) error {
+	return s.del.DeleteTitle(ctx, id)
+}
+
+// newTitleService собирает фасад на настоящем хранилище.
+func newTitleService(t *testing.T, st *sqlstore.Store) *titleService {
+	t.Helper()
+
+	return &titleService{
+		list:   list_titles.New(st),
+		search: search_titles.New(st),
+		get:    get_title.New(st),
+		create: create_title.New(st, idgen.New()),
+		update: update_title.New(st),
+		del:    delete_title.New(st),
+	}
+}
+
+// givenNameService — сборка httpapi.GivenNameService на настоящих сценариях
+// (так же собран internal/app's givenNameService).
+type givenNameService struct {
+	list   *list_given_names.Scenario
+	search *search_given_names.Scenario
+	get    *get_given_name.Scenario
+	create *create_given_name.Scenario
+	update *update_given_name.Scenario
+	del    *delete_given_name.Scenario
+}
+
+func (s *givenNameService) ListGivenNames(ctx context.Context, access models.Access, page models.Page) ([]models.GivenName, error) {
+	return s.list.ListGivenNames(ctx, access, page)
+}
+
+func (s *givenNameService) SearchGivenNames(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.GivenName, error) {
+	return s.search.SearchGivenNames(ctx, access, q)
+}
+
+func (s *givenNameService) GetGivenName(ctx context.Context, id models.ID) (models.GivenName, error) {
+	return s.get.GetGivenName(ctx, id)
+}
+
+func (s *givenNameService) CreateGivenName(ctx context.Context, x models.GivenName) (models.GivenName, error) {
+	return s.create.CreateGivenName(ctx, x)
+}
+
+func (s *givenNameService) UpdateGivenName(ctx context.Context, x models.GivenName) error {
+	return s.update.UpdateGivenName(ctx, x)
+}
+
+func (s *givenNameService) DeleteGivenName(ctx context.Context, id models.ID) error {
+	return s.del.DeleteGivenName(ctx, id)
+}
+
+// newGivenNameService собирает фасад на настоящем хранилище.
+func newGivenNameService(t *testing.T, st *sqlstore.Store) *givenNameService {
+	t.Helper()
+
+	return &givenNameService{
+		list:   list_given_names.New(st),
+		search: search_given_names.New(st),
+		get:    get_given_name.New(st),
+		create: create_given_name.New(st, idgen.New()),
+		update: update_given_name.New(st),
+		del:    delete_given_name.New(st),
 	}
 }
 

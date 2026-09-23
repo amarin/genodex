@@ -44,7 +44,7 @@ function TextRefListView({ items }: { items: TextRef[] }) {
   );
 }
 
-// PatronymicView — просмотр словарной записи фамилии, переключаемый в форму
+// PatronymicView — просмотр словарной записи отчества, переключаемый в форму
 // редактирования на той же странице (тот же toggle+explicit-save, что
 // DivisionView — PUT заменяет запись целиком, docs/data-model/entity-write.md
 // §4). Без родителя/детей/дерева — Patronymic не иерархична, в отличие от

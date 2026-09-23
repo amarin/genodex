@@ -6,7 +6,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «удаление словарной записи фамилии».
+// Scenario — сценарий «удаление словарной записи отчества».
 type Scenario struct {
 	patronymics PatronymicRepo
 }

@@ -40,6 +40,21 @@
   (`internal/usecases/{list,search,get,create,update,delete}_surname*`,
   `internal/httpapi/surname.go`, `internal/mcp/surname.go`,
   `web/src/pages/{SurnamesList,SurnameView,SurnameForm}.tsx`).
+- Отчества/Сословия/Титулы/Имена (`Patronymic`/`Estate`/`Title`/`GivenName`) —
+  ещё 4 словарные сущности по образцу Surname, полный CRUD: HTTP
+  (`/api/patronymics*`, `/api/estates*`, `/api/titles*`,
+  `/api/given-names*`) и MCP (`patronymic_*`/`estate_*`/`title_*`/
+  `given_name_*` — по 6 тулов на сущность), веб-страницы
+  (список/просмотр/редактирование/создание) с текстовыми списками
+  вариантов написания, носителей и заметок; у `GivenName` дополнительно
+  обязательное поле `gender` (`male`/`female`/`neutral`) — единственное
+  отличие от остальных трёх
+  (`internal/usecases/{list,search,get,create,update,delete}_{patronymic,estate,title,given_name}*`,
+  `internal/httpapi/{patronymic,estate,title,given_name}*.go`,
+  `internal/mcp/{patronymic,estate,title,given_name}.go`,
+  `web/src/pages/{PatronymicsList,PatronymicView,PatronymicForm,EstatesList,
+  EstateView,EstateForm,TitlesList,TitleView,TitleForm,GivenNamesList,
+  GivenNameView,GivenNameForm}.tsx`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

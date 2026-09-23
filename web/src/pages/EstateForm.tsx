@@ -10,7 +10,7 @@ interface EstateFormValues {
 
 const FORM_FIELDS: (keyof EstateFormValues)[] = ["canonical"];
 
-// CreateEstateModal — форма создания словарной записи фамилии. variants/
+// CreateEstateModal — форма создания словарной записи сословия. variants/
 // items/notes редактируются вне antd Form (TextRefListEditor — не обычный
 // текстовый инпут), собираются в одно тело запроса на submit.
 export function CreateEstateModal({

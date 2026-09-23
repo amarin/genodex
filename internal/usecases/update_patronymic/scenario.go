@@ -7,7 +7,7 @@ import (
 	"github.com/amarin/genodex/internal/store"
 )
 
-// Scenario — сценарий «изменение словарной записи фамилии».
+// Scenario — сценарий «изменение словарной записи отчества».
 type Scenario struct {
 	store PatronymicStore
 }

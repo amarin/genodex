@@ -2,7 +2,7 @@ package transport
 
 import "github.com/amarin/genodex/internal/models"
 
-// Patronymic — контракт словарной записи фамилии (GET /api/patronymics, MCP-тул patronymic_list).
+// Patronymic — контракт словарной записи отчества (GET /api/patronymics, MCP-тул patronymic_list).
 type Patronymic struct {
 	ID        models.ID `json:"id"`
 	Canonical string    `json:"canonical"`
