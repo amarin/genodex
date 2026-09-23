@@ -6,9 +6,11 @@ import { Link } from "react-router-dom";
 // entity-write.md §4) — здесь просто добавляется новая строка, без вкладок.
 const CATALOG_ENTRIES: { label: string; path: string }[] = [
   { label: "Административное деление", path: "/divisions" },
+  { label: "Архивы", path: "/archives" },
   { label: "Документация", path: "/docs" },
   { label: "Имена", path: "/given-names" },
   { label: "Отчества", path: "/patronymics" },
+  { label: "Приходы", path: "/parishes" },
   { label: "Сословия", path: "/estates" },
   { label: "Титулы", path: "/titles" },
   { label: "Фамилии", path: "/surnames" },

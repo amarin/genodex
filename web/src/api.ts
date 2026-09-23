@@ -780,3 +780,169 @@ export async function updateChurch(id: string, input: ChurchInput): Promise<Chur
 export async function deleteChurch(id: string): Promise<void> {
   return authFetch<void>(`/api/churches/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+export interface Parish {
+  id: string;
+  name: string;
+  church?: TextRef | null;
+  settlements: TextRef[];
+  since?: FactDate | null;
+  until?: FactDate | null;
+  notes: TextRef[];
+  sources: SourceLink[];
+}
+
+export interface ParishInput {
+  name: string;
+  church?: TextRef | null;
+  settlements: TextRef[];
+  since?: FactDate | null;
+  until?: FactDate | null;
+  notes: TextRef[];
+}
+
+export interface ParishQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface ParishSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchParishes(query: ParishQuery = {}): Promise<Parish[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/parishes${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchParishes(query: ParishSearchQuery): Promise<Parish[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/parishes/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchParish(id: string): Promise<Parish> {
+  return authFetch<Parish>(`/api/parishes/${encodeURIComponent(id)}`);
+}
+
+export async function createParish(input: ParishInput): Promise<Parish> {
+  return authFetch<Parish>("/api/parishes", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateParish(id: string, input: ParishInput): Promise<Parish> {
+  return authFetch<Parish>(`/api/parishes/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteParish(id: string): Promise<void> {
+  return authFetch<void>(`/api/parishes/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export interface Archive {
+  id: string;
+  name: string;
+  system?: TextRef | null;
+  repository_id?: string;
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+// ArchiveInput — repository_id — просто id (не TextRef, в отличие от
+// system/parish/church у других сущностей): пустая строка — без хранилища.
+export interface ArchiveInput {
+  name: string;
+  system?: TextRef | null;
+  repository_id?: string;
+  notes: TextRef[];
+  private: boolean;
+}
+
+export interface ArchiveQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface ArchiveSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchArchives(query: ArchiveQuery = {}): Promise<Archive[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/archives${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchArchives(query: ArchiveSearchQuery): Promise<Archive[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/archives/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchArchive(id: string): Promise<Archive> {
+  return authFetch<Archive>(`/api/archives/${encodeURIComponent(id)}`);
+}
+
+export async function createArchive(input: ArchiveInput): Promise<Archive> {
+  return authFetch<Archive>("/api/archives", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateArchive(id: string, input: ArchiveInput): Promise<Archive> {
+  return authFetch<Archive>(`/api/archives/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteArchive(id: string): Promise<void> {
+  return authFetch<void>(`/api/archives/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

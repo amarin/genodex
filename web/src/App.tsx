@@ -21,6 +21,10 @@ import RepositoriesList from "./pages/RepositoriesList";
 import RepositoryView from "./pages/RepositoryView";
 import ChurchesList from "./pages/ChurchesList";
 import ChurchView from "./pages/ChurchView";
+import ParishesList from "./pages/ParishesList";
+import ParishView from "./pages/ParishView";
+import ArchivesList from "./pages/ArchivesList";
+import ArchiveView from "./pages/ArchiveView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -64,6 +68,10 @@ export default function App() {
           <Route path="/repositories/:id" element={<PageLayout><RepositoryView /></PageLayout>} />
           <Route path="/churches" element={<PageLayout><ChurchesList /></PageLayout>} />
           <Route path="/churches/:id" element={<PageLayout><ChurchView /></PageLayout>} />
+          <Route path="/parishes" element={<PageLayout><ParishesList /></PageLayout>} />
+          <Route path="/parishes/:id" element={<PageLayout><ParishView /></PageLayout>} />
+          <Route path="/archives" element={<PageLayout><ArchivesList /></PageLayout>} />
+          <Route path="/archives/:id" element={<PageLayout><ArchiveView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />
