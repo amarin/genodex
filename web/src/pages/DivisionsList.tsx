@@ -54,15 +54,31 @@ export default function DivisionsList() {
   const [searching, setSearching] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
-  const loadRoot = () => {
+  // loadRoot — бэк без parent_id отдаёт единицы окнами (limit/offset),
+  // отсортированными по порядку вставки, а не по признаку «корень/не
+  // корень». Поэтому проходим все страницы до конца (тот же приём, что
+  // internal/usecases/list_divisions/scenario.go на бэке), иначе корни,
+  // вставленные позже первых MAX_PAGE_LIMIT записей, молча пропадают.
+  const loadRoot = async () => {
     setLoading(true);
     setError(null);
-    fetchAdminDivisions({ limit: MAX_PAGE_LIMIT })
-      .then((items) =>
-        setTreeData(items.filter((d) => d.parent_id == null).map(toTreeNode)),
-      )
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+    try {
+      const roots: AdminDivision[] = [];
+      let offset = 0;
+      for (;;) {
+        const page = await fetchAdminDivisions({ limit: MAX_PAGE_LIMIT, offset });
+        roots.push(...page.filter((d) => d.parent_id == null));
+        if (page.length < MAX_PAGE_LIMIT) {
+          break;
+        }
+        offset += MAX_PAGE_LIMIT;
+      }
+      setTreeData(roots.map(toTreeNode));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось загрузить список");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -70,11 +86,16 @@ export default function DivisionsList() {
   }, []);
 
   const onLoadData = async (node: EventDataNode<DataNode>) => {
-    const children = await fetchAdminDivisions({
-      parent_id: String(node.key),
-      limit: MAX_PAGE_LIMIT,
-    });
-    setTreeData((prev) => updateTreeData(prev, String(node.key), children.map(toTreeNode)));
+    try {
+      const children = await fetchAdminDivisions({
+        parent_id: String(node.key),
+        limit: MAX_PAGE_LIMIT,
+      });
+      setTreeData((prev) => updateTreeData(prev, String(node.key), children.map(toTreeNode)));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось загрузить дочерние единицы");
+      throw e;
+    }
   };
 
   const onSelect = (keys: React.Key[]) => {
@@ -147,7 +168,6 @@ export default function DivisionsList() {
         onClose={() => setCreateOpen(false)}
         onCreated={(d) => {
           setCreateOpen(false);
-          loadRoot();
           navigate(`/divisions/${d.id}`);
         }}
       />

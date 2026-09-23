@@ -32,8 +32,9 @@ export interface ApiErrorReferrer {
 }
 
 // ApiError — тело {error, field?, referrers?} из writeAuthError/writeJSON
-// (Go). field заполнен только для *auth.ValidationError (422); referrers —
-// только для *models.InUseError (409, internal/transport/errors.go).
+// (Go). field заполнен для *auth.ValidationError и *models.ValidationError
+// (422 в обоих случаях) — остальные коды его не несут; referrers — только
+// для *models.InUseError (409, internal/transport/errors.go).
 export class ApiError extends Error {
   status: number;
   field?: string;

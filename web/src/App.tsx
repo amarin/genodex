@@ -114,8 +114,9 @@ function SettlementsTab() {
 // DivisionsTab — «Административное деление»: с id в URL показывает View
 // конкретной единицы, без id — List (дерево от корня). Тот же приём, что
 // DocsPanel использует для docPath — один компонент ветвится по параметру,
-// а не отдельный <Route> на каждый режим (Tabs ниже держит оба под одним
-// маршрутом /divisions/:id?, см. роуты в App()).
+// а не отдельный <Route> на каждый режим внутри Tabs — сами роуты /divisions
+// и /divisions/:id заведены в App() как два отдельных <Route>, ведущих на
+// один и тот же <AppContent />.
 function DivisionsTab() {
   const { id } = useParams<{ id?: string }>();
   return id != null ? <DivisionView /> : <DivisionsList />;

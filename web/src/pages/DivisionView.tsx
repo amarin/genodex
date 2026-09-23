@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   Alert,
@@ -77,10 +77,18 @@ export default function DivisionView() {
   const [deleting, setDeleting] = useState(false);
   const [conflict, setConflict] = useState<ApiErrorReferrer[] | null>(null);
 
+  // parentSearchSeq — защита от устаревших (out-of-order) ответов
+  // onParentSearch: поздний ответ на уже неактуальный запрос не должен
+  // перезаписать список результатов.
+  const parentSearchSeq = useRef(0);
+
   const load = (divisionId: string) => {
     setLoading(true);
     setNotFound(false);
     setError(null);
+    setDivision(null);
+    setParent(null);
+    setChildren([]);
     fetchDivision(divisionId)
       .then((d) => {
         setDivision(d);
@@ -110,6 +118,8 @@ export default function DivisionView() {
     setEditing(false);
     setParentPickerOpen(false);
     setSaveError(null);
+    setParentQuery("");
+    setParentResults([]);
     if (id != null) {
       load(id);
     }
@@ -123,6 +133,8 @@ export default function DivisionView() {
     setEditParentId(division.parent_id);
     setEditParentLabel(parent != null ? divisionLabel(parent) : null);
     setParentPickerOpen(false);
+    setParentQuery("");
+    setParentResults([]);
     setSaveError(null);
     setEditing(true);
   };
@@ -130,6 +142,8 @@ export default function DivisionView() {
   const cancelEdit = () => {
     setEditing(false);
     setParentPickerOpen(false);
+    setParentQuery("");
+    setParentResults([]);
     setSaveError(null);
   };
 
@@ -140,11 +154,24 @@ export default function DivisionView() {
       setParentResults([]);
       return;
     }
+    const seq = ++parentSearchSeq.current;
     setParentSearching(true);
     searchAdminDivisions({ q, limit: 20 })
-      .then((results) => setParentResults(results.filter((r) => r.id !== division?.id)))
-      .catch(() => setParentResults([]))
-      .finally(() => setParentSearching(false));
+      .then((results) => {
+        if (seq === parentSearchSeq.current) {
+          setParentResults(results.filter((r) => r.id !== division?.id));
+        }
+      })
+      .catch(() => {
+        if (seq === parentSearchSeq.current) {
+          setParentResults([]);
+        }
+      })
+      .finally(() => {
+        if (seq === parentSearchSeq.current) {
+          setParentSearching(false);
+        }
+      });
   };
 
   const pickParent = (d: AdminDivision | null) => {
@@ -283,7 +310,7 @@ export default function DivisionView() {
           <Form.Item
             name="name"
             label="Название"
-            rules={[{ required: true, message: "Введите название" }]}
+            rules={[{ required: true, whitespace: true, message: "Введите название" }]}
           >
             <Input />
           </Form.Item>

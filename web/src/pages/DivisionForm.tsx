@@ -84,7 +84,7 @@ export function CreateDivisionModal({
         <Form.Item
           name="name"
           label="Название"
-          rules={[{ required: true, message: "Введите название" }]}
+          rules={[{ required: true, whitespace: true, message: "Введите название" }]}
         >
           <Input autoFocus />
         </Form.Item>
