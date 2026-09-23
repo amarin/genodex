@@ -25,6 +25,10 @@ import ParishesList from "./pages/ParishesList";
 import ParishView from "./pages/ParishView";
 import ArchivesList from "./pages/ArchivesList";
 import ArchiveView from "./pages/ArchiveView";
+import ArchiveNodesList from "./pages/ArchiveNodesList";
+import ArchiveNodeView from "./pages/ArchiveNodeView";
+import ArchiveDocumentsList from "./pages/ArchiveDocumentsList";
+import ArchiveDocumentView from "./pages/ArchiveDocumentView";
 import NotesList from "./pages/NotesList";
 import NoteView from "./pages/NoteView";
 import AttachmentsList from "./pages/AttachmentsList";
@@ -80,6 +84,10 @@ export default function App() {
           <Route path="/parishes/:id" element={<PageLayout><ParishView /></PageLayout>} />
           <Route path="/archives" element={<PageLayout><ArchivesList /></PageLayout>} />
           <Route path="/archives/:id" element={<PageLayout><ArchiveView /></PageLayout>} />
+          <Route path="/archive-nodes" element={<PageLayout><ArchiveNodesList /></PageLayout>} />
+          <Route path="/archive-nodes/:id" element={<PageLayout><ArchiveNodeView /></PageLayout>} />
+          <Route path="/archive-documents" element={<PageLayout><ArchiveDocumentsList /></PageLayout>} />
+          <Route path="/archive-documents/:id" element={<PageLayout><ArchiveDocumentView /></PageLayout>} />
           <Route path="/notes" element={<PageLayout><NotesList /></PageLayout>} />
           <Route path="/notes/:id" element={<PageLayout><NoteView /></PageLayout>} />
           <Route path="/attachments" element={<PageLayout><AttachmentsList /></PageLayout>} />

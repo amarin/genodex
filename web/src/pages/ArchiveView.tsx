@@ -257,6 +257,11 @@ export default function ArchiveView() {
             <Descriptions.Item label="Доказательства"><SourceLinkListView items={archive.sources} /></Descriptions.Item>
             <Descriptions.Item label="Приватная">{archive.private ? "да" : "нет"}</Descriptions.Item>
           </Descriptions>
+          <Space style={{ marginTop: 16 }}>
+            <Link to={`/archive-nodes?archive_id=${encodeURIComponent(archive.id)}`}>
+              <Button>Архивные единицы →</Button>
+            </Link>
+          </Space>
           {session != null && (
             <Space style={{ marginTop: 16 }}>
               <Button onClick={startEdit}>Редактировать</Button>

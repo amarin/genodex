@@ -1320,3 +1320,210 @@ export async function updateCitation(id: string, input: CitationInput): Promise<
 export async function deleteCitation(id: string): Promise<void> {
   return authFetch<void>(`/api/citations/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+// ArchiveNode — узел архивного дерева (transport.ArchiveNode). Дерево
+// скопировано по обязательному ArchiveID — не одно глобальное дерево, как
+// AdminDivision, а по одному на архив (docs/data-model/entity-write.md §3.4).
+// ParentID, если задан, — родитель В ПРЕДЕЛАХ ТОГО ЖЕ архива (сервер это
+// проверяет — 422 на parent_id, если родитель из другого архива).
+export interface ArchiveNode {
+  id: string;
+  type: string;
+  archive_id: string;
+  parent_id?: string | null;
+  label: string;
+  name: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  parish?: TextRef | null;
+  settlements: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+export interface ArchiveNodeInput {
+  type: string;
+  archive_id: string;
+  parent_id?: string | null;
+  label: string;
+  name: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  parish?: TextRef | null;
+  settlements: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+// ArchiveNodeQuery — archive_id ОБЯЗАТЕЛЕН (сервер отдаёт 400 без него, узел
+// бессмысленен вне архива). parent_id — как у AdminDivisionQuery: не задан —
+// корень (внутри архива), иначе — прямые дети.
+export interface ArchiveNodeQuery {
+  archive_id: string;
+  parent_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ArchiveNodeSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchArchiveNodes(query: ArchiveNodeQuery): Promise<ArchiveNode[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/archive-nodes${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// searchArchiveNodes — GET /api/archive-nodes/search?q=. Глобальный поиск, НЕ
+// ограничен archive_id (в отличие от fetchArchiveNodes) — сужение по архиву,
+// если нужно, делает вызывающая сторона на клиенте (см. ArchiveNodesList.tsx).
+export async function searchArchiveNodes(query: ArchiveNodeSearchQuery): Promise<ArchiveNode[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/archive-nodes/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchArchiveNode(id: string): Promise<ArchiveNode> {
+  return authFetch<ArchiveNode>(`/api/archive-nodes/${encodeURIComponent(id)}`);
+}
+
+export async function createArchiveNode(input: ArchiveNodeInput): Promise<ArchiveNode> {
+  return authFetch<ArchiveNode>("/api/archive-nodes", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateArchiveNode(id: string, input: ArchiveNodeInput): Promise<ArchiveNode> {
+  return authFetch<ArchiveNode>(`/api/archive-nodes/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteArchiveNode(id: string): Promise<void> {
+  return authFetch<void>(`/api/archive-nodes/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// ArchiveDocument — документ внутри единицы учёта (transport.ArchiveDocument).
+// В отличие от ArchiveNode — плоская сущность, без собственной иерархии;
+// unit_id — обязательная строгая ссылка на ArchiveNode.
+export interface ArchiveDocument {
+  id: string;
+  unit_id: string;
+  title: string;
+  kind: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  parish?: TextRef | null;
+  settlements: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+export interface ArchiveDocumentInput {
+  unit_id: string;
+  title: string;
+  kind: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  parish?: TextRef | null;
+  settlements: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+export interface ArchiveDocumentQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface ArchiveDocumentSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchArchiveDocuments(
+  query: ArchiveDocumentQuery = {},
+): Promise<ArchiveDocument[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/archive-documents${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchArchiveDocuments(
+  query: ArchiveDocumentSearchQuery,
+): Promise<ArchiveDocument[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/archive-documents/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchArchiveDocument(id: string): Promise<ArchiveDocument> {
+  return authFetch<ArchiveDocument>(`/api/archive-documents/${encodeURIComponent(id)}`);
+}
+
+export async function createArchiveDocument(input: ArchiveDocumentInput): Promise<ArchiveDocument> {
+  return authFetch<ArchiveDocument>("/api/archive-documents", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateArchiveDocument(
+  id: string,
+  input: ArchiveDocumentInput,
+): Promise<ArchiveDocument> {
+  return authFetch<ArchiveDocument>(`/api/archive-documents/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteArchiveDocument(id: string): Promise<void> {
+  return authFetch<void>(`/api/archive-documents/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
