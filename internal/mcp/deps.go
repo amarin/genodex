@@ -77,7 +77,7 @@ type GivenNameService interface {
 type RepositoryService interface {
 	ListRepositories(ctx context.Context, access models.Access, page models.Page) ([]models.Repository, error)
 	SearchRepositories(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Repository, error)
-	GetRepository(ctx context.Context, id models.ID) (models.Repository, error)
+	GetRepository(ctx context.Context, access models.Access, id models.ID) (models.Repository, error)
 	CreateRepository(ctx context.Context, r models.Repository) (models.Repository, error)
 	UpdateRepository(ctx context.Context, r models.Repository) error
 	DeleteRepository(ctx context.Context, id models.ID) error
@@ -110,7 +110,7 @@ type ParishService interface {
 type ArchiveService interface {
 	ListArchives(ctx context.Context, access models.Access, page models.Page) ([]models.Archive, error)
 	SearchArchives(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Archive, error)
-	GetArchive(ctx context.Context, id models.ID) (models.Archive, error)
+	GetArchive(ctx context.Context, access models.Access, id models.ID) (models.Archive, error)
 	CreateArchive(ctx context.Context, a models.Archive) (models.Archive, error)
 	UpdateArchive(ctx context.Context, a models.Archive) error
 	DeleteArchive(ctx context.Context, id models.ID) error

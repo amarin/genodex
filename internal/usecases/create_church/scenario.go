@@ -7,7 +7,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «создание словарной записи фамилии».
+// Scenario — сценарий «создание записи церкви».
 type Scenario struct {
 	store ChurchStore
 	ids   IDGenerator
@@ -26,24 +26,24 @@ func New(st ChurchStore, ids IDGenerator) *Scenario {
 // Ошибки: непустой входной ID (явный идентификатор допустим только для
 // импорта) и невалидная сущность — *models.ValidationError; прочее —
 // ошибки хранилища как есть.
-func (s *Scenario) CreateChurch(ctx context.Context, sn models.Church) (models.Church, error) {
-	if sn.ID != "" {
+func (s *Scenario) CreateChurch(ctx context.Context, c models.Church) (models.Church, error) {
+	if c.ID != "" {
 		return models.Church{}, &models.ValidationError{
 			Entity: models.TypeChurch,
 			Field:  "id",
-			Reason: fmt.Sprintf("идентификатор %q задан снаружи: при создании он генерируется", sn.ID),
+			Reason: fmt.Sprintf("идентификатор %q задан снаружи: при создании он генерируется", c.ID),
 		}
 	}
 
-	sn.ID = s.ids.New(models.TypeChurch)
+	c.ID = s.ids.New(models.TypeChurch)
 
-	if err := sn.Validate(); err != nil {
+	if err := c.Validate(); err != nil {
 		return models.Church{}, err
 	}
 
-	if err := s.store.SaveChurch(ctx, &sn); err != nil {
+	if err := s.store.SaveChurch(ctx, &c); err != nil {
 		return models.Church{}, err
 	}
 
-	return sn, nil
+	return c, nil
 }

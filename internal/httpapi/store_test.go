@@ -13,40 +13,64 @@ import (
 	"github.com/amarin/genodex/internal/idgen"
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
+	create_archive "github.com/amarin/genodex/internal/usecases/create_archive"
+	create_church "github.com/amarin/genodex/internal/usecases/create_church"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
 	create_estate "github.com/amarin/genodex/internal/usecases/create_estate"
 	create_given_name "github.com/amarin/genodex/internal/usecases/create_given_name"
+	create_parish "github.com/amarin/genodex/internal/usecases/create_parish"
 	create_patronymic "github.com/amarin/genodex/internal/usecases/create_patronymic"
+	create_repository "github.com/amarin/genodex/internal/usecases/create_repository"
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	create_title "github.com/amarin/genodex/internal/usecases/create_title"
+	delete_archive "github.com/amarin/genodex/internal/usecases/delete_archive"
+	delete_church "github.com/amarin/genodex/internal/usecases/delete_church"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
 	delete_estate "github.com/amarin/genodex/internal/usecases/delete_estate"
 	delete_given_name "github.com/amarin/genodex/internal/usecases/delete_given_name"
+	delete_parish "github.com/amarin/genodex/internal/usecases/delete_parish"
 	delete_patronymic "github.com/amarin/genodex/internal/usecases/delete_patronymic"
+	delete_repository "github.com/amarin/genodex/internal/usecases/delete_repository"
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	delete_title "github.com/amarin/genodex/internal/usecases/delete_title"
+	get_archive "github.com/amarin/genodex/internal/usecases/get_archive"
+	get_church "github.com/amarin/genodex/internal/usecases/get_church"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
 	get_estate "github.com/amarin/genodex/internal/usecases/get_estate"
 	get_given_name "github.com/amarin/genodex/internal/usecases/get_given_name"
+	get_parish "github.com/amarin/genodex/internal/usecases/get_parish"
 	get_patronymic "github.com/amarin/genodex/internal/usecases/get_patronymic"
+	get_repository "github.com/amarin/genodex/internal/usecases/get_repository"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	get_title "github.com/amarin/genodex/internal/usecases/get_title"
+	list_archives "github.com/amarin/genodex/internal/usecases/list_archives"
+	list_churches "github.com/amarin/genodex/internal/usecases/list_churches"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
 	list_estates "github.com/amarin/genodex/internal/usecases/list_estates"
 	list_given_names "github.com/amarin/genodex/internal/usecases/list_given_names"
+	list_parishes "github.com/amarin/genodex/internal/usecases/list_parishes"
 	list_patronymics "github.com/amarin/genodex/internal/usecases/list_patronymics"
+	list_repositories "github.com/amarin/genodex/internal/usecases/list_repositories"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	list_titles "github.com/amarin/genodex/internal/usecases/list_titles"
+	search_archives "github.com/amarin/genodex/internal/usecases/search_archives"
+	search_churches "github.com/amarin/genodex/internal/usecases/search_churches"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
 	search_estates "github.com/amarin/genodex/internal/usecases/search_estates"
 	search_given_names "github.com/amarin/genodex/internal/usecases/search_given_names"
+	search_parishes "github.com/amarin/genodex/internal/usecases/search_parishes"
 	search_patronymics "github.com/amarin/genodex/internal/usecases/search_patronymics"
+	search_repositories "github.com/amarin/genodex/internal/usecases/search_repositories"
 	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
 	search_titles "github.com/amarin/genodex/internal/usecases/search_titles"
+	update_archive "github.com/amarin/genodex/internal/usecases/update_archive"
+	update_church "github.com/amarin/genodex/internal/usecases/update_church"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
 	update_estate "github.com/amarin/genodex/internal/usecases/update_estate"
 	update_given_name "github.com/amarin/genodex/internal/usecases/update_given_name"
+	update_parish "github.com/amarin/genodex/internal/usecases/update_parish"
 	update_patronymic "github.com/amarin/genodex/internal/usecases/update_patronymic"
+	update_repository "github.com/amarin/genodex/internal/usecases/update_repository"
 	update_surname "github.com/amarin/genodex/internal/usecases/update_surname"
 	update_title "github.com/amarin/genodex/internal/usecases/update_title"
 )
@@ -342,6 +366,202 @@ func newGivenNameService(t *testing.T, st *sqlstore.Store) *givenNameService {
 		create: create_given_name.New(st, idgen.New()),
 		update: update_given_name.New(st),
 		del:    delete_given_name.New(st),
+	}
+}
+
+// repositoryService — фасад httpapi.RepositoryService на настоящих сценариях
+// (так же собран internal/app's repositoryService).
+type repositoryService struct {
+	list   *list_repositories.Scenario
+	search *search_repositories.Scenario
+	get    *get_repository.Scenario
+	create *create_repository.Scenario
+	update *update_repository.Scenario
+	del    *delete_repository.Scenario
+}
+
+func (s *repositoryService) ListRepositories(ctx context.Context, access models.Access, page models.Page) ([]models.Repository, error) {
+	return s.list.ListRepositories(ctx, access, page)
+}
+
+func (s *repositoryService) SearchRepositories(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Repository, error) {
+	return s.search.SearchRepositories(ctx, access, q)
+}
+
+func (s *repositoryService) GetRepository(ctx context.Context, access models.Access, id models.ID) (models.Repository, error) {
+	return s.get.GetRepository(ctx, access, id)
+}
+
+func (s *repositoryService) CreateRepository(ctx context.Context, r models.Repository) (models.Repository, error) {
+	return s.create.CreateRepository(ctx, r)
+}
+
+func (s *repositoryService) UpdateRepository(ctx context.Context, r models.Repository) error {
+	return s.update.UpdateRepository(ctx, r)
+}
+
+func (s *repositoryService) DeleteRepository(ctx context.Context, id models.ID) error {
+	return s.del.DeleteRepository(ctx, id)
+}
+
+// newRepositoryService собирает фасад на настоящем хранилище.
+func newRepositoryService(t *testing.T, st *sqlstore.Store) *repositoryService {
+	t.Helper()
+
+	return &repositoryService{
+		list:   list_repositories.New(st),
+		search: search_repositories.New(st),
+		get:    get_repository.New(st),
+		create: create_repository.New(st, idgen.New()),
+		update: update_repository.New(st),
+		del:    delete_repository.New(st),
+	}
+}
+
+// churchService — фасад httpapi.ChurchService на настоящих сценариях (так же
+// собран internal/app's churchService).
+type churchService struct {
+	list   *list_churches.Scenario
+	search *search_churches.Scenario
+	get    *get_church.Scenario
+	create *create_church.Scenario
+	update *update_church.Scenario
+	del    *delete_church.Scenario
+}
+
+func (s *churchService) ListChurches(ctx context.Context, access models.Access, page models.Page) ([]models.Church, error) {
+	return s.list.ListChurches(ctx, access, page)
+}
+
+func (s *churchService) SearchChurches(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Church, error) {
+	return s.search.SearchChurches(ctx, access, q)
+}
+
+func (s *churchService) GetChurch(ctx context.Context, id models.ID) (models.Church, error) {
+	return s.get.GetChurch(ctx, id)
+}
+
+func (s *churchService) CreateChurch(ctx context.Context, c models.Church) (models.Church, error) {
+	return s.create.CreateChurch(ctx, c)
+}
+
+func (s *churchService) UpdateChurch(ctx context.Context, c models.Church) error {
+	return s.update.UpdateChurch(ctx, c)
+}
+
+func (s *churchService) DeleteChurch(ctx context.Context, id models.ID) error {
+	return s.del.DeleteChurch(ctx, id)
+}
+
+// newChurchService собирает фасад на настоящем хранилище.
+func newChurchService(t *testing.T, st *sqlstore.Store) *churchService {
+	t.Helper()
+
+	return &churchService{
+		list:   list_churches.New(st),
+		search: search_churches.New(st),
+		get:    get_church.New(st),
+		create: create_church.New(st, idgen.New()),
+		update: update_church.New(st),
+		del:    delete_church.New(st),
+	}
+}
+
+// parishService — фасад httpapi.ParishService на настоящих сценариях (так же
+// собран internal/app's parishService).
+type parishService struct {
+	list   *list_parishes.Scenario
+	search *search_parishes.Scenario
+	get    *get_parish.Scenario
+	create *create_parish.Scenario
+	update *update_parish.Scenario
+	del    *delete_parish.Scenario
+}
+
+func (s *parishService) ListParishes(ctx context.Context, access models.Access, page models.Page) ([]models.Parish, error) {
+	return s.list.ListParishes(ctx, access, page)
+}
+
+func (s *parishService) SearchParishes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Parish, error) {
+	return s.search.SearchParishes(ctx, access, q)
+}
+
+func (s *parishService) GetParish(ctx context.Context, id models.ID) (models.Parish, error) {
+	return s.get.GetParish(ctx, id)
+}
+
+func (s *parishService) CreateParish(ctx context.Context, p models.Parish) (models.Parish, error) {
+	return s.create.CreateParish(ctx, p)
+}
+
+func (s *parishService) UpdateParish(ctx context.Context, p models.Parish) error {
+	return s.update.UpdateParish(ctx, p)
+}
+
+func (s *parishService) DeleteParish(ctx context.Context, id models.ID) error {
+	return s.del.DeleteParish(ctx, id)
+}
+
+// newParishService собирает фасад на настоящем хранилище.
+func newParishService(t *testing.T, st *sqlstore.Store) *parishService {
+	t.Helper()
+
+	return &parishService{
+		list:   list_parishes.New(st),
+		search: search_parishes.New(st),
+		get:    get_parish.New(st),
+		create: create_parish.New(st, idgen.New()),
+		update: update_parish.New(st),
+		del:    delete_parish.New(st),
+	}
+}
+
+// archiveService — фасад httpapi.ArchiveService на настоящих сценариях (так
+// же собран internal/app's archiveService).
+type archiveService struct {
+	list   *list_archives.Scenario
+	search *search_archives.Scenario
+	get    *get_archive.Scenario
+	create *create_archive.Scenario
+	update *update_archive.Scenario
+	del    *delete_archive.Scenario
+}
+
+func (s *archiveService) ListArchives(ctx context.Context, access models.Access, page models.Page) ([]models.Archive, error) {
+	return s.list.ListArchives(ctx, access, page)
+}
+
+func (s *archiveService) SearchArchives(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Archive, error) {
+	return s.search.SearchArchives(ctx, access, q)
+}
+
+func (s *archiveService) GetArchive(ctx context.Context, access models.Access, id models.ID) (models.Archive, error) {
+	return s.get.GetArchive(ctx, access, id)
+}
+
+func (s *archiveService) CreateArchive(ctx context.Context, a models.Archive) (models.Archive, error) {
+	return s.create.CreateArchive(ctx, a)
+}
+
+func (s *archiveService) UpdateArchive(ctx context.Context, a models.Archive) error {
+	return s.update.UpdateArchive(ctx, a)
+}
+
+func (s *archiveService) DeleteArchive(ctx context.Context, id models.ID) error {
+	return s.del.DeleteArchive(ctx, id)
+}
+
+// newArchiveService собирает фасад на настоящем хранилище.
+func newArchiveService(t *testing.T, st *sqlstore.Store) *archiveService {
+	t.Helper()
+
+	return &archiveService{
+		list:   list_archives.New(st),
+		search: search_archives.New(st),
+		get:    get_archive.New(st),
+		create: create_archive.New(st, idgen.New()),
+		update: update_archive.New(st),
+		del:    delete_archive.New(st),
 	}
 }
 

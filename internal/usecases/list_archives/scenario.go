@@ -6,7 +6,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «список словарных записей фамилий».
+// Scenario — сценарий «список записей архивов».
 type Scenario struct {
 	archives ArchiveRepo
 }
@@ -34,8 +34,8 @@ func (s *Scenario) ListArchives(ctx context.Context, access models.Access, page 
 	}
 
 	out := make([]models.Archive, 0, len(list))
-	for _, sn := range list {
-		out = append(out, *sn)
+	for _, a := range list {
+		out = append(out, *a)
 	}
 
 	return out, nil

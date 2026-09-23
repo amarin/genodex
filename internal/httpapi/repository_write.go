@@ -53,7 +53,7 @@ func handleRepositoryUpdate(repositories RepositoryService) http.HandlerFunc {
 			return
 		}
 
-		cur, err := repositories.GetRepository(r.Context(), id)
+		cur, err := repositories.GetRepository(r.Context(), AccessFromContext(r.Context()), id)
 		if err != nil {
 			writeError(w, err)
 

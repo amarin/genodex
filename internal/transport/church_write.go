@@ -3,9 +3,11 @@ package transport
 import "github.com/amarin/genodex/internal/models"
 
 // ChurchCreate — тело POST /api/churches и аргументы тула church_create.
-// Идентификатор генерирует сценарий. Parish редактируется только текстом (v1,
-// docs/data-model/entity-write.md §4) — элемент с уже заполненным ref через
-// этот DTO не создать.
+// Идентификатор генерирует сценарий. Parish — {text, ref?, type?}: сама DTO
+// round-trip'ит ref/type как есть (TextRef.Model), веб-форма v1 (web/src/
+// ChurchForm.tsx) редактирует только text и не выставляет ref/type сама
+// (docs/data-model/entity-write.md §4) — ограничение интерфейса, а не
+// контракта.
 type ChurchCreate struct {
 	Name        string    `json:"name"`
 	Parish      *TextRef  `json:"parish,omitempty"`

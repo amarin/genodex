@@ -32,7 +32,7 @@ func (f *fakeArchives) SearchArchives(context.Context, models.Access, models.Sea
 	return f.search, f.err
 }
 
-func (f *fakeArchives) GetArchive(_ context.Context, id models.ID) (models.Archive, error) {
+func (f *fakeArchives) GetArchive(_ context.Context, _ models.Access, id models.ID) (models.Archive, error) {
 	f.gotIDs = append(f.gotIDs, id)
 	if f.err != nil {
 		return models.Archive{}, f.err

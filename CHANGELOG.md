@@ -55,6 +55,26 @@
   `web/src/pages/{PatronymicsList,PatronymicView,PatronymicForm,EstatesList,
   EstateView,EstateForm,TitlesList,TitleView,TitleForm,GivenNamesList,
   GivenNameView,GivenNameForm}.tsx`).
+- Хранилища/Церкви/Приходы/Архивы (`Repository`/`Church`/`Parish`/`Archive`) —
+  первая волна сущностей с настоящими внешними ключами, полный CRUD: HTTP
+  (`/api/repositories*`, `/api/churches*`, `/api/parishes*`, `/api/archives*`)
+  и MCP (`repository_*`/`church_*`/`parish_*`/`archive_*` — по 6 тулов на
+  сущность), веб-страницы (список/просмотр/редактирование/создание). Новые
+  паттерны: одиночный необязательный `*TextRef` вместо списка
+  (`Church.Parish`/`Parish.Church`, round-trip ref/type при неизменной
+  передаче); строгий скалярный FK с проверкой существования в той же
+  транзакции (`Archive.RepositoryID` → `Repository`, 422 на поле
+  `repository_id`); структурированная дата с точностью — `FactDate` и
+  `FactDateEditor.tsx` (`Parish.Since`/`Until`), общие для будущих
+  Family/Person/Event; `Private` теперь проверяется и на чтении по id, не
+  только в списке/поиске (`Repository`/`Archive`); `Sources []SourceLink` —
+  read-only, переживает обновления как есть (Citation без CRUD, подпроект 5)
+  (`internal/usecases/{list,search,get,create,update,delete}_{repository,
+  church,parish,archive}*`, `internal/httpapi/{repository,church,parish,
+  archive}*.go`, `internal/mcp/{repository,church,parish,archive}.go`,
+  `web/src/pages/{RepositoriesList,RepositoryView,RepositoryForm,ChurchesList,
+  ChurchView,ChurchForm,ParishesList,ParishView,ParishForm,ArchivesList,
+  ArchiveView,ArchiveForm}.tsx`, `web/src/FactDateEditor.tsx`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

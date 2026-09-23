@@ -8,7 +8,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «поиск словарных записей фамилий».
+// Scenario — сценарий «поиск записей архивов».
 type Scenario struct {
 	archives ArchiveRepo
 }
@@ -18,9 +18,9 @@ func New(archives ArchiveRepo) *Scenario {
 	return &Scenario{archives: archives}
 }
 
-// SearchArchives находит записи, чья каноническая форма (или вариант)
-// начинается с текста запроса — та же механика, что и
-// search_divisions.SearchDivisions (см. её комментарий).
+// SearchArchives находит записи, чьё название начинается с текста запроса —
+// та же механика, что и search_divisions.SearchDivisions (см. её
+// комментарий).
 func (s *Scenario) SearchArchives(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Archive, error) {
 	if err := q.Validate(); err != nil {
 		return nil, err

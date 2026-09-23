@@ -56,7 +56,7 @@ func handleRepositorySearch(repositories RepositoryService) http.HandlerFunc {
 // handleRepositoryGet — GET /api/repositories/{id}.
 func handleRepositoryGet(repositories RepositoryService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rep, err := repositories.GetRepository(r.Context(), pathID(r))
+		rep, err := repositories.GetRepository(r.Context(), AccessFromContext(r.Context()), pathID(r))
 		if err != nil {
 			writeError(w, err)
 

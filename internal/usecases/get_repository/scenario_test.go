@@ -25,7 +25,7 @@ func TestGetRepositoryReturnsRecord(t *testing.T) {
 	id := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA1")
 	repo := &fakeRepo{repositories: map[models.ID]*models.Repository{id: {ID: id, Name: "ГАВО"}}}
 
-	got, err := New(repo).GetRepository(context.Background(), id)
+	got, err := New(repo).GetRepository(context.Background(), models.AccessFull, id)
 	if err != nil {
 		t.Fatalf("GetRepository: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestGetRepositoryReturnsRecord(t *testing.T) {
 func TestGetRepositoryNotFound(t *testing.T) {
 	repo := &fakeRepo{repositories: map[models.ID]*models.Repository{}}
 
-	_, err := New(repo).GetRepository(context.Background(), "R-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	_, err := New(repo).GetRepository(context.Background(), models.AccessFull, "R-01ARZ3NDEKTSV4RRFFQ69G5FA1")
 	if !errors.Is(err, models.ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}
@@ -47,10 +47,34 @@ func TestGetRepositoryNotFound(t *testing.T) {
 func TestGetRepositoryInvalidID(t *testing.T) {
 	repo := &fakeRepo{repositories: map[models.ID]*models.Repository{}}
 
-	_, err := New(repo).GetRepository(context.Background(), "bogus")
+	_, err := New(repo).GetRepository(context.Background(), models.AccessFull, "bogus")
 
 	var ve *models.ValidationError
 	if !errors.As(err, &ve) || ve.Field != "id" {
 		t.Fatalf("err = %v, want ValidationError on id", err)
+	}
+}
+
+func TestGetRepositoryPrivateHiddenFromPublic(t *testing.T) {
+	id := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{repositories: map[models.ID]*models.Repository{id: {ID: id, Name: "ГАВО", Private: true}}}
+
+	_, err := New(repo).GetRepository(context.Background(), models.AccessPublic, id)
+	if !errors.Is(err, models.ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound for private record with AccessPublic", err)
+	}
+}
+
+func TestGetRepositoryPrivateVisibleToFullAccess(t *testing.T) {
+	id := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{repositories: map[models.ID]*models.Repository{id: {ID: id, Name: "ГАВО", Private: true}}}
+
+	got, err := New(repo).GetRepository(context.Background(), models.AccessFull, id)
+	if err != nil {
+		t.Fatalf("GetRepository: %v", err)
+	}
+
+	if got.Name != "ГАВО" {
+		t.Fatalf("Name = %q", got.Name)
 	}
 }

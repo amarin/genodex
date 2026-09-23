@@ -125,7 +125,7 @@ func archiveSearchHandler(archives ArchiveService) server.ToolHandlerFunc {
 
 func archiveGetHandler(archives ArchiveService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		a, err := archives.GetArchive(ctx, models.ID(req.GetString("id", "")))
+		a, err := archives.GetArchive(ctx, AccessFromContext(ctx), models.ID(req.GetString("id", "")))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить запись: %v", err)), nil
 		}
@@ -162,7 +162,7 @@ func archiveUpdateHandler(archives ArchiveService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := models.ID(req.GetString("id", ""))
 
-		cur, err := archives.GetArchive(ctx, id)
+		cur, err := archives.GetArchive(ctx, AccessFromContext(ctx), id)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}

@@ -86,8 +86,14 @@ TLS-терминирующий реверс-прокси — подробнос�
 | `/api/estates` | Словарные записи сословий (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/estates/{id}` — чтение/изменение/удаление записи; `GET /api/estates/search?q=` — поиск по началу канонической формы (включая варианты). |
 | `/api/titles` | Словарные записи титулов (JSON): `GET` — список `[{"id", "canonical", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/titles/{id}` — чтение/изменение/удаление записи; `GET /api/titles/search?q=` — поиск по началу канонической формы (включая варианты). |
 | `/api/given-names` | Словарные записи имён (JSON): `GET` — список `[{"id", "canonical", "gender", "variants", "items", "notes"}]`; `POST` — создание; `GET/PUT/DELETE /api/given-names/{id}` — чтение/изменение/удаление записи; `GET /api/given-names/search?q=` — поиск по началу канонической формы (включая варианты). |
+| `/api/repositories` | Хранилища-контейнеры источников (JSON): `GET` — список `[{"id", "name", "type", "address", "urls", "notes", "sources", "private"}]`; `POST` — создание; `GET/PUT/DELETE /api/repositories/{id}` — чтение/изменение/удаление записи (приватная запись для не-владельца — 404, как отсутствующая); `GET /api/repositories/search?q=` — поиск по началу названия. |
+| `/api/churches` | Церкви (JSON): `GET` — список `[{"id", "name", "parish", "settlements", "variants", "notes", "sources"}]`; `POST` — создание; `GET/PUT/DELETE /api/churches/{id}` — чтение/изменение/удаление записи; `GET /api/churches/search?q=` — поиск по началу названия. `parish` — одиночная необязательная ссылка (`{text, ref?, type?}`, v1-форма редактирует только text). |
+| `/api/parishes` | Приходы (JSON): `GET` — список `[{"id", "name", "church", "settlements", "since", "until", "notes", "sources"}]`; `POST` — создание; `GET/PUT/DELETE /api/parishes/{id}` — чтение/изменение/удаление записи; `GET /api/parishes/search?q=` — поиск по началу названия. `since`/`until` — структурированная дата (`FactDate`, см. `web/src/FactDateEditor.tsx`). |
+| `/api/archives` | Архивы (JSON): `GET` — список `[{"id", "name", "system", "repository_id", "notes", "sources", "private"}]`; `POST` — создание; `GET/PUT/DELETE /api/archives/{id}` — чтение/изменение/удаление записи (приватная запись для не-владельца — 404); `GET /api/archives/search?q=` — поиск по началу названия. `repository_id` — строгая ссылка на `/api/repositories`: несуществующий id при создании/изменении — 422 на поле `repository_id`. |
 | `/static/` | Собранные ассеты SPA (JS/CSS). |
 | `/` | Веб-интерфейс (SPA): `index.html`, для неизвестных путей — fallback на неё. |
+
+`sources` у `/api/repositories`, `/api/churches`, `/api/parishes`, `/api/archives` — read-only: create/update DTO его не принимают, изменить нельзя (Citation ещё без CRUD, подпроект 5).
 
 ## Примеры запросов
 
@@ -140,6 +146,30 @@ curl -s -X POST http://localhost:9000/mcp \
 | `given_name_create` | Создание записи: `canonical`, `gender` (обязателен, `male`/`female`/`neutral`), `variants`, `items`, `notes` (тексты); id генерирует сервер |
 | `given_name_update` | Изменение записи: полная замена `canonical`/`gender`/`variants`/`items`/`notes` (`gender` обязателен, `male`/`female`/`neutral`); результат — обновлённая запись |
 | `given_name_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `repository_list` | Список хранилищ-контейнеров источников; аргументы `limit`, `offset` |
+| `repository_search` | Поиск хранилищ по началу названия; аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `repository_get` | Запись по `id` (JSON контракта); приватная запись для не-владельца — ошибка тула (как отсутствующая) |
+| `repository_create` | Создание записи: `name`, `type` (обязательны), `address`, `urls`, `notes` (тексты), `private`; id генерирует сервер |
+| `repository_update` | Изменение записи: полная замена `name`/`type`/`address`/`urls`/`notes`/`private`; результат — обновлённая запись |
+| `repository_delete` | Удаление записи по `id`; на неё есть строгие ссылки (`Archive.repository_id`) — ошибка тула |
+| `church_list` | Список церквей; аргументы `limit`, `offset` |
+| `church_search` | Поиск церквей по началу названия; аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `church_get` | Запись по `id` (JSON контракта) |
+| `church_create` | Создание записи: `name` (обязателен), `parish` (одиночная необязательная ссылка `{text, ref?, type?}`, ref/type сохраняются, если переданы обратно неизменными), `settlements`, `variants`, `notes`; id генерирует сервер |
+| `church_update` | Изменение записи: полная замена `name`/`parish`/`settlements`/`variants`/`notes`; `settlements`/`notes` принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе теряется при любом обновлении, пока не появится picker; `parish` сохраняет ref/type, если передать их обратно неизменными |
+| `church_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `parish_list` | Список приходов; аргументы `limit`, `offset` |
+| `parish_search` | Поиск приходов по началу названия; аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `parish_get` | Запись по `id` (JSON контракта) |
+| `parish_create` | Создание записи: `name` (обязателен), `church` (одиночная необязательная ссылка `{text, ref?, type?}`, ref/type сохраняются, если переданы обратно неизменными), `settlements`, `since`/`until` (структурированная дата, см. `factDateObjectProperties`), `notes`; id генерирует сервер |
+| `parish_update` | Изменение записи: полная замена `name`/`church`/`settlements`/`since`/`until`/`notes`; `settlements`/`notes` принимают только текст (ссылка теряется при обновлении через MCP); `church` сохраняет ref/type, если передать их обратно неизменными |
+| `parish_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
+| `archive_list` | Список архивов; аргументы `limit`, `offset` |
+| `archive_search` | Поиск архивов по началу названия; аргументы `q`, `limit`, `offset`; пустой `q` — пустой результат |
+| `archive_get` | Запись по `id` (JSON контракта); приватная запись для не-владельца — ошибка тула (как отсутствующая) |
+| `archive_create` | Создание записи: `name` (обязателен), `system` (только именем, без ссылки), `repository_id` (строгая ссылка — несуществующий id — ошибка тула на поле `repository_id`), `notes`, `private`; id генерирует сервер |
+| `archive_update` | Изменение записи: полная замена `name`/`system`/`repository_id`/`notes`/`private`; несуществующий `repository_id` — ошибка тула на поле `repository_id` |
+| `archive_delete` | Удаление записи по `id`; занятая другой сущностью — ошибка тула |
 
 ### HTTP API
 

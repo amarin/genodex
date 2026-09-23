@@ -56,7 +56,7 @@ func handleArchiveSearch(archives ArchiveService) http.HandlerFunc {
 // handleArchiveGet — GET /api/archives/{id}.
 func handleArchiveGet(archives ArchiveService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		a, err := archives.GetArchive(r.Context(), pathID(r))
+		a, err := archives.GetArchive(r.Context(), AccessFromContext(r.Context()), pathID(r))
 		if err != nil {
 			writeError(w, err)
 

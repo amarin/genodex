@@ -328,8 +328,8 @@ func (s *repositoryService) SearchRepositories(ctx context.Context, access model
 	return s.search.SearchRepositories(ctx, access, q)
 }
 
-func (s *repositoryService) GetRepository(ctx context.Context, id models.ID) (models.Repository, error) {
-	return s.get.GetRepository(ctx, id)
+func (s *repositoryService) GetRepository(ctx context.Context, access models.Access, id models.ID) (models.Repository, error) {
+	return s.get.GetRepository(ctx, access, id)
 }
 
 func (s *repositoryService) CreateRepository(ctx context.Context, r models.Repository) (models.Repository, error) {
@@ -430,8 +430,8 @@ func (s *archiveService) SearchArchives(ctx context.Context, access models.Acces
 	return s.search.SearchArchives(ctx, access, q)
 }
 
-func (s *archiveService) GetArchive(ctx context.Context, id models.ID) (models.Archive, error) {
-	return s.get.GetArchive(ctx, id)
+func (s *archiveService) GetArchive(ctx context.Context, access models.Access, id models.ID) (models.Archive, error) {
+	return s.get.GetArchive(ctx, access, id)
 }
 
 func (s *archiveService) CreateArchive(ctx context.Context, a models.Archive) (models.Archive, error) {

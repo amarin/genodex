@@ -122,7 +122,7 @@ func repositorySearchHandler(repositories RepositoryService) server.ToolHandlerF
 
 func repositoryGetHandler(repositories RepositoryService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		r, err := repositories.GetRepository(ctx, models.ID(req.GetString("id", "")))
+		r, err := repositories.GetRepository(ctx, AccessFromContext(ctx), models.ID(req.GetString("id", "")))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить запись: %v", err)), nil
 		}
@@ -155,7 +155,7 @@ func repositoryUpdateHandler(repositories RepositoryService) server.ToolHandlerF
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := models.ID(req.GetString("id", ""))
 
-		cur, err := repositories.GetRepository(ctx, id)
+		cur, err := repositories.GetRepository(ctx, AccessFromContext(ctx), id)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}

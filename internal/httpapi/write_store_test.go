@@ -785,3 +785,483 @@ func requireStatusS(t *testing.T, rec *httptest.ResponseRecorder, want int) {
 		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
 	}
 }
+
+// TestRepositoryWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» (по образцу TestGivenNameWriteContractWithRealStore) для
+// хранилищ-контейнеров источников: bootstrap-регистрация → создание →
+// чтение → изменение → удаление → повторное чтение — 404. Дополнительно
+// закрывает Fix 1 (CRITICAL): приватная запись, созданная владельцем, должна
+// быть недоступна анонимному GET /api/repositories/{id} — 404, а не 200.
+func TestRepositoryWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:    newDivisionService(t, st),
+		Repositories: newRepositoryService(t, st),
+		Auth:         authSvc,
+		DocsFS:       fstest.MapFS{},
+		TrustProxy:   false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание.
+	created := createRepository(t, h, owner,
+		`{"name":"ГАВО","type":"archive","address":"Вологда","urls":[],"notes":[],"private":false}`, http.StatusCreated)
+	if created.Name != "ГАВО" || created.Type != "archive" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "R-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю.
+	rec := getReq(t, h, "/api/repositories/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"name":"ГАВО"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена name/type/address/urls/notes/private.
+	rec = putRepositoryReq(t, h, owner, "/api/repositories/"+string(created.ID),
+		`{"name":"ГАВО (испр.)","type":"library","address":"Вологда","urls":[],"notes":[],"private":false}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeRepositoryS(t, rec)
+	if updated.Name != "ГАВО (испр.)" || updated.Type != "library" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/repositories/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/repositories/"+string(created.ID)), http.StatusNotFound)
+
+	// Fix 1: приватная запись, анонимный GET — 404, не 200.
+	private := createRepository(t, h, owner,
+		`{"name":"Частное собрание","type":"private","address":"","urls":[],"notes":[],"private":true}`, http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private = %+v, want Private=true", private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/repositories/"+string(private.ID)), http.StatusNotFound)
+}
+
+func createRepository(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Repository {
+	t.Helper()
+
+	rec := postRepositoryReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeRepositoryS(t, rec)
+}
+
+func decodeRepositoryS(t *testing.T, rec *httptest.ResponseRecorder) transport.Repository {
+	t.Helper()
+
+	var r transport.Repository
+	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return r
+}
+
+func postRepositoryReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/repositories", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putRepositoryReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestChurchWriteContractWithRealStore: сквозной путь «хранилище → сценарии →
+// HTTP» для церквей (по образцу TestGivenNameWriteContractWithRealStore, без
+// приватности — у Church нет поля Private): bootstrap-регистрация →
+// создание → чтение → изменение → удаление → повторное чтение — 404.
+func TestChurchWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Churches:   newChurchService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание.
+	created := createChurch(t, h, owner,
+		`{"name":"Троицкая церковь","settlements":[],"variants":[],"notes":[]}`, http.StatusCreated)
+	if created.Name != "Троицкая церковь" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "CH-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id.
+	rec := getReq(t, h, "/api/churches/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"name":"Троицкая церковь"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена name/parish/settlements/variants/notes.
+	rec = putChurchReq(t, h, owner, "/api/churches/"+string(created.ID),
+		`{"name":"Троицкая церковь (испр.)","settlements":[],"variants":[],"notes":[]}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeChurchS(t, rec)
+	if updated.Name != "Троицкая церковь (испр.)" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/churches/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/churches/"+string(created.ID)), http.StatusNotFound)
+}
+
+func createChurch(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Church {
+	t.Helper()
+
+	rec := postChurchReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeChurchS(t, rec)
+}
+
+func decodeChurchS(t *testing.T, rec *httptest.ResponseRecorder) transport.Church {
+	t.Helper()
+
+	var c transport.Church
+	if err := json.Unmarshal(rec.Body.Bytes(), &c); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return c
+}
+
+func postChurchReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/churches", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putChurchReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestParishWriteContractWithRealStore: сквозной путь «хранилище → сценарии →
+// HTTP» для приходов (по образцу TestGivenNameWriteContractWithRealStore, без
+// приватности — у Parish нет поля Private): bootstrap-регистрация →
+// создание → чтение → изменение → удаление → повторное чтение — 404.
+func TestParishWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Parishes:   newParishService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание.
+	created := createParish(t, h, owner,
+		`{"name":"Троицкий приход","settlements":[],"notes":[]}`, http.StatusCreated)
+	if created.Name != "Троицкий приход" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "PR-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id.
+	rec := getReq(t, h, "/api/parishes/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"name":"Троицкий приход"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена name/church/settlements/since/until/notes.
+	rec = putParishReq(t, h, owner, "/api/parishes/"+string(created.ID),
+		`{"name":"Троицкий приход (испр.)","settlements":[],"notes":[]}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeParishS(t, rec)
+	if updated.Name != "Троицкий приход (испр.)" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/parishes/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/parishes/"+string(created.ID)), http.StatusNotFound)
+}
+
+func createParish(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Parish {
+	t.Helper()
+
+	rec := postParishReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeParishS(t, rec)
+}
+
+func decodeParishS(t *testing.T, rec *httptest.ResponseRecorder) transport.Parish {
+	t.Helper()
+
+	var p transport.Parish
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return p
+}
+
+func postParishReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/parishes", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putParishReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestArchiveWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» для архивов (по образцу TestGivenNameWriteContractWithRealStore):
+// bootstrap-регистрация → создание → чтение → изменение → удаление →
+// повторное чтение — 404. Дополнительно: строгий FK на Repository (валидный
+// repository_id сохраняется; несуществующий, но корректный по формату —
+// 422 на поле repository_id) и Fix 1 (CRITICAL): приватная запись, анонимный
+// GET — 404, не 200.
+func TestArchiveWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:    newDivisionService(t, st),
+		Repositories: newRepositoryService(t, st),
+		Archives:     newArchiveService(t, st),
+		Auth:         authSvc,
+		DocsFS:       fstest.MapFS{},
+		TrustProxy:   false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание без хранилища.
+	created := createArchive(t, h, owner, `{"name":"ГАВО, архив","notes":[],"private":false}`, http.StatusCreated)
+	if created.Name != "ГАВО, архив" || created.RepositoryID != "" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "AR-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id.
+	rec := getReq(t, h, "/api/archives/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"name":"ГАВО, архив"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена name/system/repository_id/notes/private.
+	rec = putArchiveReq(t, h, owner, "/api/archives/"+string(created.ID),
+		`{"name":"ГАВО, архив (испр.)","notes":[],"private":false}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeArchiveS(t, rec)
+	if updated.Name != "ГАВО, архив (испр.)" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/archives/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/archives/"+string(created.ID)), http.StatusNotFound)
+
+	// Строгий FK: валидный repository_id создаётся и сохраняется как есть.
+	repo := createRepository(t, h, owner,
+		`{"name":"ГАВО","type":"archive","address":"","urls":[],"notes":[],"private":false}`, http.StatusCreated)
+
+	withRepo := createArchive(t, h, owner,
+		fmt.Sprintf(`{"name":"Фонд 1","repository_id":%q,"notes":[],"private":false}`, repo.ID), http.StatusCreated)
+	if withRepo.RepositoryID != string(repo.ID) {
+		t.Fatalf("withRepo.RepositoryID = %q, want %q", withRepo.RepositoryID, repo.ID)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий repository_id — 422.
+	rec = postArchiveReq(t, h, owner,
+		`{"name":"Фонд-призрак","repository_id":"R-01ARZ3NDEKTSV4RRFFQ69G5FA9","notes":[],"private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"repository_id"`) {
+		t.Fatalf("body = %s, want field=repository_id", rec.Body)
+	}
+
+	// Fix 1: приватная запись, анонимный GET — 404, не 200.
+	private := createArchive(t, h, owner, `{"name":"Приватный архив","notes":[],"private":true}`, http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private = %+v, want Private=true", private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/archives/"+string(private.ID)), http.StatusNotFound)
+}
+
+func createArchive(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Archive {
+	t.Helper()
+
+	rec := postArchiveReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeArchiveS(t, rec)
+}
+
+func decodeArchiveS(t *testing.T, rec *httptest.ResponseRecorder) transport.Archive {
+	t.Helper()
+
+	var a transport.Archive
+	if err := json.Unmarshal(rec.Body.Bytes(), &a); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return a
+}
+
+func postArchiveReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/archives", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putArchiveReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}

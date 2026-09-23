@@ -10,13 +10,17 @@ import (
 
 // textRefObjectProperties — JSON-schema свойств объектного аргумента вида
 // TextRef ({text, ref?, type?}) — используется в mcp.WithObject для полей
-// вроде Church.Parish/Parish.Church/Archive.System. Появляется впервые в этом
-// проходе (первые сущности с одиночным *TextRef, не списком).
+// вроде Church.Parish/Parish.Church. Появляется впервые в этом проходе
+// (первые сущности с одиночным *TextRef, не списком). ref/type round-trip'ятся
+// как есть (см. transport.TextRef.Model): клиент, уже получивший ref/type
+// через church_get/parish_get, сохранит ссылку, отправив их обратно
+// неизменными в church_update/parish_update; если их не передать вовсе или
+// изменить только text — ссылка будет потеряна или расходиться с ним.
 func textRefObjectProperties() map[string]any {
 	return map[string]any{
 		"text": map[string]any{"type": "string", "description": "Текст (обязателен, если нет ссылки)"},
-		"ref":  map[string]any{"type": "string", "description": "id сущности-ссылки (только чтение — задаётся не через этот тул)"},
-		"type": map[string]any{"type": "string", "description": "тип сущности-ссылки (только чтение)"},
+		"ref":  map[string]any{"type": "string", "description": "id сущности-ссылки; сохраняется, если передать его обратно неизменным (например, из предыдущего *_get)"},
+		"type": map[string]any{"type": "string", "description": "тип сущности-ссылки; сохраняется вместе с ref при неизменной передаче"},
 	}
 }
 

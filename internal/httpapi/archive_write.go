@@ -52,7 +52,7 @@ func handleArchiveUpdate(archives ArchiveService) http.HandlerFunc {
 			return
 		}
 
-		cur, err := archives.GetArchive(r.Context(), id)
+		cur, err := archives.GetArchive(r.Context(), AccessFromContext(r.Context()), id)
 		if err != nil {
 			writeError(w, err)
 

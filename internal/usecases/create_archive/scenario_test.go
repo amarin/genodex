@@ -170,9 +170,11 @@ func TestCreateArchiveWithRepositorySaves(t *testing.T) {
 	}
 }
 
-// TestCreateArchiveWithoutRepositorySaves: RepositoryID не задан — хранилище
-// не проверяется вовсе (GetRepository не вызывается, что подтверждает
-// TestCreateArchiveGeneratesIDAndSaves выше с пустым fakeTx).
+// TestCreateArchiveRepositoryNotFound: RepositoryID задан, но такого
+// хранилища нет — *models.ValidationError по полю repository_id, ничего не
+// сохраняется. Случай «RepositoryID не задан вовсе — хранилище не
+// проверяется» уже покрыт TestCreateArchiveGeneratesIDAndSaves выше (пустой
+// fakeTx, GetRepository не вызывается).
 func TestCreateArchiveRepositoryNotFound(t *testing.T) {
 	st := &fakeStore{tx: newFakeTx()}
 

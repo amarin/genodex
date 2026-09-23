@@ -37,7 +37,7 @@ func (f *fakeRepositories) SearchRepositories(_ context.Context, _ models.Access
 	return f.search, f.err
 }
 
-func (f *fakeRepositories) GetRepository(_ context.Context, id models.ID) (models.Repository, error) {
+func (f *fakeRepositories) GetRepository(_ context.Context, _ models.Access, id models.ID) (models.Repository, error) {
 	f.gotIDs = append(f.gotIDs, id)
 	if f.err != nil {
 		return models.Repository{}, f.err

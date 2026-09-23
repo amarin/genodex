@@ -13,11 +13,15 @@ import (
 
 // registerChurchTools регистрирует тулы для работы с церквями. parish —
 // одиночная необязательная ссылка (текст или ссылка на приход, объект
-// {text, ref?, type?} — v1 создаёт/редактирует только text, ref/type только
-// читаются через church_get/list/search). settlements/notes — списки текста
-// (v1). variants — простые строки. ВАЖНО: church_update заменяет
-// parish/settlements/notes целиком текстом — существующие ref/type будут
-// потеряны при любом обновлении через MCP, пока не появится picker.
+// {text, ref?, type?}); ref/type round-trip'ятся как есть (transport.TextRef.
+// Model) — клиент, отправляющий обратно ref/type, полученные через
+// church_get/list/search, не потеряет ссылку. settlements/notes — списки
+// текста (v1, только строки, без ref/type). variants — простые строки.
+// ВАЖНО: church_update заменяет parish/settlements/notes целиком — у
+// settlements/notes нет ref/type в MCP-контракте вовсе, так что элемент с
+// такой ссылкой (заданной иначе, не через MCP) будет потерян при любом
+// обновлении через MCP, пока не появится picker; parish эту ссылку сохраняет,
+// если её передать обратно неизменной.
 func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 	tool := mcp.NewTool(
 		"church_list",
@@ -47,7 +51,7 @@ func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 		"church_create",
 		mcp.WithDescription("Создать церковь; id генерируется сервером; результат — JSON созданной записи"),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Название")),
-		mcp.WithObject("parish", mcp.Description("Приход (текстом; ref/type только для чтения)"), mcp.Properties(textRefObjectProperties())),
+		mcp.WithObject("parish", mcp.Description("Приход (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
 		mcp.WithArray("settlements", mcp.WithStringItems(), mcp.Description("Населённые пункты (текстом)")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты названия")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
@@ -56,10 +60,10 @@ func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 
 	tool = mcp.NewTool(
 		"church_update",
-		mcp.WithDescription("Изменить церковь: полная замена name/parish/settlements/variants/notes; результат — JSON обновлённой записи. parish/settlements/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из church_get), она будет потеряна: picker для ссылок ещё не реализован (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить церковь: полная замена name/parish/settlements/variants/notes; результат — JSON обновлённой записи. parish — {text, ref?, type?}: передайте обратно ref/type, полученные из church_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при любом обновлении через MCP, пока не появится picker (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
-		mcp.WithObject("parish", mcp.Description("Приход (текстом)"), mcp.Properties(textRefObjectProperties())),
+		mcp.WithObject("parish", mcp.Description("Приход (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
 		mcp.WithArray("settlements", mcp.WithStringItems(), mcp.Description("Населённые пункты")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты названия")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),

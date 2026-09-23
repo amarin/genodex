@@ -12,11 +12,15 @@ import (
 )
 
 // registerParishTools регистрирует тулы для работы с приходами. church —
-// одиночная необязательная ссылка (текст или ссылка на церковь, v1 — только
-// текст). since/until — структурированная дата (объект, см.
-// factDateObjectProperties). ВАЖНО: parish_update заменяет
-// church/settlements/notes целиком текстом — существующие ref/type будут
-// потеряны при любом обновлении через MCP, пока не появится picker.
+// одиночная необязательная ссылка (текст или ссылка на церковь, объект
+// {text, ref?, type?}); ref/type round-trip'ятся как есть (transport.TextRef.
+// Model) — клиент, отправляющий обратно ref/type, полученные через
+// parish_get/list/search, не потеряет ссылку. since/until — структурированная
+// дата (объект, см. factDateObjectProperties). ВАЖНО: parish_update заменяет
+// church/settlements/notes целиком — у settlements/notes нет ref/type в
+// MCP-контракте вовсе (только текст), так что такая ссылка (заданная иначе)
+// будет потеряна при любом обновлении через MCP, пока не появится picker;
+// church эту ссылку сохраняет, если её передать обратно неизменной.
 func registerParishTools(s *server.MCPServer, parishes ParishService) {
 	tool := mcp.NewTool(
 		"parish_list",
@@ -46,7 +50,7 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 		"parish_create",
 		mcp.WithDescription("Создать приход; id генерируется сервером; результат — JSON созданной записи"),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Название")),
-		mcp.WithObject("church", mcp.Description("Церковь (текстом; ref/type только для чтения)"), mcp.Properties(textRefObjectProperties())),
+		mcp.WithObject("church", mcp.Description("Церковь (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
 		mcp.WithArray("settlements", mcp.WithStringItems(), mcp.Description("Населённые пункты (текстом)")),
 		mcp.WithObject("since", mcp.Description("Начало периода действия прихода"), mcp.Properties(factDateObjectProperties())),
 		mcp.WithObject("until", mcp.Description("Конец периода действия прихода"), mcp.Properties(factDateObjectProperties())),
@@ -56,10 +60,10 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 
 	tool = mcp.NewTool(
 		"parish_update",
-		mcp.WithDescription("Изменить приход: полная замена name/church/settlements/since/until/notes; результат — JSON обновлённой записи. church/settlements/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из parish_get), она будет потеряна: picker для ссылок ещё не реализован (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить приход: полная замена name/church/settlements/since/until/notes; результат — JSON обновлённой записи. church — {text, ref?, type?}: передайте обратно ref/type, полученные из parish_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при любом обновлении через MCP, пока не появится picker (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
-		mcp.WithObject("church", mcp.Description("Церковь (текстом)"), mcp.Properties(textRefObjectProperties())),
+		mcp.WithObject("church", mcp.Description("Церковь (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
 		mcp.WithArray("settlements", mcp.WithStringItems(), mcp.Description("Населённые пункты")),
 		mcp.WithObject("since", mcp.Description("Начало периода"), mcp.Properties(factDateObjectProperties())),
 		mcp.WithObject("until", mcp.Description("Конец периода"), mcp.Properties(factDateObjectProperties())),

@@ -6,7 +6,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «словарная запись фамилии по идентификатору».
+// Scenario — сценарий «запись церкви по идентификатору».
 type Scenario struct {
 	churches ChurchRepo
 }
@@ -24,12 +24,12 @@ func (s *Scenario) GetChurch(ctx context.Context, id models.ID) (models.Church, 
 		return models.Church{}, err
 	}
 
-	sn, err := s.churches.GetChurch(ctx, id)
+	c, err := s.churches.GetChurch(ctx, id)
 	if err != nil {
 		return models.Church{}, err
 	}
 
-	return *sn, nil
+	return *c, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

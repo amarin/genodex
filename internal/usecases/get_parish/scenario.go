@@ -6,7 +6,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «словарная запись фамилии по идентификатору».
+// Scenario — сценарий «запись прихода по идентификатору».
 type Scenario struct {
 	parishes ParishRepo
 }
@@ -24,12 +24,12 @@ func (s *Scenario) GetParish(ctx context.Context, id models.ID) (models.Parish, 
 		return models.Parish{}, err
 	}
 
-	sn, err := s.parishes.GetParish(ctx, id)
+	p, err := s.parishes.GetParish(ctx, id)
 	if err != nil {
 		return models.Parish{}, err
 	}
 
-	return *sn, nil
+	return *p, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

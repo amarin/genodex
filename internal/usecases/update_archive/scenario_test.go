@@ -24,6 +24,7 @@ type fakeTx struct {
 	archives     map[models.ID]*models.Archive
 	repositories map[models.ID]*models.Repository
 	saved        []*models.Archive
+	repoGetErr   error
 }
 
 func newFakeTx(existing ...*models.Archive) *fakeTx {
@@ -52,6 +53,10 @@ func (f *fakeTx) GetArchive(_ context.Context, id models.ID) (*models.Archive, e
 }
 
 func (f *fakeTx) GetRepository(_ context.Context, id models.ID) (*models.Repository, error) {
+	if f.repoGetErr != nil {
+		return nil, f.repoGetErr
+	}
+
 	r, ok := f.repositories[id]
 	if !ok {
 		return nil, models.ErrNotFound
@@ -157,5 +162,30 @@ func TestUpdateArchiveRepositoryNotFound(t *testing.T) {
 
 	if len(st.tx.saved) != 0 {
 		t.Fatalf("сохранено %d архивов при несуществующем хранилище", len(st.tx.saved))
+	}
+}
+
+// TestUpdateArchivePropagatesRepositoryGetError проверяет, что настоящий сбой
+// хранилища (не models.ErrNotFound) при проверке repository_id пробрасывается
+// как есть, а не превращается в *models.ValidationError — см.
+// create_archive/scenario_test.go: TestCreateArchivePropagatesRepositoryGetError
+// для того же контракта на создании.
+func TestUpdateArchivePropagatesRepositoryGetError(t *testing.T) {
+	wantErr := errors.New("get failed")
+	existing := archive(arID('V'), "ГАВО, архив")
+	st := &fakeStore{tx: newFakeTx(existing)}
+	st.tx.repoGetErr = wantErr
+
+	updated := *existing
+	updated.RepositoryID = rID('0')
+
+	err := New(st).UpdateArchive(context.Background(), updated)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("err = %v, want %v", err, wantErr)
+	}
+
+	var ve *models.ValidationError
+	if errors.As(err, &ve) {
+		t.Fatalf("сбой хранилища превращён в *ValidationError: %v", err)
 	}
 }

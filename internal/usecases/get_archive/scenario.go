@@ -6,7 +6,7 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
-// Scenario — сценарий «словарная запись фамилии по идентификатору».
+// Scenario — сценарий «запись архива по идентификатору».
 type Scenario struct {
 	archives ArchiveRepo
 }
@@ -18,18 +18,25 @@ func New(archives ArchiveRepo) *Scenario {
 
 // GetArchive возвращает запись по идентификатору. Неверный формат
 // идентификатора — *models.ValidationError (поле id), репозиторий не
-// вызывается; нет такой записи — models.ErrNotFound.
-func (s *Scenario) GetArchive(ctx context.Context, id models.ID) (models.Archive, error) {
+// вызывается; нет такой записи — models.ErrNotFound. Приватная запись
+// (Private == true) для вызывающего без полного доступа тоже отдаётся как
+// models.ErrNotFound — тот же принцип «прячем как отсутствующее», что и в
+// List/Search.
+func (s *Scenario) GetArchive(ctx context.Context, access models.Access, id models.ID) (models.Archive, error) {
 	if err := validateID(id); err != nil {
 		return models.Archive{}, err
 	}
 
-	sn, err := s.archives.GetArchive(ctx, id)
+	a, err := s.archives.GetArchive(ctx, id)
 	if err != nil {
 		return models.Archive{}, err
 	}
 
-	return *sn, nil
+	if a.Private && access != models.AccessFull {
+		return models.Archive{}, models.ErrNotFound
+	}
+
+	return *a, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

@@ -106,11 +106,18 @@ export function FactDateEditor({
       patch.year = 0;
       patch.month = 0;
       patch.day = 0;
+      patch.modifier = "exact";
+      patch.year_to = 0;
+      patch.month_to = 0;
+      patch.day_to = 0;
     } else if (precision === "year") {
       patch.month = 0;
       patch.day = 0;
+      patch.month_to = 0;
+      patch.day_to = 0;
     } else if (precision === "month") {
       patch.day = 0;
+      patch.day_to = 0;
     }
     set(patch);
   };
