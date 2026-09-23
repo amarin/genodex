@@ -17,60 +17,72 @@ import (
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
 	create_archive "github.com/amarin/genodex/internal/usecases/create_archive"
+	create_attachment "github.com/amarin/genodex/internal/usecases/create_attachment"
 	create_church "github.com/amarin/genodex/internal/usecases/create_church"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
 	create_estate "github.com/amarin/genodex/internal/usecases/create_estate"
 	create_given_name "github.com/amarin/genodex/internal/usecases/create_given_name"
+	create_note "github.com/amarin/genodex/internal/usecases/create_note"
 	create_parish "github.com/amarin/genodex/internal/usecases/create_parish"
 	create_patronymic "github.com/amarin/genodex/internal/usecases/create_patronymic"
 	create_repository "github.com/amarin/genodex/internal/usecases/create_repository"
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	create_title "github.com/amarin/genodex/internal/usecases/create_title"
 	delete_archive "github.com/amarin/genodex/internal/usecases/delete_archive"
+	delete_attachment "github.com/amarin/genodex/internal/usecases/delete_attachment"
 	delete_church "github.com/amarin/genodex/internal/usecases/delete_church"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
 	delete_estate "github.com/amarin/genodex/internal/usecases/delete_estate"
 	delete_given_name "github.com/amarin/genodex/internal/usecases/delete_given_name"
+	delete_note "github.com/amarin/genodex/internal/usecases/delete_note"
 	delete_parish "github.com/amarin/genodex/internal/usecases/delete_parish"
 	delete_patronymic "github.com/amarin/genodex/internal/usecases/delete_patronymic"
 	delete_repository "github.com/amarin/genodex/internal/usecases/delete_repository"
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	delete_title "github.com/amarin/genodex/internal/usecases/delete_title"
 	get_archive "github.com/amarin/genodex/internal/usecases/get_archive"
+	get_attachment "github.com/amarin/genodex/internal/usecases/get_attachment"
 	get_church "github.com/amarin/genodex/internal/usecases/get_church"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
 	get_estate "github.com/amarin/genodex/internal/usecases/get_estate"
 	get_given_name "github.com/amarin/genodex/internal/usecases/get_given_name"
+	get_note "github.com/amarin/genodex/internal/usecases/get_note"
 	get_parish "github.com/amarin/genodex/internal/usecases/get_parish"
 	get_patronymic "github.com/amarin/genodex/internal/usecases/get_patronymic"
 	get_repository "github.com/amarin/genodex/internal/usecases/get_repository"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	get_title "github.com/amarin/genodex/internal/usecases/get_title"
 	list_archives "github.com/amarin/genodex/internal/usecases/list_archives"
+	list_attachments "github.com/amarin/genodex/internal/usecases/list_attachments"
 	list_churches "github.com/amarin/genodex/internal/usecases/list_churches"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
 	list_estates "github.com/amarin/genodex/internal/usecases/list_estates"
 	list_given_names "github.com/amarin/genodex/internal/usecases/list_given_names"
+	list_notes "github.com/amarin/genodex/internal/usecases/list_notes"
 	list_parishes "github.com/amarin/genodex/internal/usecases/list_parishes"
 	list_patronymics "github.com/amarin/genodex/internal/usecases/list_patronymics"
 	list_repositories "github.com/amarin/genodex/internal/usecases/list_repositories"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	list_titles "github.com/amarin/genodex/internal/usecases/list_titles"
 	search_archives "github.com/amarin/genodex/internal/usecases/search_archives"
+	search_attachments "github.com/amarin/genodex/internal/usecases/search_attachments"
 	search_churches "github.com/amarin/genodex/internal/usecases/search_churches"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
 	search_estates "github.com/amarin/genodex/internal/usecases/search_estates"
 	search_given_names "github.com/amarin/genodex/internal/usecases/search_given_names"
+	search_notes "github.com/amarin/genodex/internal/usecases/search_notes"
 	search_parishes "github.com/amarin/genodex/internal/usecases/search_parishes"
 	search_patronymics "github.com/amarin/genodex/internal/usecases/search_patronymics"
 	search_repositories "github.com/amarin/genodex/internal/usecases/search_repositories"
 	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
 	search_titles "github.com/amarin/genodex/internal/usecases/search_titles"
 	update_archive "github.com/amarin/genodex/internal/usecases/update_archive"
+	update_attachment "github.com/amarin/genodex/internal/usecases/update_attachment"
 	update_church "github.com/amarin/genodex/internal/usecases/update_church"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
 	update_estate "github.com/amarin/genodex/internal/usecases/update_estate"
 	update_given_name "github.com/amarin/genodex/internal/usecases/update_given_name"
+	update_note "github.com/amarin/genodex/internal/usecases/update_note"
 	update_parish "github.com/amarin/genodex/internal/usecases/update_parish"
 	update_patronymic "github.com/amarin/genodex/internal/usecases/update_patronymic"
 	update_repository "github.com/amarin/genodex/internal/usecases/update_repository"
@@ -446,6 +458,75 @@ func (s *archiveService) DeleteArchive(ctx context.Context, id models.ID) error 
 	return s.del.DeleteArchive(ctx, id)
 }
 
+// noteService — фасад всех сценариев заметок, отдаваемых HTTP и MCP.
+type noteService struct {
+	list   *list_notes.Scenario
+	search *search_notes.Scenario
+	get    *get_note.Scenario
+	create *create_note.Scenario
+	update *update_note.Scenario
+	del    *delete_note.Scenario
+}
+
+func (s *noteService) ListNotes(ctx context.Context, access models.Access, page models.Page) ([]models.Note, error) {
+	return s.list.ListNotes(ctx, access, page)
+}
+
+func (s *noteService) SearchNotes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Note, error) {
+	return s.search.SearchNotes(ctx, access, q)
+}
+
+func (s *noteService) GetNote(ctx context.Context, access models.Access, id models.ID) (models.Note, error) {
+	return s.get.GetNote(ctx, access, id)
+}
+
+func (s *noteService) CreateNote(ctx context.Context, n models.Note) (models.Note, error) {
+	return s.create.CreateNote(ctx, n)
+}
+
+func (s *noteService) UpdateNote(ctx context.Context, n models.Note) error {
+	return s.update.UpdateNote(ctx, n)
+}
+
+func (s *noteService) DeleteNote(ctx context.Context, id models.ID) error {
+	return s.del.DeleteNote(ctx, id)
+}
+
+// attachmentService — фасад всех сценариев файловых вложений, отдаваемых
+// HTTP и MCP.
+type attachmentService struct {
+	list   *list_attachments.Scenario
+	search *search_attachments.Scenario
+	get    *get_attachment.Scenario
+	create *create_attachment.Scenario
+	update *update_attachment.Scenario
+	del    *delete_attachment.Scenario
+}
+
+func (s *attachmentService) ListAttachments(ctx context.Context, access models.Access, page models.Page) ([]models.Attachment, error) {
+	return s.list.ListAttachments(ctx, access, page)
+}
+
+func (s *attachmentService) SearchAttachments(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Attachment, error) {
+	return s.search.SearchAttachments(ctx, access, q)
+}
+
+func (s *attachmentService) GetAttachment(ctx context.Context, access models.Access, id models.ID) (models.Attachment, error) {
+	return s.get.GetAttachment(ctx, access, id)
+}
+
+func (s *attachmentService) CreateAttachment(ctx context.Context, a models.Attachment) (models.Attachment, error) {
+	return s.create.CreateAttachment(ctx, a)
+}
+
+func (s *attachmentService) UpdateAttachment(ctx context.Context, a models.Attachment) error {
+	return s.update.UpdateAttachment(ctx, a)
+}
+
+func (s *attachmentService) DeleteAttachment(ctx context.Context, id models.ID) error {
+	return s.del.DeleteAttachment(ctx, id)
+}
+
 var (
 	_ httpapi.DivisionService   = (*divisionService)(nil)
 	_ mcp.DivisionService       = (*divisionService)(nil)
@@ -467,6 +548,10 @@ var (
 	_ mcp.ParishService         = (*parishService)(nil)
 	_ httpapi.ArchiveService    = (*archiveService)(nil)
 	_ mcp.ArchiveService        = (*archiveService)(nil)
+	_ httpapi.NoteService       = (*noteService)(nil)
+	_ mcp.NoteService           = (*noteService)(nil)
+	_ httpapi.AttachmentService = (*attachmentService)(nil)
+	_ mcp.AttachmentService     = (*attachmentService)(nil)
 	_ httpapi.AuthService       = (*auth.Service)(nil)
 	_ mcp.TokenResolver         = (*auth.Service)(nil)
 )
@@ -568,6 +653,24 @@ func New(cfg Config) (*App, error) {
 		del:    delete_archive.New(st),
 	}
 
+	notes := &noteService{
+		list:   list_notes.New(st),
+		search: search_notes.New(st),
+		get:    get_note.New(st),
+		create: create_note.New(st, idgen.New()),
+		update: update_note.New(st),
+		del:    delete_note.New(st),
+	}
+
+	attachments := &attachmentService{
+		list:   list_attachments.New(st),
+		search: search_attachments.New(st),
+		get:    get_attachment.New(st),
+		create: create_attachment.New(st, idgen.New()),
+		update: update_attachment.New(st),
+		del:    delete_attachment.New(st),
+	}
+
 	// auth-хранилище — на том же соединении, что и общий store (см.
 	// sqlstore.Store.DB), файл БД один и тот же (internal/storage/schema_auth.go).
 	authService := auth.New(auth.NewSQLStore(st.DB()))
@@ -578,6 +681,8 @@ func New(cfg Config) (*App, error) {
 			Divisions: divisions, Surnames: surnames,
 			Patronymics: patronymics, Estates: estates, Titles: titles, GivenNames: givenNames,
 			Repositories: repositories, Churches: churches, Parishes: parishes, Archives: archives,
+			Notes:       notes,
+			Attachments: attachments,
 		}),
 	)))
 	mux.Handle("/api/", httpapi.NewAPIHandler(httpapi.Deps{
@@ -591,6 +696,8 @@ func New(cfg Config) (*App, error) {
 		Churches:     churches,
 		Parishes:     parishes,
 		Archives:     archives,
+		Notes:        notes,
+		Attachments:  attachments,
 		Auth:         authService,
 		DocsFS:       genodex.DocsFS(cfg.WebMode),
 		TrustProxy:   cfg.TrustProxy,

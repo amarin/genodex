@@ -117,6 +117,28 @@ type ArchiveService interface {
 	DeleteArchive(ctx context.Context, id models.ID) error
 }
 
+// NoteService — контракт сценариев заметок, отдаваемых в HTTP: список,
+// поиск, чтение, создание, изменение, удаление.
+type NoteService interface {
+	ListNotes(ctx context.Context, access models.Access, page models.Page) ([]models.Note, error)
+	SearchNotes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Note, error)
+	GetNote(ctx context.Context, access models.Access, id models.ID) (models.Note, error)
+	CreateNote(ctx context.Context, n models.Note) (models.Note, error)
+	UpdateNote(ctx context.Context, n models.Note) error
+	DeleteNote(ctx context.Context, id models.ID) error
+}
+
+// AttachmentService — контракт сценариев файловых вложений, отдаваемых в
+// HTTP: список, поиск, чтение, создание, изменение, удаление.
+type AttachmentService interface {
+	ListAttachments(ctx context.Context, access models.Access, page models.Page) ([]models.Attachment, error)
+	SearchAttachments(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Attachment, error)
+	GetAttachment(ctx context.Context, access models.Access, id models.ID) (models.Attachment, error)
+	CreateAttachment(ctx context.Context, a models.Attachment) (models.Attachment, error)
+	UpdateAttachment(ctx context.Context, a models.Attachment) error
+	DeleteAttachment(ctx context.Context, id models.ID) error
+}
+
 // AuthService — контракт auth.Service, отдаваемый в HTTP-обработчики.
 type AuthService interface {
 	Bootstrap(ctx context.Context) (bool, error)

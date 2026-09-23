@@ -18,6 +18,8 @@ type Deps struct {
 	Churches     ChurchService
 	Parishes     ParishService
 	Archives     ArchiveService
+	Notes        NoteService
+	Attachments  AttachmentService
 }
 
 // NewServer создаёт MCP-сервер и регистрирует доступные тулы.
@@ -63,6 +65,14 @@ func NewServer(deps Deps) *server.MCPServer {
 
 	if deps.Archives != nil {
 		registerArchiveTools(s, deps.Archives)
+	}
+
+	if deps.Notes != nil {
+		registerNoteTools(s, deps.Notes)
+	}
+
+	if deps.Attachments != nil {
+		registerAttachmentTools(s, deps.Attachments)
 	}
 
 	return s

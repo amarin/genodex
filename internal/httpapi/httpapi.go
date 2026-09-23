@@ -56,6 +56,14 @@ func NewHandler(deps Deps) http.Handler {
 		registerArchiveRoutes(mux, deps.Archives)
 	}
 
+	if deps.Notes != nil {
+		registerNoteRoutes(mux, deps.Notes)
+	}
+
+	if deps.Attachments != nil {
+		registerAttachmentRoutes(mux, deps.Attachments)
+	}
+
 	return mux
 }
 
@@ -162,6 +170,26 @@ func registerArchiveRoutes(mux *http.ServeMux, archives ArchiveService) {
 	mux.HandleFunc("POST /api/archives", handleArchiveCreate(archives))
 	mux.HandleFunc("PUT /api/archives/{id}", handleArchiveUpdate(archives))
 	mux.HandleFunc("DELETE /api/archives/{id}", handleArchiveDelete(archives))
+}
+
+// registerNoteRoutes регистрирует маршруты /api/notes на переданном mux.
+func registerNoteRoutes(mux *http.ServeMux, notes NoteService) {
+	mux.HandleFunc("GET /api/notes", handleNoteList(notes))
+	mux.HandleFunc("GET /api/notes/search", handleNoteSearch(notes))
+	mux.HandleFunc("GET /api/notes/{id}", handleNoteGet(notes))
+	mux.HandleFunc("POST /api/notes", handleNoteCreate(notes))
+	mux.HandleFunc("PUT /api/notes/{id}", handleNoteUpdate(notes))
+	mux.HandleFunc("DELETE /api/notes/{id}", handleNoteDelete(notes))
+}
+
+// registerAttachmentRoutes регистрирует маршруты /api/attachments на переданном mux.
+func registerAttachmentRoutes(mux *http.ServeMux, attachments AttachmentService) {
+	mux.HandleFunc("GET /api/attachments", handleAttachmentList(attachments))
+	mux.HandleFunc("GET /api/attachments/search", handleAttachmentSearch(attachments))
+	mux.HandleFunc("GET /api/attachments/{id}", handleAttachmentGet(attachments))
+	mux.HandleFunc("POST /api/attachments", handleAttachmentCreate(attachments))
+	mux.HandleFunc("PUT /api/attachments/{id}", handleAttachmentUpdate(attachments))
+	mux.HandleFunc("DELETE /api/attachments/{id}", handleAttachmentDelete(attachments))
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {
