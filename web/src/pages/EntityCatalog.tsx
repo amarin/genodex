@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 const CATALOG_ENTRIES: { label: string; path: string }[] = [
   { label: "Административное деление", path: "/divisions" },
   { label: "Документация", path: "/docs" },
+  { label: "Фамилии", path: "/surnames" },
 ];
 
 const SORTED_ENTRIES = [...CATALOG_ENTRIES].sort((a, b) => a.label.localeCompare(b.label, "ru"));

@@ -125,6 +125,99 @@ export async function deleteDivision(id: string): Promise<void> {
   return authFetch<void>(`/api/admin-divisions/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+// TextRef — контракт элемента списков вроде Surname.variants: текст или
+// ссылка на другую сущность (transport.TextRef). v1-формы редактируют
+// только text; ref/type только читаются (docs/data-model/entity-write.md §4).
+export interface TextRef {
+  text: string;
+  ref?: string;
+  type?: string;
+}
+
+export interface Surname {
+  id: string;
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+// SurnameInput — тело POST/PUT /api/surnames (transport.SurnameCreate и
+// transport.SurnameUpdate имеют одинаковую форму: полная замена всех полей).
+export interface SurnameInput {
+  canonical: string;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+export interface SurnameQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface SurnameSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchSurnames(query: SurnameQuery = {}): Promise<Surname[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/surnames${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchSurnames(query: SurnameSearchQuery): Promise<Surname[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/surnames/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// fetchSurname — GET /api/surnames/{id}, открыто анонимному посетителю. Через
+// authFetch — ради ApiError (нужен код 404 на странице View).
+export async function fetchSurname(id: string): Promise<Surname> {
+  return authFetch<Surname>(`/api/surnames/${encodeURIComponent(id)}`);
+}
+
+// createSurname/updateSurname/deleteSurname — запись, только для вошедшего
+// владельца (requireFull на сервере, internal/httpapi/surname_write.go).
+export async function createSurname(input: SurnameInput): Promise<Surname> {
+  return authFetch<Surname>("/api/surnames", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateSurname(id: string, input: SurnameInput): Promise<Surname> {
+  return authFetch<Surname>(`/api/surnames/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteSurname(id: string): Promise<void> {
+  return authFetch<void>(`/api/surnames/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
 export interface DocFile {
   path: string;
   title: string;

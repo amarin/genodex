@@ -7,6 +7,8 @@ import DocsPanel from "./docs-panel";
 import EntityCatalog from "./pages/EntityCatalog";
 import DivisionsList from "./pages/DivisionsList";
 import DivisionView from "./pages/DivisionView";
+import SurnamesList from "./pages/SurnamesList";
+import SurnameView from "./pages/SurnameView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -36,6 +38,8 @@ export default function App() {
           <Route path="/docs/:docPath*" element={<PageLayout><DocsPanel /></PageLayout>} />
           <Route path="/divisions" element={<PageLayout><DivisionsList /></PageLayout>} />
           <Route path="/divisions/:id" element={<PageLayout><DivisionView /></PageLayout>} />
+          <Route path="/surnames" element={<PageLayout><SurnamesList /></PageLayout>} />
+          <Route path="/surnames/:id" element={<PageLayout><SurnameView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />
