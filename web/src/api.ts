@@ -27,7 +27,7 @@ export const ADMIN_DIVISION_TYPE_LABELS: Record<AdminDivisionType, string> = {
   volost: "Волость",
   other: "Иное",
   gorod: "Город",
-  selo: "Села",
+  selo: "Село",
   derevnya: "Деревня",
   hutor: "Хутор",
   pogost: "Погост",
