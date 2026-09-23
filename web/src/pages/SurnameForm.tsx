@@ -83,7 +83,7 @@ export function CreateSurnameModal({
         <Form.Item label="Варианты написания">
           <TextRefListEditor value={variants} onChange={setVariants} addLabel="+ вариант" />
         </Form.Item>
-        <Form.Item label="Связанные записи">
+        <Form.Item label="Носители">
           <TextRefListEditor value={items} onChange={setItems} addLabel="+ запись" />
         </Form.Item>
         <Form.Item label="Заметки">

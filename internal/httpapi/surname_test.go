@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"testing/fstest"
 
@@ -67,13 +68,14 @@ func (f *fakeSurnames) DeleteSurname(_ context.Context, id models.ID) error {
 }
 
 func TestSurnameListReturnsRecords(t *testing.T) {
-	svc := &fakeSurnames{list: []models.Surname{{ID: "SN-1", Canonical: "Иванов"}}}
+	svc := &fakeSurnames{list: []models.Surname{{ID: "SN-1", Canonical: "Иванов", Variants: []models.TextRef{{Text: "Иванова"}}}}}
 
 	rec := get(t, NewHandler(Deps{Surnames: svc, DocsFS: fstest.MapFS{}}), "/api/surnames")
 	requireStatus(t, rec, 200)
 
-	if rec.Body.String() == "" {
-		t.Fatalf("empty body")
+	want := `[{"id":"SN-1","canonical":"Иванов","variants":[{"text":"Иванова"}],"items":[],"notes":[]}]`
+	if got := strings.TrimSpace(rec.Body.String()); got != want {
+		t.Fatalf("body = %s, want %s", got, want)
 	}
 }
 
@@ -84,7 +86,7 @@ func TestSurnameGetNotFound(t *testing.T) {
 	requireStatus(t, rec, 404)
 }
 
-func TestSurnameSearchEmptyQ(t *testing.T) {
+func TestSurnameSearchPassesQuery(t *testing.T) {
 	svc := &fakeSurnames{}
 
 	rec := get(t, NewHandler(Deps{Surnames: svc, DocsFS: fstest.MapFS{}}), "/api/surnames/search?q=Ив")

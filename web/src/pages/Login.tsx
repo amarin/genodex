@@ -40,7 +40,7 @@ export default function LoginPage() {
     // ошибку входа.
     setSubmitting(false);
     await refresh().catch(() => {});
-    navigate("/docs");
+    navigate("/");
   };
 
   return (

@@ -20,7 +20,10 @@ func NewServer(deps Deps) *server.MCPServer {
 	)
 
 	registerDivisionTools(s, deps.Divisions)
-	registerSurnameTools(s, deps.Surnames)
+
+	if deps.Surnames != nil {
+		registerSurnameTools(s, deps.Surnames)
+	}
 
 	return s
 }

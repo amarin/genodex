@@ -22,7 +22,7 @@ export function AppHeader() {
     // fail-closed'ится при сбое БД) — если не поймать, navigate ниже не
     // выполнится, и шапка продолжит показывать владельца как залогиненного.
     await refresh().catch(() => {});
-    navigate("/docs");
+    navigate("/");
   };
 
   return (
@@ -35,7 +35,7 @@ export function AppHeader() {
         alignItems: "center",
       }}
     >
-      <Link to="/docs" style={{ color: "#fff" }}>
+      <Link to="/" style={{ color: "#fff" }}>
         Genealogy MCP
       </Link>
       {!loading && (

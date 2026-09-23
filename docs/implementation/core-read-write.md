@@ -138,11 +138,14 @@ id-аргумента — `*ValidationError` поля `id`.
 `AdminDivisionCreate`/`Update` — импортируются только обработчиками (`httpapi`,
 `mcp`), `models` про них не знает.
 
-**Веб** (`web/src`): вкладка «Населённые пункты» — список от корня, строка поиска
-(`Input.Search` → `/search`), переход к дочерним единицам (кнопка «дети» →
-`?parent_id=`) и обратно («к корню»). `web/dist` не хранится в git
-(`web/.gitignore`) — собирается перед prod-запуском (`npm run build`,
-`go:embed` в `internal/web`/`web/embed.go`).
+**Веб** (`web/src`) — исторически, на момент этого прохода: вкладка «Населённые
+пункты» — список от корня, строка поиска (`Input.Search` → `/search`), переход
+к дочерним единицам (кнопка «дети» → `?parent_id=`) и обратно («к корню»).
+Структура с вкладками впоследствии снесена (навигационная перестройка
+подпроекта Surname — единая точка входа `/`, роут `/divisions`, хлебные
+крошки; см. `docs/data-model/entity-write.md` §4, `docs/usage.md`). `web/dist`
+не хранится в git (`web/.gitignore`) — собирается перед prod-запуском
+(`npm run build`, `go:embed` в `internal/web`/`web/embed.go`).
 
 Соглашение об именах для следующих срезов: MCP
 `<entity>_list|search|get|create|update|delete`, HTTP `GET/POST

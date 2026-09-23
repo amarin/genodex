@@ -15,7 +15,10 @@ import (
 // фамилий. Запись variants/items/notes — только текстом (v1, как и веб-форма,
 // docs/data-model/entity-write.md §4): элемент с уже существующей ссылкой
 // (Ref/Type) через эти тулы не создать, только прочитать (list/get/search
-// отдают полный TextRef, включая Ref/Type).
+// отдают полный TextRef, включая Ref/Type). ВАЖНО: surname_update заменяет
+// списки целиком текстом — существующие ref/type будут потеряны при любом
+// обновлении через MCP, пока не появится picker (см. предупреждение в
+// описании тула).
 func registerSurnameTools(s *server.MCPServer, surnames SurnameService) {
 	tool := mcp.NewTool(
 		"surname_list",
@@ -46,25 +49,25 @@ func registerSurnameTools(s *server.MCPServer, surnames SurnameService) {
 		mcp.WithDescription("Создать словарную запись фамилии; id генерируется сервером; результат — JSON созданной записи. variants/items/notes — списки текста (без ссылок на другие сущности, v1)"),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
-		mcp.WithArray("items", mcp.WithStringItems(), mcp.Description("Прочие связанные записи (текстом)")),
+		mcp.WithArray("items", mcp.WithStringItems(), mcp.Description("Носители/употребления — кто использует эту форму (текстом)")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
 	)
 	s.AddTool(tool, surnameCreateHandler(surnames))
 
 	tool = mcp.NewTool(
 		"surname_update",
-		mcp.WithDescription("Изменить словарную запись фамилии: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи"),
+		mcp.WithDescription("Изменить словарную запись фамилии: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из surname_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Новая каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
-		mcp.WithArray("items", mcp.WithStringItems(), mcp.Description("Прочие связанные записи (текстом)")),
+		mcp.WithArray("items", mcp.WithStringItems(), mcp.Description("Носители/употребления — кто использует эту форму (текстом)")),
 		mcp.WithArray("notes", mcp.WithStringItems(), mcp.Description("Заметки")),
 	)
 	s.AddTool(tool, surnameUpdateHandler(surnames))
 
 	tool = mcp.NewTool(
 		"surname_delete",
-		mcp.WithDescription("Удалить словарную запись фамилии, если она не занята другими сущностями; занятая — ошибка тула. Необратимо"),
+		mcp.WithDescription("Удалить словарную запись фамилии. Необратимо. Если на неё есть строгие ссылки от других сущностей — ошибка тула (для Surname такое сегодня не создаётся, но общий механизм проверки один для всех сущностей)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 	)
 	s.AddTool(tool, surnameDeleteHandler(surnames))

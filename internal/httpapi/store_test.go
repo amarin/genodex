@@ -14,11 +14,17 @@ import (
 	"github.com/amarin/genodex/internal/models"
 	"github.com/amarin/genodex/internal/store/sqlstore"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
+	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
+	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
+	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
+	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
+	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
+	update_surname "github.com/amarin/genodex/internal/usecases/update_surname"
 )
 
 // divisionService — сборка httpapi.DivisionService на настоящих сценариях
@@ -67,6 +73,55 @@ func newDivisionService(t *testing.T, st *sqlstore.Store) *divisionService {
 		create: create_division.New(st, idgen.New()),
 		update: update_division.New(st),
 		del:    delete_division.New(st),
+	}
+}
+
+// surnameService — сборка httpapi.SurnameService на настоящих сценариях
+// (так же собран internal/app's surnameService).
+type surnameService struct {
+	list   *list_surnames.Scenario
+	search *search_surnames.Scenario
+	get    *get_surname.Scenario
+	create *create_surname.Scenario
+	update *update_surname.Scenario
+	del    *delete_surname.Scenario
+}
+
+func (s *surnameService) ListSurnames(ctx context.Context, access models.Access, page models.Page) ([]models.Surname, error) {
+	return s.list.ListSurnames(ctx, access, page)
+}
+
+func (s *surnameService) SearchSurnames(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Surname, error) {
+	return s.search.SearchSurnames(ctx, access, q)
+}
+
+func (s *surnameService) GetSurname(ctx context.Context, id models.ID) (models.Surname, error) {
+	return s.get.GetSurname(ctx, id)
+}
+
+func (s *surnameService) CreateSurname(ctx context.Context, sn models.Surname) (models.Surname, error) {
+	return s.create.CreateSurname(ctx, sn)
+}
+
+func (s *surnameService) UpdateSurname(ctx context.Context, sn models.Surname) error {
+	return s.update.UpdateSurname(ctx, sn)
+}
+
+func (s *surnameService) DeleteSurname(ctx context.Context, id models.ID) error {
+	return s.del.DeleteSurname(ctx, id)
+}
+
+// newSurnameService собирает фасад на настоящем хранилище.
+func newSurnameService(t *testing.T, st *sqlstore.Store) *surnameService {
+	t.Helper()
+
+	return &surnameService{
+		list:   list_surnames.New(st),
+		search: search_surnames.New(st),
+		get:    get_surname.New(st),
+		create: create_surname.New(st, idgen.New()),
+		update: update_surname.New(st),
+		del:    delete_surname.New(st),
 	}
 }
 

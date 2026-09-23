@@ -28,7 +28,11 @@ type Deps struct {
 func NewAPIHandler(deps Deps) http.Handler {
 	mux := http.NewServeMux()
 	registerDivisionRoutes(mux, deps.Divisions, deps.DocsFS)
-	registerSurnameRoutes(mux, deps.Surnames)
+
+	if deps.Surnames != nil {
+		registerSurnameRoutes(mux, deps.Surnames)
+	}
+
 	registerAuthRoutes(mux, deps.Auth, deps.TrustProxy)
 
 	return requireCSRFHeader(resolveAccess(deps.Auth)(mux))

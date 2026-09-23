@@ -60,7 +60,7 @@ export default function RegisterPage() {
     // должны выглядеть как провал регистрации.
     setSubmitting(false);
     await refresh().catch(() => {});
-    navigate("/docs");
+    navigate("/");
   };
 
   return (

@@ -26,8 +26,22 @@ interface EditFormValues {
 
 const EDIT_FORM_FIELDS: (keyof EditFormValues)[] = ["canonical"];
 
-function textRefListText(items: TextRef[]): string {
-  return items.map((t) => t.text).join(", ");
+function TextRefListView({ items }: { items: TextRef[] }) {
+  if (items.length === 0) {
+    return <Typography.Text type="secondary">—</Typography.Text>;
+  }
+  return (
+    <Space direction="vertical" size={0}>
+      {items.map((t, i) => (
+        <Typography.Text key={i}>
+          {t.text}
+          {t.ref != null && t.ref !== "" && (
+            <Typography.Text type="secondary"> → {t.type} {t.ref}</Typography.Text>
+          )}
+        </Typography.Text>
+      ))}
+    </Space>
+  );
 }
 
 // SurnameView — просмотр словарной записи фамилии, переключаемый в форму
@@ -183,9 +197,9 @@ export default function SurnameView() {
       {!editing ? (
         <>
           <Descriptions title={surname.canonical} column={1} bordered size="small">
-            <Descriptions.Item label="Варианты">{textRefListText(surname.variants) || "—"}</Descriptions.Item>
-            <Descriptions.Item label="Связанные записи">{textRefListText(surname.items) || "—"}</Descriptions.Item>
-            <Descriptions.Item label="Заметки">{textRefListText(surname.notes) || "—"}</Descriptions.Item>
+            <Descriptions.Item label="Варианты"><TextRefListView items={surname.variants} /></Descriptions.Item>
+            <Descriptions.Item label="Носители"><TextRefListView items={surname.items} /></Descriptions.Item>
+            <Descriptions.Item label="Заметки"><TextRefListView items={surname.notes} /></Descriptions.Item>
           </Descriptions>
           {session != null && (
             <Space style={{ marginTop: 16 }}>
@@ -219,7 +233,7 @@ export default function SurnameView() {
           <Form.Item label="Варианты написания">
             <TextRefListEditor value={variants} onChange={setVariants} addLabel="+ вариант" />
           </Form.Item>
-          <Form.Item label="Связанные записи">
+          <Form.Item label="Носители">
             <TextRefListEditor value={items} onChange={setItems} addLabel="+ запись" />
           </Form.Item>
           <Form.Item label="Заметки">

@@ -104,6 +104,118 @@ func TestDivisionWriteContractWithRealStore(t *testing.T) {
 	requireStatusS(t, anonRec, http.StatusUnauthorized)
 }
 
+// TestSurnameWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» (так же собран internal/app) для записи словарных записей фамилий
+// — через NewAPIHandler с реальной сессией владельца: bootstrap-регистрация
+// → создание → чтение → изменение → удаление → повторное чтение — 404
+// (по образцу TestDivisionWriteContractWithRealStore, но без 409-сценария:
+// у Surname нет строгих внешних ключей, docs/data-model/entity-write.md).
+func TestSurnameWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		Surnames:   newSurnameService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание записи.
+	created := createSurname(t, h, owner,
+		`{"canonical":"Иванов","variants":[{"text":"Иванова"}],"items":[],"notes":[]}`, http.StatusCreated)
+	if created.Canonical != "Иванов" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "SN-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю.
+	rec := getReq(t, h, "/api/surnames/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"canonical":"Иванов"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена canonical/variants/items/notes.
+	rec = putSurnameReq(t, h, owner, "/api/surnames/"+string(created.ID),
+		`{"canonical":"Иванова","variants":[],"items":[],"notes":[]}`)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeSurnameS(t, rec)
+	if updated.Canonical != "Иванова" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление — у Surname нет строгих FK, конфликта не бывает.
+	requireStatusS(t, delReq(t, h, owner, "/api/surnames/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/surnames/"+string(created.ID)), http.StatusNotFound)
+}
+
+func createSurname(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Surname {
+	t.Helper()
+
+	rec := postSurnameReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeSurnameS(t, rec)
+}
+
+func decodeSurnameS(t *testing.T, rec *httptest.ResponseRecorder) transport.Surname {
+	t.Helper()
+
+	var s transport.Surname
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return s
+}
+
+func postSurnameReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/surnames", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putSurnameReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
 // TestDivisionCreateWithoutCSRFHeaderIs400: валидная сессия владельца, но без
 // X-Requested-With — 400 (requireCSRFHeader), сценарий не вызывается. Пин на
 // то, что NewAPIHandler реально оборачивает division-записи, не только auth.
