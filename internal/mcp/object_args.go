@@ -41,6 +41,83 @@ func factDateObjectProperties() map[string]any {
 	}
 }
 
+// anchorObjectProperties — JSON-schema свойств объектного аргумента вида
+// Anchor (полиморфная привязка «где именно» у Citation, см.
+// transport.Anchor): плоский объект с дискриминатором kind и полями всех
+// трёх вариантов вместе (по образцу FactDate), а не вложенный union — проще
+// для MCP-клиента, чем oneOf. Первый полиморфный тип в программе.
+func anchorObjectProperties() map[string]any {
+	return map[string]any{
+		"kind":          map[string]any{"type": "string", "enum": []string{"archive", "file", "url"}, "description": "Вид привязки; пустой объект или отсутствие аргумента — без привязки"},
+		"node_id":       map[string]any{"type": "string", "description": "id архивного узла (kind=archive, обязателен для этого вида)"},
+		"document_id":   map[string]any{"type": "string", "description": "id архивного документа (kind=archive, необязательно)"},
+		"page":          map[string]any{"type": "integer", "description": "Номер страницы/скана (kind=archive, обязателен, не меньше 1)"},
+		"rect":          map[string]any{"type": "string", "description": "Координаты области выделения на изображении (kind=archive, необязательно)"},
+		"attachment_id": map[string]any{"type": "string", "description": "id вложения (kind=file, обязателен для этого вида)"},
+		"timecode":      map[string]any{"type": "string", "description": "Тайм-метка для аудио/видео (kind=file, необязательно)"},
+		"url":           map[string]any{"type": "string", "description": "Абсолютный http(s)-адрес (kind=url, обязателен для этого вида)"},
+	}
+}
+
+// optionalAnchor читает необязательный объектный аргумент вида Anchor (см.
+// anchorObjectProperties) из сырых аргументов тула и конвертирует его в
+// модель; отсутствующий, null или пустой (kind не задан/не распознан)
+// аргумент — nil, без ошибки (см. (*transport.Anchor).Model()).
+func optionalAnchor(args map[string]any, name string) (models.Anchor, error) {
+	raw, ok := args[name]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	var a transport.Anchor
+	if err := json.Unmarshal(b, &a); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	return a.Model(), nil
+}
+
+// sourceLinkObjectProperties — JSON-schema свойств одного элемента массива
+// sources (доказательство, см. transport.SourceLink). target_type/target_id
+// сюда не входят — клиент их не отправляет, владелец подставляется сервером
+// из контекста вызова (см. transport.SourceLink.Model()).
+func sourceLinkObjectProperties() map[string]any {
+	return map[string]any{
+		"citation_id": map[string]any{"type": "string", "description": "id цитаты (обязателен)"},
+		"reliability": map[string]any{"type": "string", "enum": []string{"primary", "contemporary", "memory", "indirect", "unknown"}, "description": "Достоверность именно этого утверждения по этой цитате"},
+		"role":        map[string]any{"type": "string", "description": "Роль утверждения"},
+		"note":        map[string]any{"type": "string", "description": "Заметка"},
+	}
+}
+
+// optionalSourceLinks читает массив объектов вида SourceLink (см.
+// sourceLinkObjectProperties) из сырых аргументов тула и конвертирует его в
+// модели; отсутствующий или null аргумент — пустой срез, без ошибки (та же
+// механика, что и textRefsFromStrings для списков TextRef).
+func optionalSourceLinks(args map[string]any, name string) ([]models.SourceLink, error) {
+	raw, ok := args[name]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	var links []transport.SourceLink
+	if err := json.Unmarshal(b, &links); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	return transport.SourceLinksToModel(links), nil
+}
+
 // optionalTextRef читает необязательный объектный аргумент {text, ref?, type?}
 // (см. transport.TextRef) из сырых аргументов тула и конвертирует его в
 // модель; отсутствующий или null аргумент — nil, без ошибки.

@@ -64,6 +64,14 @@ func NewHandler(deps Deps) http.Handler {
 		registerAttachmentRoutes(mux, deps.Attachments)
 	}
 
+	if deps.Sources != nil {
+		registerSourceRoutes(mux, deps.Sources)
+	}
+
+	if deps.Citations != nil {
+		registerCitationRoutes(mux, deps.Citations)
+	}
+
 	return mux
 }
 
@@ -190,6 +198,26 @@ func registerAttachmentRoutes(mux *http.ServeMux, attachments AttachmentService)
 	mux.HandleFunc("POST /api/attachments", handleAttachmentCreate(attachments))
 	mux.HandleFunc("PUT /api/attachments/{id}", handleAttachmentUpdate(attachments))
 	mux.HandleFunc("DELETE /api/attachments/{id}", handleAttachmentDelete(attachments))
+}
+
+// registerSourceRoutes регистрирует маршруты /api/sources на переданном mux.
+func registerSourceRoutes(mux *http.ServeMux, sources SourceService) {
+	mux.HandleFunc("GET /api/sources", handleSourceList(sources))
+	mux.HandleFunc("GET /api/sources/search", handleSourceSearch(sources))
+	mux.HandleFunc("GET /api/sources/{id}", handleSourceGet(sources))
+	mux.HandleFunc("POST /api/sources", handleSourceCreate(sources))
+	mux.HandleFunc("PUT /api/sources/{id}", handleSourceUpdate(sources))
+	mux.HandleFunc("DELETE /api/sources/{id}", handleSourceDelete(sources))
+}
+
+// registerCitationRoutes регистрирует маршруты /api/citations на переданном mux.
+func registerCitationRoutes(mux *http.ServeMux, citations CitationService) {
+	mux.HandleFunc("GET /api/citations", handleCitationList(citations))
+	mux.HandleFunc("GET /api/citations/search", handleCitationSearch(citations))
+	mux.HandleFunc("GET /api/citations/{id}", handleCitationGet(citations))
+	mux.HandleFunc("POST /api/citations", handleCitationCreate(citations))
+	mux.HandleFunc("PUT /api/citations/{id}", handleCitationUpdate(citations))
+	mux.HandleFunc("DELETE /api/citations/{id}", handleCitationDelete(citations))
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

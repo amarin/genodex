@@ -139,6 +139,28 @@ type AttachmentService interface {
 	DeleteAttachment(ctx context.Context, id models.ID) error
 }
 
+// SourceService — контракт сценариев источников доказательств, отдаваемых в
+// HTTP: список, поиск, чтение, создание, изменение, удаление.
+type SourceService interface {
+	ListSources(ctx context.Context, access models.Access, page models.Page) ([]models.Source, error)
+	SearchSources(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Source, error)
+	GetSource(ctx context.Context, access models.Access, id models.ID) (models.Source, error)
+	CreateSource(ctx context.Context, s models.Source) (models.Source, error)
+	UpdateSource(ctx context.Context, s models.Source) error
+	DeleteSource(ctx context.Context, id models.ID) error
+}
+
+// CitationService — контракт сценариев цитат, отдаваемых в HTTP: список,
+// поиск, чтение, создание, изменение, удаление.
+type CitationService interface {
+	ListCitations(ctx context.Context, access models.Access, page models.Page) ([]models.Citation, error)
+	SearchCitations(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Citation, error)
+	GetCitation(ctx context.Context, access models.Access, id models.ID) (models.Citation, error)
+	CreateCitation(ctx context.Context, c models.Citation) (models.Citation, error)
+	UpdateCitation(ctx context.Context, c models.Citation) error
+	DeleteCitation(ctx context.Context, id models.ID) error
+}
+
 // AuthService — контракт auth.Service, отдаваемый в HTTP-обработчики.
 type AuthService interface {
 	Bootstrap(ctx context.Context) (bool, error)

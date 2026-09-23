@@ -20,6 +20,8 @@ type Deps struct {
 	Archives     ArchiveService
 	Notes        NoteService
 	Attachments  AttachmentService
+	Sources      SourceService
+	Citations    CitationService
 }
 
 // NewServer создаёт MCP-сервер и регистрирует доступные тулы.
@@ -73,6 +75,14 @@ func NewServer(deps Deps) *server.MCPServer {
 
 	if deps.Attachments != nil {
 		registerAttachmentTools(s, deps.Attachments)
+	}
+
+	if deps.Sources != nil {
+		registerSourceTools(s, deps.Sources)
+	}
+
+	if deps.Citations != nil {
+		registerCitationTools(s, deps.Citations)
 	}
 
 	return s
