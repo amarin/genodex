@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 const CATALOG_ENTRIES: { label: string; path: string }[] = [
   { label: "Административное деление", path: "/divisions" },
   { label: "Документация", path: "/docs" },
+  { label: "Имена", path: "/given-names" },
   { label: "Фамилии", path: "/surnames" },
   { label: "Отчества", path: "/patronymics" },
   { label: "Сословия", path: "/estates" },

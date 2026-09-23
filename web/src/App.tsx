@@ -15,6 +15,8 @@ import EstatesList from "./pages/EstatesList";
 import EstateView from "./pages/EstateView";
 import TitlesList from "./pages/TitlesList";
 import TitleView from "./pages/TitleView";
+import GivenNamesList from "./pages/GivenNamesList";
+import GivenNameView from "./pages/GivenNameView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -52,6 +54,8 @@ export default function App() {
           <Route path="/estates/:id" element={<PageLayout><EstateView /></PageLayout>} />
           <Route path="/titles" element={<PageLayout><TitlesList /></PageLayout>} />
           <Route path="/titles/:id" element={<PageLayout><TitleView /></PageLayout>} />
+          <Route path="/given-names" element={<PageLayout><GivenNamesList /></PageLayout>} />
+          <Route path="/given-names/:id" element={<PageLayout><GivenNameView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

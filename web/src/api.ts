@@ -497,3 +497,91 @@ export async function updateTitle(id: string, input: TitleInput): Promise<Title>
 export async function deleteTitle(id: string): Promise<void> {
   return authFetch<void>(`/api/titles/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+export type NameGender = "male" | "female" | "neutral";
+
+export interface GivenName {
+  id: string;
+  canonical: string;
+  gender: NameGender | "";
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+// GivenNameInput — тело POST/PUT /api/given-names (transport.GivenNameCreate и
+// transport.GivenNameUpdate имеют одинаковую форму: полная замена всех полей).
+export interface GivenNameInput {
+  canonical: string;
+  gender: NameGender;
+  variants: TextRef[];
+  items: TextRef[];
+  notes: TextRef[];
+}
+
+export interface GivenNameQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface GivenNameSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchGivenNames(query: GivenNameQuery = {}): Promise<GivenName[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/given-names${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchGivenNames(query: GivenNameSearchQuery): Promise<GivenName[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/given-names/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+// fetchGivenName — GET /api/given-names/{id}, открыто анонимному посетителю. Через
+// authFetch — ради ApiError (нужен код 404 на странице View).
+export async function fetchGivenName(id: string): Promise<GivenName> {
+  return authFetch<GivenName>(`/api/given-names/${encodeURIComponent(id)}`);
+}
+
+// createGivenName/updateGivenName/deleteGivenName — запись, только для вошедшего
+// владельца (requireFull на сервере, internal/httpapi/given_name_write.go).
+export async function createGivenName(input: GivenNameInput): Promise<GivenName> {
+  return authFetch<GivenName>("/api/given-names", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateGivenName(id: string, input: GivenNameInput): Promise<GivenName> {
+  return authFetch<GivenName>(`/api/given-names/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteGivenName(id: string): Promise<void> {
+  return authFetch<void>(`/api/given-names/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
