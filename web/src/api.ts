@@ -946,3 +946,88 @@ export async function updateArchive(id: string, input: ArchiveInput): Promise<Ar
 export async function deleteArchive(id: string): Promise<void> {
   return authFetch<void>(`/api/archives/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+// Note — заметка (markdown-текст с иерархией «книга → главы»). parent_id —
+// просто id родительской заметки (не TextRef — строгая self-ref ссылка, как
+// у Archive.repository_id); пустая строка — без родителя. sources — read-only
+// в v1 (Citation ещё без CRUD, подпроект 5).
+export interface Note {
+  id: string;
+  kind: string;
+  title?: string;
+  text?: string;
+  parent_id?: string;
+  sources: SourceLink[];
+  private: boolean;
+}
+
+export interface NoteInput {
+  kind: string;
+  title?: string;
+  text?: string;
+  parent_id?: string;
+  private: boolean;
+}
+
+export interface NoteQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface NoteSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchNotes(query: NoteQuery = {}): Promise<Note[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/notes${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchNotes(query: NoteSearchQuery): Promise<Note[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/notes/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchNote(id: string): Promise<Note> {
+  return authFetch<Note>(`/api/notes/${encodeURIComponent(id)}`);
+}
+
+export async function createNote(input: NoteInput): Promise<Note> {
+  return authFetch<Note>("/api/notes", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateNote(id: string, input: NoteInput): Promise<Note> {
+  return authFetch<Note>(`/api/notes/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteNote(id: string): Promise<void> {
+  return authFetch<void>(`/api/notes/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

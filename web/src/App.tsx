@@ -25,6 +25,8 @@ import ParishesList from "./pages/ParishesList";
 import ParishView from "./pages/ParishView";
 import ArchivesList from "./pages/ArchivesList";
 import ArchiveView from "./pages/ArchiveView";
+import NotesList from "./pages/NotesList";
+import NoteView from "./pages/NoteView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -72,6 +74,8 @@ export default function App() {
           <Route path="/parishes/:id" element={<PageLayout><ParishView /></PageLayout>} />
           <Route path="/archives" element={<PageLayout><ArchivesList /></PageLayout>} />
           <Route path="/archives/:id" element={<PageLayout><ArchiveView /></PageLayout>} />
+          <Route path="/notes" element={<PageLayout><NotesList /></PageLayout>} />
+          <Route path="/notes/:id" element={<PageLayout><NoteView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

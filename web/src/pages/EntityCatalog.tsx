@@ -8,6 +8,7 @@ const CATALOG_ENTRIES: { label: string; path: string }[] = [
   { label: "Административное деление", path: "/divisions" },
   { label: "Архивы", path: "/archives" },
   { label: "Документация", path: "/docs" },
+  { label: "Заметки", path: "/notes" },
   { label: "Имена", path: "/given-names" },
   { label: "Отчества", path: "/patronymics" },
   { label: "Приходы", path: "/parishes" },
