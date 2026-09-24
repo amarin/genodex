@@ -41,6 +41,12 @@ import FamiliesList from "./pages/FamiliesList";
 import FamilyView from "./pages/FamilyView";
 import PeopleList from "./pages/PeopleList";
 import PersonView from "./pages/PersonView";
+import RelationsList from "./pages/RelationsList";
+import RelationView from "./pages/RelationView";
+import ResidencesList from "./pages/ResidencesList";
+import ResidenceView from "./pages/ResidenceView";
+import EventsList from "./pages/EventsList";
+import EventView from "./pages/EventView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -104,6 +110,12 @@ export default function App() {
           <Route path="/families/:id" element={<PageLayout><FamilyView /></PageLayout>} />
           <Route path="/people" element={<PageLayout><PeopleList /></PageLayout>} />
           <Route path="/people/:id" element={<PageLayout><PersonView /></PageLayout>} />
+          <Route path="/relations" element={<PageLayout><RelationsList /></PageLayout>} />
+          <Route path="/relations/:id" element={<PageLayout><RelationView /></PageLayout>} />
+          <Route path="/residences" element={<PageLayout><ResidencesList /></PageLayout>} />
+          <Route path="/residences/:id" element={<PageLayout><ResidenceView /></PageLayout>} />
+          <Route path="/events" element={<PageLayout><EventsList /></PageLayout>} />
+          <Route path="/events/:id" element={<PageLayout><EventView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

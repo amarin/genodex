@@ -247,7 +247,7 @@
   program-wide фиксу. Новый транспортный тип `transport.PlaceRef`
   (структурно как `TextRef`, но отдельный тип модели — `models.PlaceRef`)
   и `transport.EventParticipant` (плоский объект, новый файл по образцу
-  `transport.PersonName`). Веб-слой — отдельная задача, вне этого прохода.
+  `transport.PersonName`).
   (`internal/models/query.go` — `RelationQuery`/`ResidenceQuery`/
   `EventQuery`; `internal/transport/{relation,residence,event,
   event_participant,place_ref}{,_write}.go`; `internal/usecases/
@@ -258,7 +258,28 @@
   `internal/mcp/{relation,residence,event}.go`,
   `internal/mcp/object_args.go` — `placeRefObjectProperties`/
   `optionalPlaceRef`, `eventParticipantObjectProperties`/
-  `optionalEventParticipants`).
+  `optionalEventParticipants`). Веб: общий переиспользуемый
+  `PersonPicker`+`usePersonOptions` (`web/src/PersonPicker.tsx`, первый
+  picker персоны в программе — возможен только теперь, когда `Person`
+  имеет List/Search), `EventParticipantListEditor`
+  (`web/src/EventParticipantList.tsx`, проще `PersonNameListEditor` —
+  `person_id` строгая ссылка, не мягкий `TextRef`, ref-preservation не
+  нужна), локальный `useAdminDivisionOptions` в `ResidenceForm.tsx`
+  (первый picker, нацеленный именно на `AdministrativeDivision`); девять
+  страниц (`web/src/pages/{RelationForm,RelationsList,RelationView,
+  ResidenceForm,ResidencesList,ResidenceView,EventForm,EventsList,
+  EventView}.tsx`) — `RelationsList`/`ResidencesList` без строки поиска
+  (нет `/search` у этих сущностей), `EventView` — единственная страница
+  подпроекта с ref-preservation (`place`, по образцу `ChurchView.onSave`);
+  строки «Связи»/«Проживания»/«События» в каталоге сущностей
+  (`web/src/api.ts`, `web/src/App.tsx`,
+  `web/src/pages/EntityCatalog.tsx`). Побочно: `personDisplayName(p)`
+  вынесена в `web/src/PersonNameList.tsx` (третье место, нуждающееся в
+  формуле отображаемого имени персоны, после `PeopleList.tsx`/
+  `PersonView.tsx` подпроекта 8 — оба переключены на неё вместо
+  собственных копий). **Подпроект 9 — последний в программе
+  `entity-write`: с его слиянием все 21 сущность домена получают полный
+  CRUD через HTTP, MCP и веб.**
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

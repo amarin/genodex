@@ -495,8 +495,13 @@ Person и др.).
 Последний подпроект программы: три сущности, которые вместе образуют «граф
 вокруг Person» — `Relation` (ребро родства/связи между двумя персонами),
 `Residence` (проживание персоны в месте) и `Event`+`EventParticipant`
-(событие с участниками). Этот раздел описывает только backend
-(usecase-сценарии, транспорт, `httpapi`, MCP); веб-слой — отдельная задача.
+(событие с участниками). Backend и веб построены и проверены двумя
+последовательными живыми проходами (см. `BACKEND_REPORT.md`/
+`WEB_REPORT.md` в проверочном worktree подпроекта); этот раздел описывает
+оба. Веб добавляет первый в программе переиспользуемый picker персоны
+(`PersonPicker`+`usePersonOptions`, `web/src/PersonPicker.tsx`) и
+`EventParticipantListEditor` (`web/src/EventParticipantList.tsx`) — оба
+описаны в последнем пункте этого раздела.
 
 - **Первая пара строгих ссылок на ОДИН И ТОТ ЖЕ тип.** `Relation.PersonA`/
   `.PersonB` — обе строгие ссылки на `Person`, а не на разные сущности (как
@@ -607,6 +612,33 @@ Person и др.).
   (`internal/mcp/object_args.go`), по образцу `sourceLinkObjectProperties`/
   `optionalSourceLinks`, только без вложенных `mcp.WithObject` внутри
   элемента.
+- **Веб: `PersonPicker` — первый в программе переиспользуемый picker
+  персоны.** Стал возможен только теперь, когда `Person` (подпроект 8)
+  наконец получил `List`/`Search`: `usePersonOptions()`
+  (`web/src/PersonPicker.tsx`) грузит до `MAX_PAGE_LIMIT` персон и
+  экспортируется отдельно от компонента `PersonPicker`, т.к. View-страницы
+  (`RelationView`/`ResidenceView`/`EventView`) резолвят голый `person_id` в
+  подпись/ссылку тем же хуком, не только предлагают выбор (тот же приём,
+  что `ArchiveView.tsx`/`fetchRepositories`). Используется в трёх местах:
+  `Relation.PersonA`/`.PersonB` (два picker'а на одной форме),
+  `Residence.PersonID`, каждая строка `Event.Participants` (внутри
+  `EventParticipantListEditor`). `EventParticipantListEditor`
+  (`web/src/EventParticipantList.tsx`) структурно повторяет
+  `SourceLinkListEditor`, но проще `PersonNameListEditor` (подпроект 8):
+  `person_id` — строгая ссылка на существующую персону, проверяемая на
+  сервере, а не мягкий `TextRef` с ref-preservation — значит никакой
+  baseline-per-mount-логики `PersonNameListEditor` здесь не нужно.
+  `ResidenceForm.tsx` заводит локальный `useAdminDivisionOptions()` —
+  первый picker, точечно нацеленный на `AdministrativeDivision` как
+  строгую FK-цель, не общий `TextRef`-словарь; не вынесен в общий файл —
+  единственная точка использования в этом подпроекте. `EventView.tsx` —
+  единственная страница подпроекта с ref-preservation-логикой: `place`
+  обрабатывается ИМЕННО как `ChurchView.tsx.onSave` (§3.1) — исходный
+  `{text, ref, type}` сохраняется, если текст в форме не изменился
+  относительно загруженного значения, иначе отправляется `{text}` без
+  `ref`/`type`. `RelationsList`/`ResidencesList` рендерятся БЕЗ
+  `Input.Search` — единственные списковые страницы в программе без него,
+  отражая отсутствие `search_relations`/`search_residences` на бэкенде.
 
 ## 4. Веб-UI конвенции
 
@@ -672,14 +704,12 @@ Person и др.).
   отложен до реальной необходимости; актуален и после подпроекта 9
   (`Person`-picker для `Relation.PersonA`/`.PersonB`, `Residence.PersonID`,
   `EventParticipant.PersonID` пригодился бы веб-форме этих сущностей).
-- Вложенная подформа Person (`[]PersonName`) реализована целиком в
-  подпроекте 8 — backend в §3.7, веб (`PersonNameListEditor`,
-  `PersonForm`/`PersonView`) там же. Участники Event
-  (`[]EventParticipant`) — backend завершён подпроектом 9 (§3.8: строгая
-  проверка `person_id`, транспорт, `httpapi`, MCP); веб-слой
-  (`EventParticipantListEditor` и страницы `Relation`/`Residence`/`Event`)
-  — отдельная последующая задача, вне этого прохода. Общие конвенции §3-4 всё
-  равно применяются как основа.
+- Вложенные подформы Person (`[]PersonName`, подпроект 8) и Event
+  (`[]EventParticipant`, подпроект 9) реализованы целиком, backend и веб —
+  `PersonNameListEditor` (§3.7) и `EventParticipantListEditor` (§3.8)
+  соответственно. Программа `entity-write` завершена подпроектом 9: все 21
+  сущность домена имеют полный CRUD через HTTP, MCP и веб. Общие конвенции
+  §3-4 всё равно применяются как основа.
 - **Известное ограничение v1 MCP-тулов записи** (обнаружено финальным ревью
   подпроекта 1): `<entity>_update` заменяет СПИСКИ `TextRef` (например,
   `Surname.Variants`, `Church.Settlements`/`Notes`) целиком текстом — эти

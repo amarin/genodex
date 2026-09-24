@@ -8,6 +8,7 @@ import {
   Checkbox,
   Descriptions,
   Form,
+  Input,
   List,
   Modal,
   Popconfirm,
@@ -17,30 +18,32 @@ import {
   Typography,
 } from "antd";
 import {
-  deletePerson,
-  fetchPerson,
-  GENDER_OPTIONS,
-  genderLabel,
-  updatePerson,
-  type Person,
-  type PersonGender,
-  type PersonName,
+  deleteRelation,
+  fetchRelation,
+  relationKindLabel,
+  RELATION_KIND_OPTIONS,
+  updateRelation,
+  type FactDate,
+  type Relation,
+  type RelationKind,
   type SourceLink,
   type TextRef,
 } from "../api";
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
-import { formatFactDate } from "../FactDateEditor";
-import { formatPersonName, personDisplayName, personNameTypeLabel, PersonNameListEditor } from "../PersonNameList";
+import { FactDateEditor, formatFactDate } from "../FactDateEditor";
+import { personDisplayName } from "../PersonNameList";
+import { PersonPicker, usePersonOptions } from "../PersonPicker";
 import { SourceLinkListEditor } from "../SourceLinkList";
 import { TextRefListEditor } from "../TextRefList";
 
 interface EditFormValues {
-  gender?: PersonGender;
+  kind: RelationKind;
+  rel_type?: string;
   private?: boolean;
 }
 
-const EDIT_FORM_FIELDS: (keyof EditFormValues)[] = ["gender"];
+const EDIT_FORM_FIELDS: (keyof EditFormValues)[] = ["kind", "rel_type"];
 
 function TextRefListView({ items }: { items: TextRef[] }) {
   if (items.length === 0) {
@@ -60,8 +63,6 @@ function TextRefListView({ items }: { items: TextRef[] }) {
   );
 }
 
-// SourceLinkListView — read-only отображение списка доказательств (Sources);
-// редактируется отдельным SourceLinkListEditor в форме ниже.
 function SourceLinkListView({ items }: { items: SourceLink[] }) {
   if (items.length === 0) {
     return <Typography.Text type="secondary">—</Typography.Text>;
@@ -80,63 +81,30 @@ function SourceLinkListView({ items }: { items: SourceLink[] }) {
   );
 }
 
-// personNameLine — вид имени + "Фамилия Имя Отчество" + приставка/суффикс,
-// если заданы, + период действия (formatFactDate) — та же формула, что
-// personLabel в PeopleList.tsx для одного имени, плюс служебные части и
-// период для полного просмотра.
-function personNameLine(n: PersonName): string {
-  const parts: string[] = [];
-  if (n.type !== "") {
-    parts.push(personNameTypeLabel(n.type));
-  }
-  const core = formatPersonName(n);
-  const namePiece = core !== "" ? core : "—";
-  parts.push(n.prefix ? `${n.prefix} ${namePiece}` : namePiece);
-  if (n.suffix) {
-    parts.push(n.suffix);
-  }
-  const since = n.since != null ? formatFactDate(n.since) : null;
-  const until = n.until != null ? formatFactDate(n.until) : null;
-  if (since != null || until != null) {
-    parts.push(`(${since ?? "…"} – ${until ?? "…"})`);
-  }
-  return parts.join(" — ");
-}
-
-// PersonNameListView — read-only отображение Person.names; редактируется
-// PersonNameListEditor в форме ниже.
-function PersonNameListView({ items }: { items: PersonName[] }) {
-  if (items.length === 0) {
-    return <Typography.Text type="secondary">—</Typography.Text>;
-  }
-  return (
-    <List
-      size="small"
-      dataSource={items}
-      renderItem={(n, i) => <List.Item key={i}>{personNameLine(n)}</List.Item>}
-    />
-  );
-}
-
-// PersonView — просмотр персоны, переключаемый в форму редактирования на
-// той же странице (toggle+explicit-save, как FamilyView). Заголовок карточки
-// — отображаемое имя (pickDisplayName), а не поле name (у Person его нет).
-export default function PersonView() {
+// RelationView — просмотр связи, переключаемый в форму редактирования на
+// той же странице (toggle+explicit-save, как FamilyView/PersonView).
+// person_a/person_b показываются кликабельной ссылкой на /people/{id} с
+// отображаемым именем (personDisplayName) — тот же приём, что
+// repositoryName в ArchiveView.tsx, только со ссылкой. rel_type
+// показывается/редактируется только при kind=associate.
+export default function RelationView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { session } = useSession();
 
-  const [person, setPerson] = useState<Person | null>(null);
+  const [relation, setRelation] = useState<Relation | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const people = usePersonOptions();
 
   const [editing, setEditing] = useState(false);
   const [form] = Form.useForm<EditFormValues>();
-  const [names, setNames] = useState<PersonName[]>([]);
-  const [estates, setEstates] = useState<TextRef[]>([]);
-  const [titles, setTitles] = useState<TextRef[]>([]);
-  const [nicknames, setNicknames] = useState<TextRef[]>([]);
+  const kind = Form.useWatch("kind", form);
+  const [personA, setPersonA] = useState("");
+  const [personB, setPersonB] = useState("");
+  const [since, setSince] = useState<FactDate | null>(null);
+  const [until, setUntil] = useState<FactDate | null>(null);
   const [notes, setNotes] = useState<TextRef[]>([]);
   const [sources, setSources] = useState<SourceLink[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -145,13 +113,13 @@ export default function PersonView() {
   const [deleting, setDeleting] = useState(false);
   const [conflict, setConflict] = useState<ApiErrorReferrer[] | null>(null);
 
-  const load = (personId: string) => {
+  const load = (relationId: string) => {
     setLoading(true);
     setNotFound(false);
     setError(null);
-    setPerson(null);
-    fetchPerson(personId)
-      .then(setPerson)
+    setRelation(null);
+    fetchRelation(relationId)
+      .then(setRelation)
       .catch((e) => {
         if (e instanceof ApiError && e.status === 404) {
           setNotFound(true);
@@ -170,20 +138,26 @@ export default function PersonView() {
     }
   }, [id]);
 
+  const personLabel = (personId: string) => {
+    const p = people.find((person) => person.id === personId);
+    return p != null ? personDisplayName(p) : personId;
+  };
+
   const startEdit = () => {
-    if (person == null) {
+    if (relation == null) {
       return;
     }
     form.setFieldsValue({
-      gender: (person.gender ?? "") as PersonGender,
-      private: person.private,
+      kind: relation.kind,
+      rel_type: relation.rel_type ?? "",
+      private: relation.private,
     });
-    setNames(person.names);
-    setEstates(person.estates);
-    setTitles(person.titles);
-    setNicknames(person.nicknames);
-    setNotes(person.notes);
-    setSources(person.sources);
+    setPersonA(relation.person_a);
+    setPersonB(relation.person_b);
+    setSince(relation.since ?? null);
+    setUntil(relation.until ?? null);
+    setNotes(relation.notes);
+    setSources(relation.sources);
     setSaveError(null);
     setEditing(true);
   };
@@ -194,23 +168,24 @@ export default function PersonView() {
   };
 
   const onSave = async (values: EditFormValues) => {
-    if (person == null) {
+    if (relation == null) {
       return;
     }
     setSaving(true);
     setSaveError(null);
     try {
-      const updated = await updatePerson(person.id, {
-        gender: values.gender ?? "",
-        names,
-        estates,
-        titles,
-        nicknames,
-        notes,
+      const updated = await updateRelation(relation.id, {
+        kind: values.kind,
+        rel_type: values.kind === "associate" ? (values.rel_type ?? "").trim() : "",
+        person_a: personA,
+        person_b: personB,
+        since,
+        until,
         sources,
+        notes,
         private: values.private ?? false,
       });
-      setPerson(updated);
+      setRelation(updated);
       setEditing(false);
     } catch (e) {
       if (e instanceof ApiError && e.field != null && (EDIT_FORM_FIELDS as string[]).includes(e.field)) {
@@ -224,14 +199,14 @@ export default function PersonView() {
   };
 
   const onDelete = async () => {
-    if (person == null) {
+    if (relation == null) {
       return;
     }
     setDeleting(true);
     setError(null);
     try {
-      await deletePerson(person.id);
-      navigate("/people");
+      await deleteRelation(relation.id);
+      navigate("/relations");
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
         setConflict(e.referrers ?? []);
@@ -255,7 +230,7 @@ export default function PersonView() {
         message="Запись не найдена"
         description="Возможно, её удалили. Вернитесь к списку."
         action={
-          <Link to="/people">
+          <Link to="/relations">
             <Button size="small">К списку</Button>
           </Link>
         }
@@ -263,11 +238,11 @@ export default function PersonView() {
     );
   }
 
-  if (person == null) {
+  if (relation == null) {
     return error != null ? <Alert type="error" showIcon message={error} /> : null;
   }
 
-  const title = personDisplayName(person);
+  const title = `${relationKindLabel(relation.kind)}: ${personLabel(relation.person_a)} — ${personLabel(relation.person_b)}`;
 
   return (
     <Card>
@@ -275,7 +250,7 @@ export default function PersonView() {
         style={{ marginBottom: 16 }}
         items={[
           { title: <Link to="/">Сущности</Link> },
-          { title: <Link to="/people">Персоны</Link> },
+          { title: <Link to="/relations">Связи</Link> },
           { title },
         ]}
       />
@@ -284,20 +259,27 @@ export default function PersonView() {
       {!editing ? (
         <>
           <Descriptions title={title} column={1} bordered size="small">
-            <Descriptions.Item label="Пол">{genderLabel(person.gender)}</Descriptions.Item>
-            <Descriptions.Item label="Имена"><PersonNameListView items={person.names} /></Descriptions.Item>
-            <Descriptions.Item label="Сословия"><TextRefListView items={person.estates} /></Descriptions.Item>
-            <Descriptions.Item label="Титулы"><TextRefListView items={person.titles} /></Descriptions.Item>
-            <Descriptions.Item label="Прозвища"><TextRefListView items={person.nicknames} /></Descriptions.Item>
-            <Descriptions.Item label="Заметки"><TextRefListView items={person.notes} /></Descriptions.Item>
-            <Descriptions.Item label="Доказательства"><SourceLinkListView items={person.sources} /></Descriptions.Item>
-            <Descriptions.Item label="Приватная">{person.private ? "да" : "нет"}</Descriptions.Item>
+            <Descriptions.Item label="Вид связи">{relationKindLabel(relation.kind)}</Descriptions.Item>
+            {relation.kind === "associate" && (
+              <Descriptions.Item label="Тип связи">{relation.rel_type || "—"}</Descriptions.Item>
+            )}
+            <Descriptions.Item label="Персона A">
+              <Link to={`/people/${relation.person_a}`}>{personLabel(relation.person_a)}</Link>
+            </Descriptions.Item>
+            <Descriptions.Item label="Персона Б">
+              <Link to={`/people/${relation.person_b}`}>{personLabel(relation.person_b)}</Link>
+            </Descriptions.Item>
+            <Descriptions.Item label="Начало периода">{formatFactDate(relation.since)}</Descriptions.Item>
+            <Descriptions.Item label="Конец периода">{formatFactDate(relation.until)}</Descriptions.Item>
+            <Descriptions.Item label="Заметки"><TextRefListView items={relation.notes} /></Descriptions.Item>
+            <Descriptions.Item label="Доказательства"><SourceLinkListView items={relation.sources} /></Descriptions.Item>
+            <Descriptions.Item label="Приватная">{relation.private ? "да" : "нет"}</Descriptions.Item>
           </Descriptions>
           {session != null && (
             <Space style={{ marginTop: 16 }}>
               <Button onClick={startEdit}>Редактировать</Button>
               <Popconfirm
-                title={`Удалить «${title}»?`}
+                title="Удалить связь?"
                 description="Действие необратимо."
                 okText="Удалить"
                 cancelText="Отмена"
@@ -311,24 +293,33 @@ export default function PersonView() {
           )}
         </>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onSave} style={{ maxWidth: 720 }}>
+        <Form form={form} layout="vertical" onFinish={onSave} style={{ maxWidth: 480 }}>
           {saveError != null && (
             <Alert type="error" showIcon message={saveError} style={{ marginBottom: 16 }} />
           )}
-          <Form.Item name="gender" label="Пол">
-            <Select options={GENDER_OPTIONS} />
+          <Form.Item name="kind" label="Вид связи" rules={[{ required: true, message: "Выберите вид связи" }]}>
+            <Select options={RELATION_KIND_OPTIONS} />
           </Form.Item>
-          <Form.Item label="Имена">
-            <PersonNameListEditor value={names} onChange={setNames} addLabel="+ имя" />
+          {kind === "associate" && (
+            <Form.Item
+              name="rel_type"
+              label="Тип связи"
+              rules={[{ required: true, whitespace: true, message: "Укажите тип связи" }]}
+            >
+              <Input placeholder="godparent / witness / neighbor / friend / colleague" />
+            </Form.Item>
+          )}
+          <Form.Item label="Персона A" required>
+            <PersonPicker value={personA} onChange={setPersonA} placeholder="Персона A" />
           </Form.Item>
-          <Form.Item label="Сословия">
-            <TextRefListEditor value={estates} onChange={setEstates} addLabel="+ сословие" />
+          <Form.Item label="Персона Б" required>
+            <PersonPicker value={personB} onChange={setPersonB} placeholder="Персона Б" />
           </Form.Item>
-          <Form.Item label="Титулы">
-            <TextRefListEditor value={titles} onChange={setTitles} addLabel="+ титул" />
+          <Form.Item label="Начало периода">
+            <FactDateEditor value={since} onChange={setSince} addLabel="+ дата начала" />
           </Form.Item>
-          <Form.Item label="Прозвища">
-            <TextRefListEditor value={nicknames} onChange={setNicknames} addLabel="+ прозвище" />
+          <Form.Item label="Конец периода">
+            <FactDateEditor value={until} onChange={setUntil} addLabel="+ дата конца" />
           </Form.Item>
           <Form.Item label="Заметки">
             <TextRefListEditor value={notes} onChange={setNotes} addLabel="+ заметка" />

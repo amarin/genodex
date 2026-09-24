@@ -1739,3 +1739,288 @@ export async function updatePerson(id: string, input: PersonInput): Promise<Pers
 export async function deletePerson(id: string): Promise<void> {
   return authFetch<void>(`/api/people/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+// Relation — ребро графа родства между двумя персонами (transport.Relation).
+// Первая сущность программы с двумя строгими ссылками на один и тот же тип
+// (PersonA/PersonB → Person, docs/data-model/entity-write.md §3.8). Sources
+// редактируется с рождения контракта — обязательный массив, как и у всех
+// прочих *Input.
+export type RelationKind = "blood" | "marriage" | "adoption" | "associate";
+
+// RELATION_KIND_OPTIONS/relationKindLabel — models.RelationKind
+// (internal/models/relation_kind.go), по образцу GENDER_OPTIONS/genderLabel.
+export const RELATION_KIND_OPTIONS: { value: RelationKind; label: string }[] = [
+  { value: "blood", label: "Родство" },
+  { value: "marriage", label: "Брак" },
+  { value: "adoption", label: "Усыновление" },
+  { value: "associate", label: "Иная связь" },
+];
+
+export function relationKindLabel(k: string | undefined): string {
+  return RELATION_KIND_OPTIONS.find((o) => o.value === k)?.label ?? (k || "");
+}
+
+export interface Relation {
+  id: string;
+  kind: RelationKind;
+  rel_type?: string;
+  person_a: string;
+  person_b: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  sources: SourceLink[];
+  notes: TextRef[];
+  private: boolean;
+}
+
+// RelationInput — тело POST/PUT /api/relations (transport.RelationCreate и
+// transport.RelationUpdate имеют одинаковую форму: полная замена всех полей).
+export interface RelationInput {
+  kind: RelationKind;
+  rel_type?: string;
+  person_a: string;
+  person_b: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  sources: SourceLink[];
+  notes: TextRef[];
+  private: boolean;
+}
+
+export interface RelationQuery {
+  person_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+// Нет searchRelations — search-индекс Relation всегда пуст, по конструкции
+// (internal/store/sqlstore/relations.go: replaceSearchIndex(..., nil));
+// person_id-фильтр на списке — предусмотренная замена свободного поиска
+// (docs/data-model/entity-write.md §3.8).
+export async function fetchRelations(query: RelationQuery = {}): Promise<Relation[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/relations${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchRelation(id: string): Promise<Relation> {
+  return authFetch<Relation>(`/api/relations/${encodeURIComponent(id)}`);
+}
+
+export async function createRelation(input: RelationInput): Promise<Relation> {
+  return authFetch<Relation>("/api/relations", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateRelation(id: string, input: RelationInput): Promise<Relation> {
+  return authFetch<Relation>(`/api/relations/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteRelation(id: string): Promise<void> {
+  return authFetch<void>(`/api/relations/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// Residence — проживание персоны в месте (transport.Residence). place_id —
+// первая СТРОГАЯ (существование проверяется на сервере) ссылка на
+// AdministrativeDivision в программе — все прочие ссылки на деление
+// остаются мягким TextRef (docs/data-model/entity-write.md §3.8). note —
+// одна строка (models.Residence.Note), НЕ список TextRef, в отличие от
+// notes у большинства сущностей.
+export interface Residence {
+  id: string;
+  person_id: string;
+  place_id: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  sources: SourceLink[];
+  note?: string;
+  private: boolean;
+}
+
+// ResidenceInput — тело POST/PUT /api/residences (transport.ResidenceCreate
+// и transport.ResidenceUpdate имеют одинаковую форму: полная замена всех
+// полей).
+export interface ResidenceInput {
+  person_id: string;
+  place_id: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+  sources: SourceLink[];
+  note?: string;
+  private: boolean;
+}
+
+export interface ResidenceQuery {
+  person_id?: string;
+  place_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+// Нет searchResidences — тот же структурный повод, что у Relation (пустой
+// search-индекс по конструкции, docs/data-model/entity-write.md §3.8).
+export async function fetchResidences(query: ResidenceQuery = {}): Promise<Residence[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/residences${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchResidence(id: string): Promise<Residence> {
+  return authFetch<Residence>(`/api/residences/${encodeURIComponent(id)}`);
+}
+
+export async function createResidence(input: ResidenceInput): Promise<Residence> {
+  return authFetch<Residence>("/api/residences", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateResidence(id: string, input: ResidenceInput): Promise<Residence> {
+  return authFetch<Residence>(`/api/residences/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteResidence(id: string): Promise<void> {
+  return authFetch<void>(`/api/residences/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+// PlaceRef — контракт «указания на место» (transport.PlaceRef): структурно
+// идентичен TextRef ({text, ref, type}), но отдельный тип на бэкенде
+// (models.PlaceRef != models.TextRef) — Event.Place, единственное текущее
+// поле такой формы в программе. В форме остаётся простым текстом с
+// preserve-ref-если-текст-не-менялся, по образцу ChurchView.parish (picker'а
+// нет — Place никогда не проверяется на существование на сервере,
+// docs/data-model/entity-write.md §3.8).
+export interface PlaceRef {
+  text: string;
+  ref?: string;
+  type?: string;
+}
+
+// EventParticipant — контракт одного участника события
+// (transport.EventParticipant): флат-объект {person_id, role, note}. Первая
+// строгая (проверяемая на существование) ссылка внутри массива-объектов
+// HTTP/MCP-аргумента в программе (docs/data-model/entity-write.md §3.8).
+export interface EventParticipant {
+  person_id: string;
+  role: string;
+  note?: string;
+}
+
+// Event — событие жизненного факта (transport.Event). type — открытый enum
+// (простой Input, как ArchiveNode.type — не Select). Поиск (searchEvents)
+// ищет ТОЛЬКО по началу текста place.text (docs/data-model/entity-write.md
+// §3.8) — единственная сущность подпроекта 9 с search-маршрутом.
+export interface Event {
+  id: string;
+  type: string;
+  date?: FactDate | null;
+  place?: PlaceRef | null;
+  participants: EventParticipant[];
+  sources: SourceLink[];
+  notes: TextRef[];
+  private: boolean;
+}
+
+// EventInput — тело POST/PUT /api/events (transport.EventCreate и
+// transport.EventUpdate имеют одинаковую форму: полная замена всех полей).
+// participants и sources — обязательные массивы.
+export interface EventInput {
+  type: string;
+  date?: FactDate | null;
+  place?: PlaceRef | null;
+  participants: EventParticipant[];
+  sources: SourceLink[];
+  notes: TextRef[];
+  private: boolean;
+}
+
+export interface EventQuery {
+  person_id?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface EventSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchEvents(query: EventQuery = {}): Promise<Event[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/events${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchEvents(query: EventSearchQuery): Promise<Event[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/events/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchEvent(id: string): Promise<Event> {
+  return authFetch<Event>(`/api/events/${encodeURIComponent(id)}`);
+}
+
+export async function createEvent(input: EventInput): Promise<Event> {
+  return authFetch<Event>("/api/events", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateEvent(id: string, input: EventInput): Promise<Event> {
+  return authFetch<Event>(`/api/events/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deleteEvent(id: string): Promise<void> {
+  return authFetch<void>(`/api/events/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

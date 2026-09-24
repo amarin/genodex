@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Button, Divider, Input, Select, Space } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
-import type { PersonName, PersonNameType, TextRef } from "./api";
+import type { Person, PersonName, PersonNameType, TextRef } from "./api";
 import { FactDateEditor } from "./FactDateEditor";
 
 // PERSON_NAME_TYPE_OPTIONS — models.PersonNameType (internal/models/person_name_type.go).
@@ -34,6 +34,18 @@ export function pickDisplayName(names: PersonName[]): PersonName | null {
     return null;
   }
   return names.find((n) => n.type === "main") ?? names[0];
+}
+
+// personDisplayName — единая формула отображаемого имени персоны (id как
+// fallback, если имён нет или все части пустые): была продублирована как
+// personLabel в PeopleList.tsx и как расчёт title в PersonView.tsx —
+// вынесена сюда с подпроекта 9 (PersonPicker.tsx — первый общий picker,
+// docs/data-model/entity-write.md §3.8), оба места теперь используют эту
+// функцию вместо собственных копий.
+export function personDisplayName(p: Person): string {
+  const name = pickDisplayName(p.names);
+  const formatted = name != null ? formatPersonName(name) : "";
+  return formatted !== "" ? formatted : p.id;
 }
 
 const EMPTY_TEXT_REF: TextRef = { text: "" };

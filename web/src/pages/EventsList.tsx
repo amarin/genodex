@@ -1,21 +1,37 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Alert, Breadcrumb, Button, Card, Input, List, Spin } from "antd";
-import { fetchPeople, searchPeople, MAX_PAGE_LIMIT, type Person } from "../api";
+import { fetchEvents, searchEvents, MAX_PAGE_LIMIT, type Event } from "../api";
 import { useSession } from "../session";
-import { personDisplayName } from "../PersonNameList";
-import { CreatePersonModal } from "./PersonForm";
+import { formatFactDate } from "../FactDateEditor";
+import { CreateEventModal } from "./EventForm";
 
-// PeopleList — «Персоны»: плоский список (как FamiliesList — не иерархична),
-// пагинация по offset до короткой страницы, поиск временно подменяет список
-// найденным. Клик по строке — переход на View.
-export default function PeopleList() {
+// eventLabel — вид события + место (если есть) + дата (если есть), по
+// образцу personNameLine/PersonView.tsx — короткая строка для списка и
+// для заголовка EventView.
+export function eventLabel(e: Event): string {
+  const parts = [e.type];
+  if (e.place?.text) {
+    parts.push(e.place.text);
+  }
+  const date = formatFactDate(e.date);
+  if (date !== "—") {
+    parts.push(date);
+  }
+  return parts.join(" — ");
+}
+
+// EventsList — «События»: единственная сущность подпроекта 9 с /search
+// (место-текст-префиксный поиск, docs/data-model/entity-write.md §3.8) —
+// структурно идентична FamiliesList/PeopleList (поиск временно подменяет
+// список найденным).
+export default function EventsList() {
   const navigate = useNavigate();
   const { session } = useSession();
-  const [items, setItems] = useState<Person[]>([]);
+  const [items, setItems] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchResults, setSearchResults] = useState<Person[] | null>(null);
+  const [searchResults, setSearchResults] = useState<Event[] | null>(null);
   const [searching, setSearching] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
@@ -23,10 +39,10 @@ export default function PeopleList() {
     setLoading(true);
     setError(null);
     try {
-      const all: Person[] = [];
+      const all: Event[] = [];
       let offset = 0;
       for (;;) {
-        const page = await fetchPeople({ limit: MAX_PAGE_LIMIT, offset });
+        const page = await fetchEvents({ limit: MAX_PAGE_LIMIT, offset });
         all.push(...page);
         if (page.length < MAX_PAGE_LIMIT) {
           break;
@@ -53,7 +69,7 @@ export default function PeopleList() {
     }
     setSearching(true);
     setError(null);
-    searchPeople({ q, limit: MAX_PAGE_LIMIT })
+    searchEvents({ q, limit: MAX_PAGE_LIMIT })
       .then(setSearchResults)
       .catch((e: Error) => setError(e.message))
       .finally(() => setSearching(false));
@@ -71,10 +87,10 @@ export default function PeopleList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Персоны" }]}
+        items={[{ title: <Link to="/">Сущности</Link> }, { title: "События" }]}
       />
       <Card
-        title="Персоны"
+        title="События"
         extra={
           session != null ? (
             <Button type="primary" onClick={() => setCreateOpen(true)}>
@@ -84,7 +100,7 @@ export default function PeopleList() {
         }
       >
         <Input.Search
-          placeholder="Поиск по фамилии/имени/отчеству…"
+          placeholder="Поиск по началу текста места…"
           allowClear
           enterButton
           loading={searching}
@@ -99,19 +115,19 @@ export default function PeopleList() {
           <List
             dataSource={shown}
             locale={{ emptyText: "Список пуст" }}
-            renderItem={(p) => (
+            renderItem={(e) => (
               <List.Item>
-                <Link to={`/people/${p.id}`}>{personDisplayName(p)}</Link>
+                <Link to={`/events/${e.id}`}>{eventLabel(e)}</Link>
               </List.Item>
             )}
           />
         )}
-        <CreatePersonModal
+        <CreateEventModal
           open={createOpen}
           onClose={() => setCreateOpen(false)}
-          onCreated={(p) => {
+          onCreated={(e) => {
             setCreateOpen(false);
-            navigate(`/people/${p.id}`);
+            navigate(`/events/${e.id}`);
           }}
         />
       </Card>
