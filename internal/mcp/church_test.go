@@ -110,6 +110,47 @@ func TestChurchCreateToolPassesParish(t *testing.T) {
 	}
 }
 
+// TestChurchUpdateToolOmittedParishKeepsCurrent — parish отсутствует в
+// вызове: текущая ссылка (из GetChurch) сохраняется.
+func TestChurchUpdateToolOmittedParishKeepsCurrent(t *testing.T) {
+	svc := &fakeChurches{getC: models.Church{
+		ID: "CH-1", Name: "Никольская церковь", Parish: &models.TextRef{Text: "Никольский приход"},
+	}}
+
+	res := callChurchTool(t, churchUpdateHandler(svc), map[string]any{
+		"id": "CH-1", "name": "Никольская церковь",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Parish == nil || svc.updated.Parish.Text != "Никольский приход" {
+		t.Fatalf("updated.Parish = %+v, ожидалось сохранение текущей ссылки", svc.updated.Parish)
+	}
+}
+
+// TestChurchUpdateToolNullParishClears — явный null для parish очищает
+// поле (регрессия финального ревью: raw != nil ошибочно приравнивал явный
+// null к отсутствию ключа — очистить *TextRef пустым объектом {} нельзя).
+func TestChurchUpdateToolNullParishClears(t *testing.T) {
+	svc := &fakeChurches{getC: models.Church{
+		ID: "CH-1", Name: "Никольская церковь", Parish: &models.TextRef{Text: "Никольский приход"},
+	}}
+
+	res := callChurchTool(t, churchUpdateHandler(svc), map[string]any{
+		"id": "CH-1", "name": "Никольская церковь", "parish": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Parish != nil {
+		t.Fatalf("updated.Parish = %+v, ожидался nil (явный null очищает поле)", svc.updated.Parish)
+	}
+}
+
 func TestChurchDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeChurches{deleteErr: &models.InUseError{Type: models.TypeChurch, ID: "CH-1"}}
 

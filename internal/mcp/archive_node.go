@@ -69,7 +69,7 @@ func registerArchiveNodeTools(s *server.MCPServer, archiveNodes ArchiveNodeServi
 
 	tool = mcp.NewTool(
 		"archive_node_update",
-		mcp.WithDescription("Изменить узел архивного дерева; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательных type/archive_id/label) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его (для parent_id явно пустое значение означает «сделать корнем»). Несуществующий archive_id/parent_id, parent_id из другого архива или цикл по parent_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить узел архивного дерева; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательных type/archive_id/label) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его (для parent_id явно пустое значение означает «сделать корнем»). Несуществующий archive_id/parent_id, parent_id из другого архива или цикл по parent_id — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("type", mcp.Required(), mcp.Description("Уровень узла")),
 		mcp.WithString("archive_id", mcp.Required(), mcp.Description("id архива")),
@@ -232,7 +232,7 @@ func archiveNodeUpdateHandler(archiveNodes ArchiveNodeService) server.ToolHandle
 			cur.Name = req.GetString("name", "")
 		}
 
-		if raw, ok := args["since"]; ok && raw != nil {
+		if _, ok := args["since"]; ok {
 			since, err := optionalFactDate(args, "since")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -240,7 +240,7 @@ func archiveNodeUpdateHandler(archiveNodes ArchiveNodeService) server.ToolHandle
 			cur.Since = since
 		}
 
-		if raw, ok := args["until"]; ok && raw != nil {
+		if _, ok := args["until"]; ok {
 			until, err := optionalFactDate(args, "until")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -248,7 +248,7 @@ func archiveNodeUpdateHandler(archiveNodes ArchiveNodeService) server.ToolHandle
 			cur.Until = until
 		}
 
-		if raw, ok := args["parish"]; ok && raw != nil {
+		if _, ok := args["parish"]; ok {
 			parish, err := optionalTextRef(args, "parish")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

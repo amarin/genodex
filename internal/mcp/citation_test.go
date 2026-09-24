@@ -130,6 +130,39 @@ func TestCitationCreateToolSourceNotFoundIsError(t *testing.T) {
 	}
 }
 
+// TestCitationUpdateToolOmittedNoteKeepsCurrent — note отсутствует в
+// вызове: текущее значение сохраняется; явно пустая строка — очищает его.
+func TestCitationUpdateToolOmittedNoteKeepsCurrent(t *testing.T) {
+	svc := &fakeCitations{getC: models.Citation{ID: "C-1", SourceID: "S-1", Note: "старая заметка"}}
+
+	res := callCitationTool(t, citationUpdateHandler(svc), map[string]any{"id": "C-1", "source_id": "S-1"})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Note != "старая заметка" {
+		t.Fatalf("updated.Note = %q, ожидалось сохранение текущего значения", svc.updated.Note)
+	}
+}
+
+// TestCitationUpdateToolEmptyNoteClears — явно пустая строка note очищает поле.
+func TestCitationUpdateToolEmptyNoteClears(t *testing.T) {
+	svc := &fakeCitations{getC: models.Citation{ID: "C-1", SourceID: "S-1", Note: "старая заметка"}}
+
+	res := callCitationTool(t, citationUpdateHandler(svc), map[string]any{
+		"id": "C-1", "source_id": "S-1", "note": "",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Note != "" {
+		t.Fatalf("updated.Note = %q, ожидалась очистка", svc.updated.Note)
+	}
+}
+
 func TestCitationDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeCitations{deleteErr: &models.InUseError{Type: models.TypeCitation, ID: "C-1"}}
 

@@ -108,6 +108,39 @@ func TestSurnameCreateToolPassesVariants(t *testing.T) {
 	}
 }
 
+// TestSurnameUpdateToolOmittedNotesKeepsCurrent — notes отсутствует в
+// вызове: текущий список сохраняется; явный пустой список — очищает его.
+func TestSurnameUpdateToolOmittedNotesKeepsCurrent(t *testing.T) {
+	svc := &fakeSurnames{getSN: models.Surname{ID: "SN-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callSurnameTool(t, surnameUpdateHandler(svc), map[string]any{"id": "SN-1", "canonical": "Иванов"})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалось сохранение текущих заметок", svc.updated.Notes)
+	}
+}
+
+// TestSurnameUpdateToolEmptyNotesClears — явный пустой список notes очищает поле.
+func TestSurnameUpdateToolEmptyNotesClears(t *testing.T) {
+	svc := &fakeSurnames{getSN: models.Surname{ID: "SN-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callSurnameTool(t, surnameUpdateHandler(svc), map[string]any{
+		"id": "SN-1", "canonical": "Иванов", "notes": []any{},
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 0 {
+		t.Fatalf("updated.Notes = %+v, ожидался пустой список", svc.updated.Notes)
+	}
+}
+
 func TestSurnameDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeSurnames{deleteErr: &models.InUseError{Type: models.TypeSurname, ID: "SN-1"}}
 

@@ -125,6 +125,48 @@ func TestArchiveCreateToolRepositoryNotFoundIsError(t *testing.T) {
 	}
 }
 
+// TestArchiveUpdateToolOmittedSystemKeepsCurrent — system отсутствует в
+// вызове: текущая ссылка (из GetArchive) сохраняется, не затирается.
+func TestArchiveUpdateToolOmittedSystemKeepsCurrent(t *testing.T) {
+	svc := &fakeArchives{getA: models.Archive{
+		ID: "AR-1", Name: "ГАВО, архив", System: &models.TextRef{Text: "Фонды"},
+	}}
+
+	res := callArchiveTool(t, archiveUpdateHandler(svc), map[string]any{
+		"id": "AR-1", "name": "ГАВО, архив",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.System == nil || svc.updated.System.Text != "Фонды" {
+		t.Fatalf("updated.System = %+v, ожидалось сохранение текущей системы", svc.updated.System)
+	}
+}
+
+// TestArchiveUpdateToolNullSystemClears — явный null для system очищает
+// поле (регрессия финального ревью: raw != nil ошибочно приравнивал явный
+// null к отсутствию ключа — а очистить *TextRef-поле пустым объектом {}
+// нельзя, models.Archive.Validate отклонит пустой TextRef).
+func TestArchiveUpdateToolNullSystemClears(t *testing.T) {
+	svc := &fakeArchives{getA: models.Archive{
+		ID: "AR-1", Name: "ГАВО, архив", System: &models.TextRef{Text: "Фонды"},
+	}}
+
+	res := callArchiveTool(t, archiveUpdateHandler(svc), map[string]any{
+		"id": "AR-1", "name": "ГАВО, архив", "system": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.System != nil {
+		t.Fatalf("updated.System = %+v, ожидался nil (явный null очищает поле)", svc.updated.System)
+	}
+}
+
 func TestArchiveDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeArchives{deleteErr: &models.InUseError{Type: models.TypeArchive, ID: "AR-1"}}
 

@@ -181,7 +181,7 @@ func sourceUpdateHandler(sources SourceService) server.ToolHandlerFunc {
 			cur.Author = req.GetString("author", "")
 		}
 
-		if raw, ok := args["date"]; ok && raw != nil {
+		if _, ok := args["date"]; ok {
 			date, err := optionalFactDate(args, "date")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

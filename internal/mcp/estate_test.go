@@ -108,6 +108,39 @@ func TestEstateCreateToolPassesVariants(t *testing.T) {
 	}
 }
 
+// TestEstateUpdateToolOmittedNotesKeepsCurrent — notes отсутствует в
+// вызове: текущий список сохраняется; явный пустой список — очищает его.
+func TestEstateUpdateToolOmittedNotesKeepsCurrent(t *testing.T) {
+	svc := &fakeEstates{getSN: models.Estate{ID: "ES-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callEstateTool(t, estateUpdateHandler(svc), map[string]any{"id": "ES-1", "canonical": "Иванов"})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалось сохранение текущих заметок", svc.updated.Notes)
+	}
+}
+
+// TestEstateUpdateToolEmptyNotesClears — явный пустой список notes очищает поле.
+func TestEstateUpdateToolEmptyNotesClears(t *testing.T) {
+	svc := &fakeEstates{getSN: models.Estate{ID: "ES-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callEstateTool(t, estateUpdateHandler(svc), map[string]any{
+		"id": "ES-1", "canonical": "Иванов", "notes": []any{},
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 0 {
+		t.Fatalf("updated.Notes = %+v, ожидался пустой список", svc.updated.Notes)
+	}
+}
+
 func TestEstateDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeEstates{deleteErr: &models.InUseError{Type: models.TypeEstate, ID: "ES-1"}}
 

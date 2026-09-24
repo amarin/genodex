@@ -181,6 +181,27 @@ func TestPersonUpdateToolClearsNamesWhenEmptyArray(t *testing.T) {
 	}
 }
 
+// TestPersonUpdateToolOmittedPrivateKeepsCurrent — private отсутствует в
+// вызове: текущее значение сохраняется, не сбрасывается в false (см.
+// сообщение коммита f6a4f48 — исходный риск регресса, который весь этот
+// проход и исправляет: AI-ассистент, вызывающий person_update без private,
+// не должен снимать приватность записи).
+func TestPersonUpdateToolOmittedPrivateKeepsCurrent(t *testing.T) {
+	svc := &fakePeople{getP: models.Person{ID: "I-1", Private: true}}
+
+	res := callPersonTool(t, personUpdateHandler(svc), map[string]any{
+		"id": "I-1", "gender": "female",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if !svc.updated.Private {
+		t.Fatalf("updated.Private = %v, ожидалось сохранение текущего значения true", svc.updated.Private)
+	}
+}
+
 func TestPersonDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakePeople{deleteErr: &models.InUseError{Type: models.TypePerson, ID: "I-1"}}
 

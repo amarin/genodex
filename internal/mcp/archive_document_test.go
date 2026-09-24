@@ -148,6 +148,133 @@ func TestArchiveDocumentUpdateToolClearsSourcesWhenEmptyArray(t *testing.T) {
 	}
 }
 
+// TestArchiveDocumentUpdateToolOmittedSinceKeepsCurrent — since отсутствует
+// в вызове: текущее значение сохраняется.
+func TestArchiveDocumentUpdateToolOmittedSinceKeepsCurrent(t *testing.T) {
+	svc := &fakeArchiveDocuments{getD: models.ArchiveDocument{
+		ID: "DC-1", UnitID: "AN-1", Title: "Метрическая книга",
+		Since: &models.FactDate{Year: 1880, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveDocumentUpdateHandler(svc), map[string]any{
+		"id": "DC-1", "unit_id": "AN-1", "title": "Метрическая книга",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Since == nil || svc.updated.Since.Year != 1880 {
+		t.Fatalf("updated.Since = %+v, ожидалось сохранение текущего значения", svc.updated.Since)
+	}
+}
+
+// TestArchiveDocumentUpdateToolNullSinceClears — явный null для since
+// очищает поле (регрессия финального ревью: raw != nil приравнивал явный
+// null к отсутствию ключа для *FactDate-полей).
+func TestArchiveDocumentUpdateToolNullSinceClears(t *testing.T) {
+	svc := &fakeArchiveDocuments{getD: models.ArchiveDocument{
+		ID: "DC-1", UnitID: "AN-1", Title: "Метрическая книга",
+		Since: &models.FactDate{Year: 1880, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveDocumentUpdateHandler(svc), map[string]any{
+		"id": "DC-1", "unit_id": "AN-1", "title": "Метрическая книга", "since": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Since != nil {
+		t.Fatalf("updated.Since = %+v, ожидался nil (явный null очищает поле)", svc.updated.Since)
+	}
+}
+
+// TestArchiveDocumentUpdateToolOmittedUntilKeepsCurrent — until отсутствует
+// в вызове: текущее значение сохраняется.
+func TestArchiveDocumentUpdateToolOmittedUntilKeepsCurrent(t *testing.T) {
+	svc := &fakeArchiveDocuments{getD: models.ArchiveDocument{
+		ID: "DC-1", UnitID: "AN-1", Title: "Метрическая книга",
+		Until: &models.FactDate{Year: 1917, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveDocumentUpdateHandler(svc), map[string]any{
+		"id": "DC-1", "unit_id": "AN-1", "title": "Метрическая книга",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Until == nil || svc.updated.Until.Year != 1917 {
+		t.Fatalf("updated.Until = %+v, ожидалось сохранение текущего значения", svc.updated.Until)
+	}
+}
+
+// TestArchiveDocumentUpdateToolNullUntilClears — явный null для until
+// очищает поле.
+func TestArchiveDocumentUpdateToolNullUntilClears(t *testing.T) {
+	svc := &fakeArchiveDocuments{getD: models.ArchiveDocument{
+		ID: "DC-1", UnitID: "AN-1", Title: "Метрическая книга",
+		Until: &models.FactDate{Year: 1917, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveDocumentUpdateHandler(svc), map[string]any{
+		"id": "DC-1", "unit_id": "AN-1", "title": "Метрическая книга", "until": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Until != nil {
+		t.Fatalf("updated.Until = %+v, ожидался nil (явный null очищает поле)", svc.updated.Until)
+	}
+}
+
+// TestArchiveDocumentUpdateToolOmittedParishKeepsCurrent — parish
+// отсутствует в вызове: текущая ссылка сохраняется.
+func TestArchiveDocumentUpdateToolOmittedParishKeepsCurrent(t *testing.T) {
+	svc := &fakeArchiveDocuments{getD: models.ArchiveDocument{
+		ID: "DC-1", UnitID: "AN-1", Title: "Метрическая книга",
+		Parish: &models.TextRef{Text: "Никольский приход"},
+	}}
+
+	res := callArchiveNodeTool(t, archiveDocumentUpdateHandler(svc), map[string]any{
+		"id": "DC-1", "unit_id": "AN-1", "title": "Метрическая книга",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Parish == nil || svc.updated.Parish.Text != "Никольский приход" {
+		t.Fatalf("updated.Parish = %+v, ожидалось сохранение текущей ссылки", svc.updated.Parish)
+	}
+}
+
+// TestArchiveDocumentUpdateToolNullParishClears — явный null для parish
+// очищает поле.
+func TestArchiveDocumentUpdateToolNullParishClears(t *testing.T) {
+	svc := &fakeArchiveDocuments{getD: models.ArchiveDocument{
+		ID: "DC-1", UnitID: "AN-1", Title: "Метрическая книга",
+		Parish: &models.TextRef{Text: "Никольский приход"},
+	}}
+
+	res := callArchiveNodeTool(t, archiveDocumentUpdateHandler(svc), map[string]any{
+		"id": "DC-1", "unit_id": "AN-1", "title": "Метрическая книга", "parish": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Parish != nil {
+		t.Fatalf("updated.Parish = %+v, ожидался nil (явный null очищает поле)", svc.updated.Parish)
+	}
+}
+
 func TestArchiveDocumentDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeArchiveDocuments{deleteErr: &models.InUseError{Type: models.TypeArchiveDocument, ID: "DC-1"}}
 

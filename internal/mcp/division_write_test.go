@@ -129,6 +129,27 @@ func TestDivisionUpdateToolMergesFields(t *testing.T) {
 	}
 }
 
+// TestDivisionUpdateToolOmittedParentIDKeepsCurrent: parent_id отсутствует
+// в вызове — текущий родитель сохраняется, в отличие от явно пустой строки
+// (см. TestDivisionUpdateToolMergesFields), которая делает единицу корнем.
+func TestDivisionUpdateToolOmittedParentIDKeepsCurrent(t *testing.T) {
+	parent := models.ID("ad-root")
+	svc := &fakeDivisions{getDiv: models.AdministrativeDivision{
+		ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo, ParentID: &parent,
+	}}
+
+	res := callDivisionWrite(t, divisionUpdateHandler(svc), svc,
+		map[string]any{"id": "ad-1", "name": "Давыдова", "type": "selo"})
+
+	if res.IsError {
+		t.Fatalf("неожиданная ошибка тула: %s", resultText(t, res))
+	}
+
+	if svc.updated.ParentID == nil || *svc.updated.ParentID != "ad-root" {
+		t.Fatalf("updated.ParentID = %v, ожидалось сохранение текущего родителя", svc.updated.ParentID)
+	}
+}
+
 // TestDivisionUpdateToolSourcesPassed: непустой sources в аргументах доходит
 // до сценария моделью (Fix 1 финального ревью подпроекта 5).
 func TestDivisionUpdateToolSourcesPassed(t *testing.T) {

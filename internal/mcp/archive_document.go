@@ -62,7 +62,7 @@ func registerArchiveDocumentTools(s *server.MCPServer, archiveDocuments ArchiveD
 
 	tool = mcp.NewTool(
 		"archive_document_update",
-		mcp.WithDescription("Изменить документ внутри единицы учёта; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательных unit_id/title) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. Несуществующий unit_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить документ внутри единицы учёта; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательных unit_id/title) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. Несуществующий unit_id — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("unit_id", mcp.Required(), mcp.Description("id единицы учёта")),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Название документа")),
@@ -210,7 +210,7 @@ func archiveDocumentUpdateHandler(archiveDocuments ArchiveDocumentService) serve
 			cur.Kind = req.GetString("kind", "")
 		}
 
-		if raw, ok := args["since"]; ok && raw != nil {
+		if _, ok := args["since"]; ok {
 			since, err := optionalFactDate(args, "since")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -218,7 +218,7 @@ func archiveDocumentUpdateHandler(archiveDocuments ArchiveDocumentService) serve
 			cur.Since = since
 		}
 
-		if raw, ok := args["until"]; ok && raw != nil {
+		if _, ok := args["until"]; ok {
 			until, err := optionalFactDate(args, "until")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -226,7 +226,7 @@ func archiveDocumentUpdateHandler(archiveDocuments ArchiveDocumentService) serve
 			cur.Until = until
 		}
 
-		if raw, ok := args["parish"]; ok && raw != nil {
+		if _, ok := args["parish"]; ok {
 			parish, err := optionalTextRef(args, "parish")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

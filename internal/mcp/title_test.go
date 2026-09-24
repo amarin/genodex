@@ -108,6 +108,39 @@ func TestTitleCreateToolPassesVariants(t *testing.T) {
 	}
 }
 
+// TestTitleUpdateToolOmittedNotesKeepsCurrent — notes отсутствует в
+// вызове: текущий список сохраняется; явный пустой список — очищает его.
+func TestTitleUpdateToolOmittedNotesKeepsCurrent(t *testing.T) {
+	svc := &fakeTitles{getSN: models.Title{ID: "TT-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callTitleTool(t, titleUpdateHandler(svc), map[string]any{"id": "TT-1", "canonical": "Иванов"})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалось сохранение текущих заметок", svc.updated.Notes)
+	}
+}
+
+// TestTitleUpdateToolEmptyNotesClears — явный пустой список notes очищает поле.
+func TestTitleUpdateToolEmptyNotesClears(t *testing.T) {
+	svc := &fakeTitles{getSN: models.Title{ID: "TT-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callTitleTool(t, titleUpdateHandler(svc), map[string]any{
+		"id": "TT-1", "canonical": "Иванов", "notes": []any{},
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 0 {
+		t.Fatalf("updated.Notes = %+v, ожидался пустой список", svc.updated.Notes)
+	}
+}
+
 func TestTitleDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeTitles{deleteErr: &models.InUseError{Type: models.TypeTitle, ID: "TT-1"}}
 

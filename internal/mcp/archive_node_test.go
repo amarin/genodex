@@ -203,6 +203,177 @@ func TestArchiveNodeUpdateToolClearsSourcesWhenEmptyArray(t *testing.T) {
 	}
 }
 
+// TestArchiveNodeUpdateToolOmittedSinceKeepsCurrent — since отсутствует в
+// вызове: текущее значение (из GetArchiveNode) сохраняется.
+func TestArchiveNodeUpdateToolOmittedSinceKeepsCurrent(t *testing.T) {
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1",
+		Since: &models.FactDate{Year: 1880, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Since == nil || svc.updated.Since.Year != 1880 {
+		t.Fatalf("updated.Since = %+v, ожидалось сохранение текущего значения", svc.updated.Since)
+	}
+}
+
+// TestArchiveNodeUpdateToolNullSinceClears — явный null для since очищает
+// поле (регрессия финального ревью: raw != nil ошибочно приравнивал явный
+// null к отсутствию ключа для *FactDate-полей — очистить FactDate{} пустым
+// объектом нельзя, не пройдёт валидацию).
+func TestArchiveNodeUpdateToolNullSinceClears(t *testing.T) {
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1",
+		Since: &models.FactDate{Year: 1880, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1", "since": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Since != nil {
+		t.Fatalf("updated.Since = %+v, ожидался nil (явный null очищает поле)", svc.updated.Since)
+	}
+}
+
+// TestArchiveNodeUpdateToolOmittedUntilKeepsCurrent — until отсутствует в
+// вызове: текущее значение сохраняется.
+func TestArchiveNodeUpdateToolOmittedUntilKeepsCurrent(t *testing.T) {
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1",
+		Until: &models.FactDate{Year: 1917, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Until == nil || svc.updated.Until.Year != 1917 {
+		t.Fatalf("updated.Until = %+v, ожидалось сохранение текущего значения", svc.updated.Until)
+	}
+}
+
+// TestArchiveNodeUpdateToolNullUntilClears — явный null для until очищает поле.
+func TestArchiveNodeUpdateToolNullUntilClears(t *testing.T) {
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1",
+		Until: &models.FactDate{Year: 1917, Precision: models.PrecisionYear},
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1", "until": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Until != nil {
+		t.Fatalf("updated.Until = %+v, ожидался nil (явный null очищает поле)", svc.updated.Until)
+	}
+}
+
+// TestArchiveNodeUpdateToolOmittedParishKeepsCurrent — parish отсутствует в
+// вызове: текущая ссылка сохраняется.
+func TestArchiveNodeUpdateToolOmittedParishKeepsCurrent(t *testing.T) {
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1",
+		Parish: &models.TextRef{Text: "Никольский приход"},
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Parish == nil || svc.updated.Parish.Text != "Никольский приход" {
+		t.Fatalf("updated.Parish = %+v, ожидалось сохранение текущей ссылки", svc.updated.Parish)
+	}
+}
+
+// TestArchiveNodeUpdateToolNullParishClears — явный null для parish очищает поле.
+func TestArchiveNodeUpdateToolNullParishClears(t *testing.T) {
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1",
+		Parish: &models.TextRef{Text: "Никольский приход"},
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1", "parish": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Parish != nil {
+		t.Fatalf("updated.Parish = %+v, ожидался nil (явный null очищает поле)", svc.updated.Parish)
+	}
+}
+
+// TestArchiveNodeUpdateToolOmittedParentIDKeepsCurrent — parent_id
+// отсутствует в вызове: текущий родитель сохраняется — отличие от явно
+// пустой строки, которая делает узел корнем (см.
+// TestArchiveNodeCreateToolParentFromOtherArchiveIsError для ошибки чужого
+// архива и общего механизма).
+func TestArchiveNodeUpdateToolOmittedParentIDKeepsCurrent(t *testing.T) {
+	parent := models.ID("AN-0")
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1", ParentID: &parent,
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.ParentID == nil || *svc.updated.ParentID != "AN-0" {
+		t.Fatalf("updated.ParentID = %v, ожидалось сохранение текущего родителя", svc.updated.ParentID)
+	}
+}
+
+// TestArchiveNodeUpdateToolEmptyParentIDMakesRoot — явно пустой parent_id
+// делает узел корнем, в отличие от отсутствия ключа.
+func TestArchiveNodeUpdateToolEmptyParentIDMakesRoot(t *testing.T) {
+	parent := models.ID("AN-0")
+	svc := &fakeArchiveNodes{getN: models.ArchiveNode{
+		ID: "AN-1", ArchiveID: "AR-1", Label: "Фонд 1", ParentID: &parent,
+	}}
+
+	res := callArchiveNodeTool(t, archiveNodeUpdateHandler(svc), map[string]any{
+		"id": "AN-1", "type": "fond", "archive_id": "AR-1", "label": "Фонд 1", "parent_id": "",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.ParentID != nil {
+		t.Fatalf("updated.ParentID = %v, ожидался корень (nil)", svc.updated.ParentID)
+	}
+}
+
 func TestArchiveNodeDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeArchiveNodes{deleteErr: &models.InUseError{Type: models.TypeArchiveNode, ID: "AN-1"}}
 

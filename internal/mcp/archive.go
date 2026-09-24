@@ -62,7 +62,7 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 
 	tool = mcp.NewTool(
 		"archive_update",
-		mcp.WithDescription("Изменить архив; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательного name) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. Несуществующий repository_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить архив; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательного name) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. Несуществующий repository_id — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithObject("system", mcp.Description("Система иерархии — только именем"), mcp.Properties(map[string]any{
@@ -187,7 +187,7 @@ func archiveUpdateHandler(archives ArchiveService) server.ToolHandlerFunc {
 
 		cur.Name = req.GetString("name", "")
 
-		if raw, ok := args["system"]; ok && raw != nil {
+		if _, ok := args["system"]; ok {
 			system, err := optionalTextRef(args, "system")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

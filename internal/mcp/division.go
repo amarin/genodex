@@ -62,7 +62,7 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 
 	tool = mcp.NewTool(
 		"division_update",
-		mcp.WithDescription("Изменить единицу административного деления: обновляются name, type и parent_id (пустой parent_id — корень); прочие поля текущей версии сохраняются; результат — JSON обновлённой единицы; при отсутствии sources в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить единицу административного деления: результат — JSON обновлённой единицы. name/type — обязательны, заменяются всегда; parent_id — при отсутствии в вызове сохраняет текущего родителя, явная пустая строка делает единицу корнем; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithString("type", mcp.Required(), mcp.Description("governorate, district, volost, gorod, selo, derevnya, hutor, pogost, stanitsa, mestechko, other")),
@@ -214,8 +214,11 @@ func divisionCreateHandler(divisions DivisionService) server.ToolHandlerFunc {
 	}
 }
 
-// divisionUpdateHandler — тул division_update: меняет name/type/parent_id,
-// остальные поля берутся из актуальной версии сценария.
+// divisionUpdateHandler — тул division_update: name/type заменяются всегда
+// (обязательны); parent_id при отсутствии в вызове сохраняет текущего
+// родителя, явная пустая строка делает единицу корнем; sources при
+// отсутствии в вызове сохраняет текущие источники, явный пустой массив —
+// очищает их; остальные поля берутся из актуальной версии сценария.
 func divisionUpdateHandler(divisions DivisionService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := models.ID(req.GetString("id", ""))

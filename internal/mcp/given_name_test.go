@@ -128,6 +128,45 @@ func TestGivenNameUpdateToolSetsGender(t *testing.T) {
 	}
 }
 
+// TestGivenNameUpdateToolOmittedNotesKeepsCurrent — notes отсутствует в
+// вызове: текущий список сохраняется; явный пустой список — очищает его.
+func TestGivenNameUpdateToolOmittedNotesKeepsCurrent(t *testing.T) {
+	svc := &fakeGivenNames{getSN: models.GivenName{
+		ID: "GN-1", Canonical: "Иванов", Gender: models.NameGenderMale, Notes: []models.TextRef{{Text: "заметка"}},
+	}}
+
+	res := callGivenNameTool(t, givenNameUpdateHandler(svc), map[string]any{
+		"id": "GN-1", "canonical": "Иванов", "gender": "male",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалось сохранение текущих заметок", svc.updated.Notes)
+	}
+}
+
+// TestGivenNameUpdateToolEmptyNotesClears — явный пустой список notes очищает поле.
+func TestGivenNameUpdateToolEmptyNotesClears(t *testing.T) {
+	svc := &fakeGivenNames{getSN: models.GivenName{
+		ID: "GN-1", Canonical: "Иванов", Gender: models.NameGenderMale, Notes: []models.TextRef{{Text: "заметка"}},
+	}}
+
+	res := callGivenNameTool(t, givenNameUpdateHandler(svc), map[string]any{
+		"id": "GN-1", "canonical": "Иванов", "gender": "male", "notes": []any{},
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 0 {
+		t.Fatalf("updated.Notes = %+v, ожидался пустой список", svc.updated.Notes)
+	}
+}
+
 func TestGivenNameDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeGivenNames{deleteErr: &models.InUseError{Type: models.TypeGivenName, ID: "GN-1"}}
 

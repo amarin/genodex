@@ -124,6 +124,39 @@ func TestFamilyUpdateToolSetsFields(t *testing.T) {
 	}
 }
 
+// TestFamilyUpdateToolOmittedNotesKeepsCurrent — notes отсутствует в
+// вызове: текущий список сохраняется; явный пустой список — очищает его.
+func TestFamilyUpdateToolOmittedNotesKeepsCurrent(t *testing.T) {
+	svc := &fakeFamilies{getF: models.Family{ID: "F-1", Name: "Ивановы", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callFamilyTool(t, familyUpdateHandler(svc), map[string]any{"id": "F-1", "name": "Ивановы"})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалось сохранение текущих заметок", svc.updated.Notes)
+	}
+}
+
+// TestFamilyUpdateToolEmptyNotesClears — явный пустой список notes очищает поле.
+func TestFamilyUpdateToolEmptyNotesClears(t *testing.T) {
+	svc := &fakeFamilies{getF: models.Family{ID: "F-1", Name: "Ивановы", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callFamilyTool(t, familyUpdateHandler(svc), map[string]any{
+		"id": "F-1", "name": "Ивановы", "notes": []any{},
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 0 {
+		t.Fatalf("updated.Notes = %+v, ожидался пустой список", svc.updated.Notes)
+	}
+}
+
 func TestFamilyDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeFamilies{deleteErr: &models.InUseError{Type: models.TypeFamily, ID: "F-1"}}
 

@@ -108,6 +108,39 @@ func TestPatronymicCreateToolPassesVariants(t *testing.T) {
 	}
 }
 
+// TestPatronymicUpdateToolOmittedNotesKeepsCurrent — notes отсутствует в
+// вызове: текущий список сохраняется; явный пустой список — очищает его.
+func TestPatronymicUpdateToolOmittedNotesKeepsCurrent(t *testing.T) {
+	svc := &fakePatronymics{getSN: models.Patronymic{ID: "PN-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callPatronymicTool(t, patronymicUpdateHandler(svc), map[string]any{"id": "PN-1", "canonical": "Иванов"})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалось сохранение текущих заметок", svc.updated.Notes)
+	}
+}
+
+// TestPatronymicUpdateToolEmptyNotesClears — явный пустой список notes очищает поле.
+func TestPatronymicUpdateToolEmptyNotesClears(t *testing.T) {
+	svc := &fakePatronymics{getSN: models.Patronymic{ID: "PN-1", Canonical: "Иванов", Notes: []models.TextRef{{Text: "заметка"}}}}
+
+	res := callPatronymicTool(t, patronymicUpdateHandler(svc), map[string]any{
+		"id": "PN-1", "canonical": "Иванов", "notes": []any{},
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 0 {
+		t.Fatalf("updated.Notes = %+v, ожидался пустой список", svc.updated.Notes)
+	}
+}
+
 func TestPatronymicDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakePatronymics{deleteErr: &models.InUseError{Type: models.TypePatronymic, ID: "PN-1"}}
 

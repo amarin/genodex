@@ -66,7 +66,7 @@ func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 
 	tool = mcp.NewTool(
 		"church_update",
-		mcp.WithDescription("Изменить церковь; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательного name) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. parish — {text, ref?, type?}: передайте обратно ref/type, полученные из church_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при обновлении этого поля через MCP, пока не появится picker (docs/data-model/entity-write.md §5); sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить церковь; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательного name) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. parish — {text, ref?, type?}: передайте обратно ref/type, полученные из church_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при обновлении этого поля через MCP, пока не появится picker (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithObject("parish", mcp.Description("Приход (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
@@ -189,7 +189,7 @@ func churchUpdateHandler(churches ChurchService) server.ToolHandlerFunc {
 
 		cur.Name = req.GetString("name", "")
 
-		if raw, ok := args["parish"]; ok && raw != nil {
+		if _, ok := args["parish"]; ok {
 			parish, err := optionalTextRef(args, "parish")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

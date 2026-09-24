@@ -129,6 +129,49 @@ func TestSourceCreateToolRepositoryNotFoundIsError(t *testing.T) {
 	}
 }
 
+// TestSourceUpdateToolOmittedDateKeepsCurrent — date отсутствует в вызове:
+// текущее значение сохраняется.
+func TestSourceUpdateToolOmittedDateKeepsCurrent(t *testing.T) {
+	svc := &fakeSources{getS: models.Source{
+		ID: "S-1", Kind: models.SourceKindDocument, Title: "Ревизская сказка", Reliability: models.ReliabilityPrimary,
+		Date: &models.FactDate{Year: 1858, Precision: models.PrecisionYear},
+	}}
+
+	res := callSourceTool(t, sourceUpdateHandler(svc), map[string]any{
+		"id": "S-1", "kind": "document", "title": "Ревизская сказка", "reliability": "primary",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Date == nil || svc.updated.Date.Year != 1858 {
+		t.Fatalf("updated.Date = %+v, ожидалось сохранение текущего значения", svc.updated.Date)
+	}
+}
+
+// TestSourceUpdateToolNullDateClears — явный null для date очищает поле
+// (регрессия финального ревью: raw != nil ошибочно приравнивал явный null
+// к отсутствию ключа для *FactDate-полей).
+func TestSourceUpdateToolNullDateClears(t *testing.T) {
+	svc := &fakeSources{getS: models.Source{
+		ID: "S-1", Kind: models.SourceKindDocument, Title: "Ревизская сказка", Reliability: models.ReliabilityPrimary,
+		Date: &models.FactDate{Year: 1858, Precision: models.PrecisionYear},
+	}}
+
+	res := callSourceTool(t, sourceUpdateHandler(svc), map[string]any{
+		"id": "S-1", "kind": "document", "title": "Ревизская сказка", "reliability": "primary", "date": nil,
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.Date != nil {
+		t.Fatalf("updated.Date = %+v, ожидался nil (явный null очищает поле)", svc.updated.Date)
+	}
+}
+
 func TestSourceDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeSources{deleteErr: &models.InUseError{Type: models.TypeSource, ID: "S-1"}}
 

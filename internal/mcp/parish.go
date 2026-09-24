@@ -202,7 +202,7 @@ func parishUpdateHandler(parishes ParishService) server.ToolHandlerFunc {
 
 		cur.Name = req.GetString("name", "")
 
-		if raw, ok := args["church"]; ok && raw != nil {
+		if _, ok := args["church"]; ok {
 			church, err := optionalTextRef(args, "church")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -214,7 +214,7 @@ func parishUpdateHandler(parishes ParishService) server.ToolHandlerFunc {
 			cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
 		}
 
-		if raw, ok := args["since"]; ok && raw != nil {
+		if _, ok := args["since"]; ok {
 			since, err := optionalFactDate(args, "since")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
@@ -222,7 +222,7 @@ func parishUpdateHandler(parishes ParishService) server.ToolHandlerFunc {
 			cur.Since = since
 		}
 
-		if raw, ok := args["until"]; ok && raw != nil {
+		if _, ok := args["until"]; ok {
 			until, err := optionalFactDate(args, "until")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil

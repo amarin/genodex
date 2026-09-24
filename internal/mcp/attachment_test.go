@@ -125,6 +125,49 @@ func TestAttachmentCreateToolNodeNotFoundIsError(t *testing.T) {
 	}
 }
 
+// TestAttachmentUpdateToolOmittedDocumentIDKeepsCurrent — document_id
+// отсутствует в вызове: текущий документ сохраняется, в отличие от явно
+// пустой строки.
+func TestAttachmentUpdateToolOmittedDocumentIDKeepsCurrent(t *testing.T) {
+	doc := models.ID("DC-1")
+	svc := &fakeAttachments{getA: models.Attachment{
+		ID: "O-1", Kind: models.AttachmentKindScan, Filename: "0012.jpg", NodeID: "AN-1", DocumentID: &doc,
+	}}
+
+	res := callAttachmentTool(t, attachmentUpdateHandler(svc), map[string]any{
+		"id": "O-1", "kind": "scan", "node_id": "AN-1",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.DocumentID == nil || *svc.updated.DocumentID != "DC-1" {
+		t.Fatalf("updated.DocumentID = %v, ожидалось сохранение текущего документа", svc.updated.DocumentID)
+	}
+}
+
+// TestAttachmentUpdateToolEmptyDocumentIDClears — явно пустой document_id
+// убирает ссылку на документ, в отличие от отсутствия ключа.
+func TestAttachmentUpdateToolEmptyDocumentIDClears(t *testing.T) {
+	doc := models.ID("DC-1")
+	svc := &fakeAttachments{getA: models.Attachment{
+		ID: "O-1", Kind: models.AttachmentKindScan, Filename: "0012.jpg", NodeID: "AN-1", DocumentID: &doc,
+	}}
+
+	res := callAttachmentTool(t, attachmentUpdateHandler(svc), map[string]any{
+		"id": "O-1", "kind": "scan", "node_id": "AN-1", "document_id": "",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.DocumentID != nil {
+		t.Fatalf("updated.DocumentID = %v, ожидался nil (без документа)", svc.updated.DocumentID)
+	}
+}
+
 func TestAttachmentDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeAttachments{deleteErr: &models.InUseError{Type: models.TypeAttachment, ID: "O-1"}}
 

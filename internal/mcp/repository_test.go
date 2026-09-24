@@ -126,6 +126,49 @@ func TestRepositoryUpdateToolSetsFields(t *testing.T) {
 	}
 }
 
+// TestRepositoryUpdateToolOmittedNotesKeepsCurrent — notes отсутствует в
+// вызове: текущий список сохраняется, явно переданный список — заменяет
+// его целиком (общий контракт preserve-on-omit для необязательных полей).
+func TestRepositoryUpdateToolOmittedNotesKeepsCurrent(t *testing.T) {
+	svc := &fakeRepositories{getR: models.Repository{
+		ID: "R-1", Name: "ГАВО", Type: models.RepositoryTypeArchive,
+		Notes: []models.TextRef{{Text: "старая заметка"}},
+	}}
+
+	res := callRepositoryTool(t, repositoryUpdateHandler(svc), map[string]any{
+		"id": "R-1", "name": "ГАВО", "type": "archive",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "старая заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалось сохранение текущих заметок", svc.updated.Notes)
+	}
+}
+
+// TestRepositoryUpdateToolExplicitNotesReplaces — явно переданный notes
+// заменяет текущий список.
+func TestRepositoryUpdateToolExplicitNotesReplaces(t *testing.T) {
+	svc := &fakeRepositories{getR: models.Repository{
+		ID: "R-1", Name: "ГАВО", Type: models.RepositoryTypeArchive,
+		Notes: []models.TextRef{{Text: "старая заметка"}},
+	}}
+
+	res := callRepositoryTool(t, repositoryUpdateHandler(svc), map[string]any{
+		"id": "R-1", "name": "ГАВО", "type": "archive", "notes": []any{"новая заметка"},
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if len(svc.updated.Notes) != 1 || svc.updated.Notes[0].Text != "новая заметка" {
+		t.Fatalf("updated.Notes = %+v, ожидалась замена новым списком", svc.updated.Notes)
+	}
+}
+
 func TestRepositoryDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeRepositories{deleteErr: &models.InUseError{Type: models.TypeRepository, ID: "R-1"}}
 

@@ -130,6 +130,44 @@ func TestNoteCreateToolPassesPrivate(t *testing.T) {
 	}
 }
 
+// TestNoteUpdateToolOmittedParentIDKeepsCurrent — parent_id отсутствует в
+// вызове: текущий родитель сохраняется, в отличие от явно пустой строки.
+func TestNoteUpdateToolOmittedParentIDKeepsCurrent(t *testing.T) {
+	parent := models.ID("N-0")
+	svc := &fakeNotes{getN: models.Note{ID: "N-1", Kind: "note", Text: "текст", ParentID: &parent}}
+
+	res := callNoteTool(t, noteUpdateHandler(svc), map[string]any{
+		"id": "N-1", "kind": "note",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.ParentID == nil || *svc.updated.ParentID != "N-0" {
+		t.Fatalf("updated.ParentID = %v, ожидалось сохранение текущего родителя", svc.updated.ParentID)
+	}
+}
+
+// TestNoteUpdateToolEmptyParentIDClears — явно пустой parent_id убирает
+// родителя, в отличие от отсутствия ключа.
+func TestNoteUpdateToolEmptyParentIDClears(t *testing.T) {
+	parent := models.ID("N-0")
+	svc := &fakeNotes{getN: models.Note{ID: "N-1", Kind: "note", Text: "текст", ParentID: &parent}}
+
+	res := callNoteTool(t, noteUpdateHandler(svc), map[string]any{
+		"id": "N-1", "kind": "note", "parent_id": "",
+	})
+
+	if res.IsError {
+		t.Fatalf("isError=%v text=%s", res.IsError, resultText(t, res))
+	}
+
+	if svc.updated.ParentID != nil {
+		t.Fatalf("updated.ParentID = %v, ожидался nil (без родителя)", svc.updated.ParentID)
+	}
+}
+
 func TestNoteDeleteToolInUseIsError(t *testing.T) {
 	svc := &fakeNotes{deleteErr: &models.InUseError{Type: models.TypeNote, ID: "N-1"}}
 
