@@ -11,8 +11,10 @@ import { PersonPicker } from "./PersonPicker";
 // (models.EventParticipant.PersonID, проверяется на сервере), а не мягкий
 // TextRef с ref-preservation-если-текст-не-менялся — значит никакой
 // ChurchView-style "снимок при появлении строки" логики не нужно
-// (docs/data-model/entity-write.md §3.8: первая строгая ссылка внутри
-// массива-объектов MCP/HTTP аргумента в программе).
+// (docs/data-model/entity-write.md §3.8: не первая строгая ссылка внутри
+// массива-объектов аргумента — такой была sources[i].citation_id ещё в
+// подпроекте 5, — но первая, где сама эта ссылка является главным
+// предметом элемента массива, а не одним из нескольких его полей).
 export function EventParticipantListEditor({
   value,
   onChange,

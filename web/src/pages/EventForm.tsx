@@ -29,7 +29,8 @@ const FORM_FIELDS: (keyof EventFormValues)[] = ["type"];
 // отсутствует, поэтому просто {text}/null без сохранения ссылки (сохранение
 // ref-если-текст-не-менялся нужно только в EventView при редактировании,
 // ChurchView-style). participants — EventParticipantListEditor (подпроект 9,
-// первая строгая ссылка внутри массива-объектов).
+// строгая ссылка внутри массива-объектов — как sources[i].citation_id ещё с
+// подпроекта 5, но здесь эта ссылка сама и есть предмет элемента массива).
 export function CreateEventModal({
   open,
   onClose,
