@@ -37,7 +37,7 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 
 	tool = mcp.NewTool(
 		"archive_get",
-		mcp.WithDescription("Архив по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
+		mcp.WithDescription("Архив по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула; то же для архива, ссылающегося на приватную цитату среди источников (sources[i].citation_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например AR-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, archiveGetHandler(archives))

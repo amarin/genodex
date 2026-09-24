@@ -12,4 +12,5 @@ import (
 type EventRepo interface {
 	ListEvents(ctx context.Context, access models.Access, page models.Page) ([]*models.Event, error)
 	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

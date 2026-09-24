@@ -12,4 +12,5 @@ import (
 type ChurchRepo interface {
 	Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error)
 	GetChurch(ctx context.Context, id models.ID) (*models.Church, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

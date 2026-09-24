@@ -322,6 +322,25 @@
   `internal/usecases/get_residence`, `internal/usecases/list_residences`,
   `internal/usecases/get_event`, `internal/usecases/list_events`,
   `internal/usecases/search_events`).
+- **Та же утечка приватности, теперь через `SourceLink.CitationID` →
+  приватная `Citation`.** Любая из 13 сущностей, хранящих `Sources
+  []SourceLink` (`AdministrativeDivision`, `Archive`, `ArchiveDocument`,
+  `ArchiveNode`, `Church`, `Event`, `Family`, `Note`, `Parish`, `Person`,
+  `Relation`, `Residence`, `Repository`), теперь тоже прячется как
+  отсутствующее для читателя без `models.AccessFull`, если хотя бы одна её
+  ссылка на источник (`sources[i].citation_id`) указывает на приватную
+  цитату — независимо от собственного `Private` записи (а для
+  `AdministrativeDivision`/`Church`/`Parish`, у которых `Private` вообще
+  нет, это единственная проверка приватности в `Get<Entity>`, ради чего их
+  usecase-уровневый `Get<Entity>` впервые получил параметр `access`,
+  прокинутый через `internal/httpapi`/`internal/mcp`/`internal/app`).
+  Раньше публичная запись с такой ссылкой выдавала id приватной цитаты и
+  косвенно — факт привязки к приватному источнику. Тот же принцип «прячем
+  как отсутствующее», применённый независимо и параллельно уже
+  существующей проверке на приватную `Person` там, где она есть
+  (`Relation`/`Residence`/`Event`). Закрывает случай, сознательно
+  оставленный открытым в записи выше.
+  (`internal/usecases/{get,list,search}_<entity>` для всех 13 сущностей).
 
 ### Changed
 

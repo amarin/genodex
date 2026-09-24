@@ -9,7 +9,8 @@ import (
 )
 
 type fakeRepo struct {
-	archives map[models.ID]*models.Archive
+	archives  map[models.ID]*models.Archive
+	citations map[models.ID]*models.Citation
 }
 
 func (f *fakeRepo) GetArchive(_ context.Context, id models.ID) (*models.Archive, error) {
@@ -19,6 +20,15 @@ func (f *fakeRepo) GetArchive(_ context.Context, id models.ID) (*models.Archive,
 	}
 
 	return s, nil
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 func TestGetArchiveReturnsRecord(t *testing.T) {
@@ -68,6 +78,48 @@ func TestGetArchivePrivateHiddenFromPublic(t *testing.T) {
 func TestGetArchivePrivateVisibleToFullAccess(t *testing.T) {
 	id := models.ID("AR-01ARZ3NDEKTSV4RRFFQ69G5FA1")
 	repo := &fakeRepo{archives: map[models.ID]*models.Archive{id: {ID: id, Name: "ГАВО, архив", Private: true}}}
+
+	got, err := New(repo).GetArchive(context.Background(), models.AccessFull, id)
+	if err != nil {
+		t.Fatalf("GetArchive: %v", err)
+	}
+
+	if got.Name != "ГАВО, архив" {
+		t.Fatalf("Name = %q", got.Name)
+	}
+}
+
+// TestGetArchiveHidesRecordReferencingPrivateCitation: архив сам не
+// приватен, но ссылается (Sources[i].CitationID) на приватную цитату — для
+// вызывающего без полного доступа он прячется как отсутствующий, как если
+// бы был приватным сам.
+func TestGetArchiveHidesRecordReferencingPrivateCitation(t *testing.T) {
+	id := models.ID("AR-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		archives: map[models.ID]*models.Archive{
+			id: {ID: id, Name: "ГАВО, архив", Sources: []models.SourceLink{{CitationID: citationID}}},
+		},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
+
+	_, err := New(repo).GetArchive(context.Background(), models.AccessPublic, id)
+	if !errors.Is(err, models.ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound for record referencing private citation", err)
+	}
+}
+
+// TestGetArchiveShowsRecordReferencingPrivateCitationWithFullAccess: тот
+// же случай, но для вызывающего с полным доступом запись видима.
+func TestGetArchiveShowsRecordReferencingPrivateCitationWithFullAccess(t *testing.T) {
+	id := models.ID("AR-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		archives: map[models.ID]*models.Archive{
+			id: {ID: id, Name: "ГАВО, архив", Sources: []models.SourceLink{{CitationID: citationID}}},
+		},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
 
 	got, err := New(repo).GetArchive(context.Background(), models.AccessFull, id)
 	if err != nil {

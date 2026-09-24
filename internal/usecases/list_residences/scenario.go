@@ -41,6 +41,10 @@ func (s *Scenario) ListResidences(ctx context.Context, access models.Access, q m
 	// и та же персона часто встречается в нескольких проживаниях одного
 	// скана.
 	cache := map[models.ID]bool{}
+	// citationCache — та же мемоизация, что и cache, но для приватности
+	// цитат по Sources[i].CitationID: отдельная map, независимая от cache
+	// персон (см. общий паттерн citation-privacy).
+	citationCache := map[models.ID]bool{}
 
 	for offset := 0; ; offset += models.MaxPageLimit {
 		list, err := s.residences.ListResidences(ctx, access, models.Page{Limit: models.MaxPageLimit, Offset: offset})
@@ -52,7 +56,7 @@ func (s *Scenario) ListResidences(ctx context.Context, access models.Access, q m
 			return out, nil
 		}
 
-		full, nextMatched, nextOut, err := applyWindow(ctx, s.residences, access, q, list, page, matched, out, cache)
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.residences, access, q, list, page, matched, out, cache, citationCache)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +80,7 @@ func (s *Scenario) ListResidences(ctx context.Context, access models.Access, q m
 // SQLite, не высоконагруженный веб-сервис); тот же компромисс «без
 // кеша/батчинга», что и в create_event для проверки участников.
 func applyWindow(ctx context.Context, repo ResidenceRepo, access models.Access, q models.ResidenceQuery, list []*models.Residence,
-	page models.Page, matched int, out []models.Residence, cache map[models.ID]bool,
+	page models.Page, matched int, out []models.Residence, cache map[models.ID]bool, citationCache map[models.ID]bool,
 ) (full bool, nextMatched int, nextOut []models.Residence, err error) {
 	for _, r := range list {
 		if q.PersonID != nil && *q.PersonID != r.PersonID {
@@ -89,6 +93,17 @@ func applyWindow(ctx context.Context, repo ResidenceRepo, access models.Access, 
 
 		if access != models.AccessFull {
 			hidden, err := residenceReferencesPrivatePerson(ctx, repo, r, cache)
+			if err != nil {
+				return false, matched, out, err
+			}
+
+			if hidden {
+				continue
+			}
+		}
+
+		if access != models.AccessFull {
+			hidden, err := residenceReferencesPrivateCitation(ctx, repo, r, citationCache)
 			if err != nil {
 				return false, matched, out, err
 			}
@@ -149,4 +164,52 @@ func personIsPrivate(ctx context.Context, repo ResidenceRepo, cache map[models.I
 	cache[id] = p.Private
 
 	return p.Private, nil
+}
+
+// residenceReferencesPrivateCitation сообщает, ссылается ли проживание
+// (через Sources[i].CitationID) хотя бы на одну приватную цитату —
+// независимая проверка, параллельная residenceReferencesPrivatePerson (см.
+// её комментарий). citationCache — мемоизация в рамках одного вызова
+// ListResidences, отдельная от cache персон, см. комментарий её объявления
+// в ListResidences.
+func residenceReferencesPrivateCitation(ctx context.Context, repo ResidenceRepo, r *models.Residence, citationCache map[models.ID]bool) (bool, error) {
+	for _, sl := range r.Sources {
+		hidden, err := citationIsPrivate(ctx, repo, citationCache, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if hidden {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// citationIsPrivate сообщает, приватна ли цитата id — с точки зрения
+// сканирующего ListResidences сюда же относится и гонка с конкурентным
+// удалением цитаты (models.ErrNotFound от GetCitation): такая цитата
+// трактуется как приватная, т.е. проживание, ссылающееся на неё, тоже
+// прячется, а не проваливает весь список ошибкой (тот же принцип, что и у
+// personIsPrivate). cache — мемоизация в рамках одного вызова.
+func citationIsPrivate(ctx context.Context, repo ResidenceRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	c, err := repo.GetCitation(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	cache[id] = c.Private
+
+	return c.Private, nil
 }

@@ -12,4 +12,5 @@ import (
 type RelationRepo interface {
 	GetRelation(ctx context.Context, id models.ID) (*models.Relation, error)
 	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

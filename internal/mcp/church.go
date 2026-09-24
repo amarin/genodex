@@ -43,7 +43,7 @@ func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 
 	tool = mcp.NewTool(
 		"church_get",
-		mcp.WithDescription("Церковь по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
+		mcp.WithDescription("Церковь по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула; то же для записи, ссылающейся на приватную цитату среди источников (sources[i].citation_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например CH-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, churchGetHandler(churches))
@@ -137,7 +137,7 @@ func churchSearchHandler(churches ChurchService) server.ToolHandlerFunc {
 
 func churchGetHandler(churches ChurchService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		c, err := churches.GetChurch(ctx, models.ID(req.GetString("id", "")))
+		c, err := churches.GetChurch(ctx, AccessFromContext(ctx), models.ID(req.GetString("id", "")))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить запись: %v", err)), nil
 		}
@@ -180,7 +180,7 @@ func churchUpdateHandler(churches ChurchService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := models.ID(req.GetString("id", ""))
 
-		cur, err := churches.GetChurch(ctx, id)
+		cur, err := churches.GetChurch(ctx, AccessFromContext(ctx), id)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}

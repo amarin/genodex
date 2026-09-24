@@ -36,7 +36,41 @@ func (s *Scenario) GetPerson(ctx context.Context, access models.Access, id model
 		return models.Person{}, models.ErrNotFound
 	}
 
+	if access != models.AccessFull {
+		hidden, err := personReferencesPrivateCitation(ctx, s.people, p)
+		if err != nil {
+			return models.Person{}, err
+		}
+
+		if hidden {
+			return models.Person{}, models.ErrNotFound
+		}
+	}
+
 	return *p, nil
+}
+
+// personReferencesPrivateCitation сообщает, ссылается ли персона (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату — тот же принцип,
+// что и собственный Private персоны (см. комментарий GetPerson): публичная
+// персона, ссылающаяся на приватную цитату, тоже прячется как отсутствующая,
+// иначе она выдаёт сам факт существования и id приватной цитаты. Не путать с
+// приватностью персон, на которых ссылается Relation/Residence/Event — у
+// самой Person нет строгой ссылки на другую Person, здесь речь только о
+// Sources[i].CitationID.
+func personReferencesPrivateCitation(ctx context.Context, repo PersonRepo, p *models.Person) (bool, error) {
+	for _, sl := range p.Sources {
+		c, err := repo.GetCitation(ctx, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if c.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

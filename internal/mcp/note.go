@@ -38,7 +38,7 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 
 	tool = mcp.NewTool(
 		"note_get",
-		mcp.WithDescription("Заметка по id; результат — JSON записи. Неверный формат id, отсутствующая или приватная (без полного доступа) запись — ошибка тула"),
+		mcp.WithDescription("Заметка по id; результат — JSON записи. Неверный формат id, отсутствующая или приватная (без полного доступа) запись — ошибка тула; то же для заметки, ссылающейся на приватную цитату среди источников (sources[i].citation_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например N-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, noteGetHandler(notes))

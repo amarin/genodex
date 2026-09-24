@@ -36,7 +36,38 @@ func (s *Scenario) GetFamily(ctx context.Context, access models.Access, id model
 		return models.Family{}, models.ErrNotFound
 	}
 
+	if access != models.AccessFull {
+		hidden, err := familyReferencesPrivateCitation(ctx, s.families, f)
+		if err != nil {
+			return models.Family{}, err
+		}
+
+		if hidden {
+			return models.Family{}, models.ErrNotFound
+		}
+	}
+
 	return *f, nil
+}
+
+// familyReferencesPrivateCitation сообщает, ссылается ли род (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату — тот же принцип,
+// что и собственный Private рода (см. комментарий GetFamily): публичный род,
+// ссылающийся на приватную цитату, тоже прячется как отсутствующий, иначе он
+// выдаёт сам факт существования и id приватной цитаты.
+func familyReferencesPrivateCitation(ctx context.Context, repo FamilyRepo, f *models.Family) (bool, error) {
+	for _, sl := range f.Sources {
+		c, err := repo.GetCitation(ctx, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if c.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

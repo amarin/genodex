@@ -56,7 +56,7 @@ func handleChurchSearch(churches ChurchService) http.HandlerFunc {
 // handleChurchGet — GET /api/churches/{id}.
 func handleChurchGet(churches ChurchService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		c, err := churches.GetChurch(r.Context(), pathID(r))
+		c, err := churches.GetChurch(r.Context(), AccessFromContext(r.Context()), pathID(r))
 		if err != nil {
 			writeError(w, err)
 

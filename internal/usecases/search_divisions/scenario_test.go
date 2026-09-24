@@ -46,15 +46,26 @@ func sameIDs[T ~string](got []T, want ...T) bool {
 
 // fakeRepo отдаёт окна хитов и единицы деления.
 type fakeRepo struct {
-	hits     []models.Hit        // статический список хитов (Search нарезает окнами)
-	getErr   map[models.ID]error // ошибка GetAdministrativeDivision по id (nil — ок)
-	err      error
-	errAt    int
-	gotCtx   context.Context
-	gotQuery string
-	calls    []models.Page
-	getCalls []models.ID
-	accesses []models.Access
+	hits      []models.Hit        // статический список хитов (Search нарезает окнами)
+	getErr    map[models.ID]error // ошибка GetAdministrativeDivision по id (nil — ок)
+	err       error
+	errAt     int
+	gotCtx    context.Context
+	gotQuery  string
+	calls     []models.Page
+	getCalls  []models.ID
+	accesses  []models.Access
+	divisions map[models.ID]*models.AdministrativeDivision // переопределяет division(string(id)) по умолчанию, если задано
+	citations map[models.ID]*models.Citation
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 func (f *fakeRepo) Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error) {
@@ -84,6 +95,10 @@ func (f *fakeRepo) GetAdministrativeDivision(ctx context.Context, id models.ID) 
 		if e, ok := f.getErr[id]; ok && e != nil {
 			return nil, e
 		}
+	}
+
+	if d, ok := f.divisions[id]; ok {
+		return d, nil
 	}
 
 	return division(string(id)), nil
@@ -230,5 +245,70 @@ func TestSearchDivisionsPassesAccessToRepo(t *testing.T) {
 		if a != models.AccessPublic {
 			t.Errorf("вызов %d: доступ %v, ожидался AccessPublic (переданный вызывающим, не захардкоженный AccessFull)", i+1, a)
 		}
+	}
+}
+
+// TestSearchDivisionsHidesReferenceToPrivateCitation: хит, чья единица
+// ссылается на приватную цитату среди источников, исключается из
+// результата для вызывающего без полного доступа, но видна с AccessFull.
+func TestSearchDivisionsHidesReferenceToPrivateCitation(t *testing.T) {
+	hiddenID := models.ID("AD-1002")
+	visibleID := models.ID("AD-1003")
+	citID := models.ID("CI-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+
+	repo := &fakeRepo{
+		hits: []models.Hit{
+			hit(string(hiddenID), models.TypeAdministrativeDivision),
+			hit(string(visibleID), models.TypeAdministrativeDivision),
+		},
+		divisions: map[models.ID]*models.AdministrativeDivision{
+			hiddenID: {ID: hiddenID, Name: string(hiddenID), Sources: []models.SourceLink{{CitationID: citID}}},
+		},
+		citations: map[models.ID]*models.Citation{citID: {ID: citID, Private: true}},
+	}
+
+	got, err := New(repo).SearchDivisions(context.Background(), models.AccessPublic, models.DivisionSearchQuery{Text: "п"})
+	if err != nil || !sameIDs(ids(got), visibleID) {
+		t.Fatalf("got %v, %v; ожидалась только %v", ids(got), err, visibleID)
+	}
+
+	got, err = New(repo).SearchDivisions(context.Background(), models.AccessFull, models.DivisionSearchQuery{Text: "п"})
+	if err != nil || !sameIDs(ids(got), hiddenID, visibleID) {
+		t.Fatalf("got %v, %v; с AccessFull ожидались оба хита", ids(got), err)
+	}
+}
+
+// TestSearchDivisionsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden: хит,
+// скрытый приватной цитатой и предшествующий запрошенному offset, не должен
+// «съедать» offset-бюджет вслепую — постранично (limit=1) с offset=0 и
+// offset=1 должны вернуться разные видимые единицы, без дублей и пропусков.
+func TestSearchDivisionsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden(t *testing.T) {
+	hiddenID := models.ID("AD-1001")
+	idA := models.ID("AD-1002")
+	idB := models.ID("AD-1003")
+	citID := models.ID("CI-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+
+	repo := &fakeRepo{
+		hits: []models.Hit{
+			hit(string(hiddenID), models.TypeAdministrativeDivision),
+			hit(string(idA), models.TypeAdministrativeDivision),
+			hit(string(idB), models.TypeAdministrativeDivision),
+		},
+		divisions: map[models.ID]*models.AdministrativeDivision{
+			hiddenID: {ID: hiddenID, Name: string(hiddenID), Sources: []models.SourceLink{{CitationID: citID}}},
+		},
+		citations: map[models.ID]*models.Citation{citID: {ID: citID, Private: true}},
+	}
+
+	page1, err := New(repo).SearchDivisions(context.Background(), models.AccessPublic,
+		models.DivisionSearchQuery{Text: "п", Page: models.Page{Limit: 1, Offset: 0}})
+	if err != nil || !sameIDs(ids(page1), idA) {
+		t.Fatalf("page1 = %v, %v; want [%v]", ids(page1), err, idA)
+	}
+
+	page2, err := New(repo).SearchDivisions(context.Background(), models.AccessPublic,
+		models.DivisionSearchQuery{Text: "п", Page: models.Page{Limit: 1, Offset: 1}})
+	if err != nil || !sameIDs(ids(page2), idB) {
+		t.Fatalf("page2 = %v, %v; want [%v]", ids(page2), err, idB)
 	}
 }

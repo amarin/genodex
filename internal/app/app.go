@@ -176,8 +176,8 @@ func (s *divisionService) SearchDivisions(ctx context.Context, access models.Acc
 	return s.search.SearchDivisions(ctx, access, q)
 }
 
-func (s *divisionService) GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error) {
-	return s.get.GetDivision(ctx, id)
+func (s *divisionService) GetDivision(ctx context.Context, access models.Access, id models.ID) (models.AdministrativeDivision, error) {
+	return s.get.GetDivision(ctx, access, id)
 }
 
 func (s *divisionService) CreateDivision(ctx context.Context, d models.AdministrativeDivision) (models.AdministrativeDivision, error) {
@@ -426,8 +426,8 @@ func (s *churchService) SearchChurches(ctx context.Context, access models.Access
 	return s.search.SearchChurches(ctx, access, q)
 }
 
-func (s *churchService) GetChurch(ctx context.Context, id models.ID) (models.Church, error) {
-	return s.get.GetChurch(ctx, id)
+func (s *churchService) GetChurch(ctx context.Context, access models.Access, id models.ID) (models.Church, error) {
+	return s.get.GetChurch(ctx, access, id)
 }
 
 func (s *churchService) CreateChurch(ctx context.Context, c models.Church) (models.Church, error) {
@@ -460,8 +460,8 @@ func (s *parishService) SearchParishes(ctx context.Context, access models.Access
 	return s.search.SearchParishes(ctx, access, q)
 }
 
-func (s *parishService) GetParish(ctx context.Context, id models.ID) (models.Parish, error) {
-	return s.get.GetParish(ctx, id)
+func (s *parishService) GetParish(ctx context.Context, access models.Access, id models.ID) (models.Parish, error) {
+	return s.get.GetParish(ctx, access, id)
 }
 
 func (s *parishService) CreateParish(ctx context.Context, p models.Parish) (models.Parish, error) {

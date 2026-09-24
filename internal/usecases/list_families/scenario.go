@@ -2,6 +2,7 @@ package list_families
 
 import (
 	"context"
+	"errors"
 
 	"github.com/amarin/genodex/internal/models"
 )
@@ -16,9 +17,16 @@ func New(families FamilyRepo) *Scenario {
 	return &Scenario{families: families}
 }
 
-// ListFamilies возвращает записи в порядке сохранения, окном page.
-// Неверные размер/сдвиг окна — *models.ValidationError (поля limit/offset).
-// Короткий результат (меньше размера окна) означает конец списка.
+// ListFamilies возвращает записи в порядке сохранения, окном page. Неверные
+// размер/сдвиг окна — *models.ValidationError (поля limit/offset). Короткий
+// результат (меньше размера окна) означает конец списка.
+//
+// Запись прячется, если ссылается (Sources[i].CitationID) на приватную
+// цитату — для access != models.AccessFull, даже если сам род публичен (см.
+// комментарий familyReferencesPrivateCitation в get_family и applyWindow
+// здесь). Полное сканирование по generic-окнам ListFamilies — тот же приём,
+// что и list_archive_nodes/list_relations: выделенный метод хранилища не
+// оправдан при текущем объёме данных.
 func (s *Scenario) ListFamilies(ctx context.Context, access models.Access, page models.Page) ([]models.Family, error) {
 	if page.Limit < 0 {
 		return nil, &models.ValidationError{Entity: models.TypeFamily, Field: "limit", Reason: "не может быть отрицательным"}
@@ -28,15 +36,113 @@ func (s *Scenario) ListFamilies(ctx context.Context, access models.Access, page 
 		return nil, &models.ValidationError{Entity: models.TypeFamily, Field: "offset", Reason: "не может быть отрицательным"}
 	}
 
-	list, err := s.families.ListFamilies(ctx, access, page.Normalized())
-	if err != nil {
-		return nil, err
-	}
+	page = page.Normalized()
+	out := []models.Family{}
+	matched := 0
+	// citationCache — мемоизация Private по id цитаты в рамках ОДНОГО вызова
+	// ListFamilies (не переживает вызов, не шарится между запросами): одна и
+	// та же цитата часто встречается в нескольких родах одного скана.
+	citationCache := map[models.ID]bool{}
 
-	out := make([]models.Family, 0, len(list))
+	for offset := 0; ; offset += models.MaxPageLimit {
+		list, err := s.families.ListFamilies(ctx, access, models.Page{Limit: models.MaxPageLimit, Offset: offset})
+		if err != nil {
+			return nil, err
+		}
+
+		if len(list) == 0 {
+			return out, nil
+		}
+
+		var full bool
+
+		full, matched, out, err = applyWindow(ctx, s.families, access, list, page, matched, out, citationCache)
+		if err != nil {
+			return nil, err
+		}
+
+		if full {
+			return out, nil
+		}
+	}
+}
+
+// applyWindow прогоняет одно окно репозитория через фильтр приватной цитаты
+// и накапливает результат окна запроса. full — окно запроса заполнено (обход
+// можно остановить).
+func applyWindow(ctx context.Context, repo FamilyRepo, access models.Access, list []*models.Family,
+	page models.Page, matched int, out []models.Family, citationCache map[models.ID]bool,
+) (full bool, nextMatched int, nextOut []models.Family, err error) {
 	for _, f := range list {
-		out = append(out, *f)
+		if access != models.AccessFull {
+			hidden, err := familyReferencesPrivateCitation(ctx, repo, f, citationCache)
+			if err != nil {
+				return false, matched, out, err
+			}
+
+			if hidden {
+				continue
+			}
+		}
+
+		if matched >= page.Offset {
+			out = append(out, *f)
+
+			if len(out) == page.Limit {
+				return true, matched, out, nil
+			}
+		}
+
+		matched++
 	}
 
-	return out, nil
+	return false, matched, out, nil
+}
+
+// familyReferencesPrivateCitation сообщает, ссылается ли род (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату. Независимая копия
+// одноимённой функции get_family (та не использует cache — единичное
+// чтение): пакеты сценариев в этом проекте самодостаточны и не делятся кодом
+// друг с другом. citationCache — мемоизация в рамках одного вызова
+// ListFamilies, см. её объявление в ListFamilies.
+func familyReferencesPrivateCitation(ctx context.Context, repo FamilyRepo, f *models.Family, citationCache map[models.ID]bool) (bool, error) {
+	for _, sl := range f.Sources {
+		hidden, err := citationIsPrivate(ctx, repo, citationCache, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if hidden {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// citationIsPrivate сообщает, приватна ли цитата id — с точки зрения
+// сканирующего ListFamilies сюда же относится и гонка с конкурентным
+// удалением цитаты (models.ErrNotFound от GetCitation): такая цитата
+// трактуется как приватная, т.е. род, ссылающийся на неё, тоже прячется, а не
+// проваливает весь список ошибкой. cache — мемоизация в рамках одного
+// вызова.
+func citationIsPrivate(ctx context.Context, repo FamilyRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	c, err := repo.GetCitation(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	cache[id] = c.Private
+
+	return c.Private, nil
 }

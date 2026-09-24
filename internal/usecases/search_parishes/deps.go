@@ -12,4 +12,5 @@ import (
 type ParishRepo interface {
 	Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error)
 	GetParish(ctx context.Context, id models.ID) (*models.Parish, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

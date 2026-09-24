@@ -56,6 +56,21 @@ func (mr *MockDivisionRepoMockRecorder) GetAdministrativeDivision(ctx, id any) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAdministrativeDivision", reflect.TypeOf((*MockDivisionRepo)(nil).GetAdministrativeDivision), ctx, id)
 }
 
+// GetCitation mocks base method.
+func (m *MockDivisionRepo) GetCitation(ctx context.Context, id models.ID) (*models.Citation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCitation", ctx, id)
+	ret0, _ := ret[0].(*models.Citation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCitation indicates an expected call of GetCitation.
+func (mr *MockDivisionRepoMockRecorder) GetCitation(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCitation", reflect.TypeOf((*MockDivisionRepo)(nil).GetCitation), ctx, id)
+}
+
 // Search mocks base method.
 func (m *MockDivisionRepo) Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error) {
 	m.ctrl.T.Helper()

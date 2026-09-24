@@ -12,4 +12,5 @@ import (
 type ArchiveRepo interface {
 	Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error)
 	GetArchive(ctx context.Context, id models.ID) (*models.Archive, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

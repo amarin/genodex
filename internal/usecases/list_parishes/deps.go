@@ -11,4 +11,5 @@ import (
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type ParishRepo interface {
 	ListParishes(ctx context.Context, access models.Access, page models.Page) ([]*models.Parish, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

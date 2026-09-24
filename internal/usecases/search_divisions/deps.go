@@ -12,4 +12,5 @@ import (
 type DivisionRepo interface {
 	Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error)
 	GetAdministrativeDivision(ctx context.Context, id models.ID) (*models.AdministrativeDivision, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

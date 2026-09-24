@@ -41,6 +41,10 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 	// та же персона часто встречается среди участников нескольких событий
 	// одного скана.
 	cache := map[models.ID]bool{}
+	// citationCache — та же мемоизация, что и cache, но для приватности
+	// цитат по Sources[i].CitationID: отдельная map, независимая от cache
+	// персон (см. общий паттерн citation-privacy).
+	citationCache := map[models.ID]bool{}
 
 	for offset := 0; ; offset += models.MaxPageLimit {
 		list, err := s.events.ListEvents(ctx, access, models.Page{Limit: models.MaxPageLimit, Offset: offset})
@@ -52,7 +56,7 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 			return out, nil
 		}
 
-		full, nextMatched, nextOut, err := applyWindow(ctx, s.events, access, q, list, page, matched, out, cache)
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.events, access, q, list, page, matched, out, cache, citationCache)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +81,7 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 // веб-сервис); тот же компромисс «без кеша/батчинга», что и в create_event
 // для проверки участников.
 func applyWindow(ctx context.Context, repo EventRepo, access models.Access, q models.EventQuery, list []*models.Event,
-	page models.Page, matched int, out []models.Event, cache map[models.ID]bool,
+	page models.Page, matched int, out []models.Event, cache map[models.ID]bool, citationCache map[models.ID]bool,
 ) (full bool, nextMatched int, nextOut []models.Event, err error) {
 	for _, e := range list {
 		if q.PersonID != nil && !hasParticipant(e.Participants, *q.PersonID) {
@@ -86,6 +90,17 @@ func applyWindow(ctx context.Context, repo EventRepo, access models.Access, q mo
 
 		if access != models.AccessFull {
 			hidden, err := eventReferencesPrivatePerson(ctx, repo, e, cache)
+			if err != nil {
+				return false, matched, out, err
+			}
+
+			if hidden {
+				continue
+			}
+		}
+
+		if access != models.AccessFull {
+			hidden, err := eventReferencesPrivateCitation(ctx, repo, e, citationCache)
 			if err != nil {
 				return false, matched, out, err
 			}
@@ -157,6 +172,53 @@ func personIsPrivate(ctx context.Context, repo EventRepo, cache map[models.ID]bo
 	cache[id] = p.Private
 
 	return p.Private, nil
+}
+
+// eventReferencesPrivateCitation сообщает, ссылается ли событие (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату — независимая
+// проверка, параллельная eventReferencesPrivatePerson (см. её комментарий).
+// citationCache — мемоизация в рамках одного вызова ListEvents, отдельная
+// от cache персон, см. комментарий её объявления в ListEvents.
+func eventReferencesPrivateCitation(ctx context.Context, repo EventRepo, e *models.Event, citationCache map[models.ID]bool) (bool, error) {
+	for _, sl := range e.Sources {
+		hidden, err := citationIsPrivate(ctx, repo, citationCache, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if hidden {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// citationIsPrivate сообщает, приватна ли цитата id — с точки зрения
+// сканирующего ListEvents сюда же относится и гонка с конкурентным
+// удалением цитаты (models.ErrNotFound от GetCitation): такая цитата
+// трактуется как приватная, т.е. событие, ссылающееся на неё, тоже
+// прячется, а не проваливает весь список ошибкой (тот же принцип, что и у
+// personIsPrivate). cache — мемоизация в рамках одного вызова.
+func citationIsPrivate(ctx context.Context, repo EventRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	c, err := repo.GetCitation(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	cache[id] = c.Private
+
+	return c.Private, nil
 }
 
 // hasParticipant сообщает, участвует ли персона id в событии.

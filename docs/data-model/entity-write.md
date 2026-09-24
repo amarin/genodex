@@ -173,10 +173,33 @@ Person и др.).
   исправленный этим правилом: `Relation.PersonA`/`.PersonB`,
   `Residence.PersonID`, `Event.Participants[i].PersonID` → `Person`
   (эталонная реализация — `internal/usecases/get_relation/scenario.go` и
-  соответствующие `list_*`/`search_events`). Известный, отдельный,
-  ПОКА НЕ исправленный экземпляр того же класса проблемы:
-  `SourceLink.CitationID` → приватная `Citation` — оставлен для будущего
-  прохода по access-hardening, здесь сознательно не тронут.
+  соответствующие `list_*`/`search_events`). Тот же класс проблемы, тем же
+  приёмом, отдельно и независимо исправлен и для `SourceLink.CitationID`
+  → приватная `Citation` — затрагивает все 13 сущностей с `Sources
+  []SourceLink` (`AdministrativeDivision`, `Archive`, `ArchiveDocument`,
+  `ArchiveNode`, `Church`, `Event`, `Family`, `Note`, `Parish`, `Person`,
+  `Relation`, `Residence`, `Repository`). Где уже была проверка на
+  приватного `Person` (`Relation`/`Residence`/`Event`) — проверка на
+  приватную `Citation` идёт РЯДОМ, отдельным блоком и отдельным кэшем, не
+  слита с ней. `AdministrativeDivision`/`Church`/`Parish` не имеют своего
+  поля `Private` — это единственная проверка приватности в их
+  `Get<Entity>`, ради которой их usecase-уровневый `Get<Entity>` впервые
+  получил параметр `access` (прокинут через `internal/httpapi`/
+  `internal/mcp`/`internal/app`, по образцу того, как `Archive`/
+  `Repository` получили `access` в этом же подпроекте 3). Эталонная
+  реализация: `internal/usecases/get_archive/scenario.go` (простой случай,
+  есть свой `Private`) и `internal/usecases/get_division/scenario.go`
+  (сигнатурный случай, `Private` нет).
+  **Правило НЕ применено ко всем строгим ссылкам на `Private`-сущность
+  поголовно** — только к двум конкретным разобранным случаям (`Person`
+  выше, `Citation` здесь). Другие строгие ссылки на `Private`-сущности,
+  которые эта же логика могла бы затронуть, но пока не затронула:
+  `Archive.RepositoryID` → `Repository`, `ArchiveNode.ArchiveID` →
+  `Archive`, `ArchiveDocument.UnitID` → `ArchiveNode`, `Note.ParentID` →
+  `Note`, `Citation.SourceID` → `Source`, `Source.RepositoryID` →
+  `Repository`, `Attachment.NodeID`/`.DocumentID` → `ArchiveNode`/
+  `ArchiveDocument`. Каждый — кандидат на тот же приём при следующем
+  проходе по access-hardening, не закрыт этим изменением.
 
 ### 3.2. Подпроект 4 (self-ref: `Note`, `Attachment`) — новые паттерны
 

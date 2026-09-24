@@ -41,6 +41,10 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 	// ListRelations (не переживает вызов, не шарится между запросами): одна
 	// и та же персона часто встречается в нескольких рёбрах одного скана.
 	cache := map[models.ID]bool{}
+	// citationCache — та же мемоизация, что и cache, но для приватности
+	// цитат по Sources[i].CitationID: отдельная map, независимая от cache
+	// персон (см. комментарий applyWindow и общий паттерн citation-privacy).
+	citationCache := map[models.ID]bool{}
 
 	for offset := 0; ; offset += models.MaxPageLimit {
 		list, err := s.relations.ListRelations(ctx, access, models.Page{Limit: models.MaxPageLimit, Offset: offset})
@@ -52,7 +56,7 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 			return out, nil
 		}
 
-		full, nextMatched, nextOut, err := applyWindow(ctx, s.relations, access, q, list, page, matched, out, cache)
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.relations, access, q, list, page, matched, out, cache, citationCache)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +81,7 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 // же компромисс «без батчинга», что и в create_event для проверки
 // участников.
 func applyWindow(ctx context.Context, repo RelationRepo, access models.Access, q models.RelationQuery, list []*models.Relation,
-	page models.Page, matched int, out []models.Relation, cache map[models.ID]bool,
+	page models.Page, matched int, out []models.Relation, cache map[models.ID]bool, citationCache map[models.ID]bool,
 ) (full bool, nextMatched int, nextOut []models.Relation, err error) {
 	for _, r := range list {
 		if !matchesPerson(q.PersonID, r.PersonA, r.PersonB) {
@@ -86,6 +90,17 @@ func applyWindow(ctx context.Context, repo RelationRepo, access models.Access, q
 
 		if access != models.AccessFull {
 			hidden, err := relationReferencesPrivatePerson(ctx, repo, r, cache)
+			if err != nil {
+				return false, matched, out, err
+			}
+
+			if hidden {
+				continue
+			}
+		}
+
+		if access != models.AccessFull {
+			hidden, err := relationReferencesPrivateCitation(ctx, repo, r, citationCache)
 			if err != nil {
 				return false, matched, out, err
 			}
@@ -162,4 +177,53 @@ func personIsPrivate(ctx context.Context, repo RelationRepo, cache map[models.ID
 // одной из его сторон.
 func matchesPerson(want *models.ID, a, b models.ID) bool {
 	return want == nil || *want == a || *want == b
+}
+
+// relationReferencesPrivateCitation сообщает, ссылается ли ребро (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату — независимая
+// проверка, параллельная relationReferencesPrivatePerson (см. её
+// комментарий): цитата приватна независимо от приватности ребра и
+// приватности персон, на которых оно ссылается. citationCache — мемоизация
+// в рамках одного вызова ListRelations, отдельная от cache персон, см.
+// комментарий её объявления в ListRelations.
+func relationReferencesPrivateCitation(ctx context.Context, repo RelationRepo, r *models.Relation, citationCache map[models.ID]bool) (bool, error) {
+	for _, sl := range r.Sources {
+		hidden, err := citationIsPrivate(ctx, repo, citationCache, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if hidden {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// citationIsPrivate сообщает, приватна ли цитата id — с точки зрения
+// сканирующего ListRelations сюда же относится и гонка с конкурентным
+// удалением цитаты (models.ErrNotFound от GetCitation): такая цитата
+// трактуется как приватная, т.е. ребро, ссылающееся на неё, тоже прячется,
+// а не проваливает весь список ошибкой (тот же принцип, что и у
+// personIsPrivate). cache — мемоизация в рамках одного вызова.
+func citationIsPrivate(ctx context.Context, repo RelationRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	c, err := repo.GetCitation(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	cache[id] = c.Private
+
+	return c.Private, nil
 }
