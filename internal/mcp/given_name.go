@@ -58,7 +58,7 @@ func registerGivenNameTools(s *server.MCPServer, givenNames GivenNameService) {
 
 	tool = mcp.NewTool(
 		"given_name_update",
-		mcp.WithDescription("Изменить словарную запись имени: полная замена canonical/gender/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из given_name_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить словарную запись имени: обновляются переданные поля; при отсутствии аргумента в вызове соответствующее поле (variants/items/notes) сохраняет текущее значение, явный пустой список — очищает его; результат — JSON обновлённой записи. variants/items/notes, если переданы, заменяются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из given_name_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Новая каноническая форма")),
 		mcp.WithString("gender", mcp.Required(), mcp.Enum("male", "female", "neutral"),
@@ -162,11 +162,22 @@ func givenNameUpdateHandler(givenNames GivenNameService) server.ToolHandlerFunc 
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
+		args := req.GetArguments()
+
 		cur.Canonical = req.GetString("canonical", "")
 		cur.Gender = models.NameGender(req.GetString("gender", ""))
-		cur.Variants = textRefsFromStrings(req.GetStringSlice("variants", nil))
-		cur.Items = textRefsFromStrings(req.GetStringSlice("items", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+
+		if raw, ok := args["variants"]; ok && raw != nil {
+			cur.Variants = textRefsFromStrings(req.GetStringSlice("variants", nil))
+		}
+
+		if raw, ok := args["items"]; ok && raw != nil {
+			cur.Items = textRefsFromStrings(req.GetStringSlice("items", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
 
 		if err := givenNames.UpdateGivenName(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

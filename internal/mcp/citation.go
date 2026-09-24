@@ -53,7 +53,7 @@ func registerCitationTools(s *server.MCPServer, citations CitationService) {
 
 	tool = mcp.NewTool(
 		"citation_update",
-		mcp.WithDescription("Изменить цитату: полная замена source_id/anchor/text/note/private; результат — JSON обновлённой записи. Несуществующий source_id или ссылка внутри anchor — ошибка тула"),
+		mcp.WithDescription("Изменить цитату; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательного source_id) соответствующее поле сохраняет текущее значение, явное пустое значение — очищает его. Несуществующий source_id или ссылка внутри anchor — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("source_id", mcp.Required(), mcp.Description("id источника")),
 		mcp.WithObject("anchor", mcp.Description("Привязка «где именно» (необязательно)"), mcp.Properties(anchorObjectProperties())),
@@ -161,16 +161,29 @@ func citationUpdateHandler(citations CitationService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		anchor, err := optionalAnchor(req.GetArguments(), "anchor")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
+		args := req.GetArguments()
 
 		cur.SourceID = models.ID(req.GetString("source_id", ""))
-		cur.Anchor = anchor
-		cur.Text = req.GetString("text", "")
-		cur.Note = req.GetString("note", "")
-		cur.Private = req.GetBool("private", false)
+
+		if raw, ok := args["anchor"]; ok && raw != nil {
+			anchor, err := optionalAnchor(args, "anchor")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Anchor = anchor
+		}
+
+		if raw, ok := args["text"]; ok && raw != nil {
+			cur.Text = req.GetString("text", "")
+		}
+
+		if raw, ok := args["note"]; ok && raw != nil {
+			cur.Note = req.GetString("note", "")
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
 
 		if err := citations.UpdateCitation(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

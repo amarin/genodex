@@ -61,7 +61,7 @@ func registerNoteTools(s *server.MCPServer, notes NoteService) {
 
 	tool = mcp.NewTool(
 		"note_update",
-		mcp.WithDescription("Изменить заметку: полная замена kind/title/text/parent_id/private; результат — JSON обновлённой записи. Несуществующий parent_id или цикл в цепочке родителей — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить заметку: обновляются переданные поля; при отсутствии аргумента в вызове соответствующее поле (title/text/parent_id/private/sources) сохраняет текущее значение, явное пустое значение/пустой массив — очищает его; результат — JSON обновлённой записи. Несуществующий parent_id или цикл в цепочке родителей — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("kind", mcp.Required(), mcp.Description("Вид заметки")),
 		mcp.WithString("title", mcp.Description("Заголовок")),
@@ -179,20 +179,33 @@ func noteUpdateHandler(notes NoteService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		cur.Kind = models.NoteKind(req.GetString("kind", ""))
-		cur.Title = req.GetString("title", "")
-		cur.Text = req.GetString("text", "")
-		cur.Private = req.GetBool("private", false)
+		args := req.GetArguments()
 
-		if pid := req.GetString("parent_id", ""); pid != "" {
-			pidID := models.ID(pid)
-			cur.ParentID = &pidID
-		} else {
-			cur.ParentID = nil
+		cur.Kind = models.NoteKind(req.GetString("kind", ""))
+
+		if raw, ok := args["title"]; ok && raw != nil {
+			cur.Title = req.GetString("title", "")
 		}
 
-		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
-			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if raw, ok := args["text"]; ok && raw != nil {
+			cur.Text = req.GetString("text", "")
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
+
+		if raw, ok := args["parent_id"]; ok && raw != nil {
+			if pid := req.GetString("parent_id", ""); pid != "" {
+				pidID := models.ID(pid)
+				cur.ParentID = &pidID
+			} else {
+				cur.ParentID = nil
+			}
+		}
+
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

@@ -56,7 +56,7 @@ func registerEstateTools(s *server.MCPServer, estates EstateService) {
 
 	tool = mcp.NewTool(
 		"estate_update",
-		mcp.WithDescription("Изменить словарную запись сословия: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из estate_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить словарную запись сословия: обновляются переданные поля; при отсутствии аргумента в вызове соответствующее поле (variants/items/notes) сохраняет текущее значение, явный пустой список — очищает его; результат — JSON обновлённой записи. variants/items/notes, если переданы, заменяются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из estate_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Новая каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
@@ -157,10 +157,21 @@ func estateUpdateHandler(estates EstateService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
+		args := req.GetArguments()
+
 		cur.Canonical = req.GetString("canonical", "")
-		cur.Variants = textRefsFromStrings(req.GetStringSlice("variants", nil))
-		cur.Items = textRefsFromStrings(req.GetStringSlice("items", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+
+		if raw, ok := args["variants"]; ok && raw != nil {
+			cur.Variants = textRefsFromStrings(req.GetStringSlice("variants", nil))
+		}
+
+		if raw, ok := args["items"]; ok && raw != nil {
+			cur.Items = textRefsFromStrings(req.GetStringSlice("items", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
 
 		if err := estates.UpdateEstate(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

@@ -17,11 +17,11 @@ import (
 // мягкие ссылки на словари (surname/given/patronymic — существование НЕ
 // проверяется, тот же принцип, что и у любого другого TextRef в программе)
 // + служебные части + период. estates/titles/nicknames/notes — только
-// текстом (v1, docs/data-model/entity-write.md §4). ВАЖНО: person_update
-// заменяет estates/titles/nicknames/notes целиком текстом — существующие
-// ref/type будут потеряны при любом обновлении через MCP, пока не появится
-// picker; names и sources, наоборот, при отсутствии в вызове сохраняют
-// текущее значение (см. personUpdateHandler).
+// текстом (v1, docs/data-model/entity-write.md §4). ВАЖНО: при передаче
+// estates/titles/nicknames/notes они заменяются целиком текстом —
+// существующие ref/type будут потеряны, пока не появится picker; но при
+// ОТСУТСТВИИ аргумента в вызове person_update (как и для gender/private,
+// names, sources) поле сохраняет текущее значение — см. personUpdateHandler.
 func registerPersonTools(s *server.MCPServer, people PersonService) {
 	tool := mcp.NewTool(
 		"person_list",
@@ -70,7 +70,7 @@ func registerPersonTools(s *server.MCPServer, people PersonService) {
 
 	tool = mcp.NewTool(
 		"person_update",
-		mcp.WithDescription("Изменить персону: полная замена gender/estates/titles/nicknames/notes/private; результат — JSON обновлённой записи; names и sources — при отсутствии в вызове текущее значение сохраняется, пустой массив — очищает его"),
+		mcp.WithDescription("Изменить персону: обновляются переданные поля; при отсутствии аргумента в вызове (gender/estates/titles/nicknames/notes/private, как и names/sources) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его; результат — JSON обновлённой записи"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("gender", mcp.Description("Пол: male/female/unknown; пусто — не указан")),
 		mcp.WithArray("names", mcp.Items(map[string]any{
@@ -196,23 +196,42 @@ func personUpdateHandler(people PersonService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		cur.Gender = models.PersonGender(req.GetString("gender", ""))
-		cur.Estates = textRefsFromStrings(req.GetStringSlice("estates", nil))
-		cur.Titles = textRefsFromStrings(req.GetStringSlice("titles", nil))
-		cur.Nicknames = textRefsFromStrings(req.GetStringSlice("nicknames", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Private = req.GetBool("private", false)
+		args := req.GetArguments()
 
-		if raw, ok := req.GetArguments()["names"]; ok && raw != nil {
-			names, err := optionalPersonNames(req.GetArguments(), "names")
+		if raw, ok := args["gender"]; ok && raw != nil {
+			cur.Gender = models.PersonGender(req.GetString("gender", ""))
+		}
+
+		if raw, ok := args["estates"]; ok && raw != nil {
+			cur.Estates = textRefsFromStrings(req.GetStringSlice("estates", nil))
+		}
+
+		if raw, ok := args["titles"]; ok && raw != nil {
+			cur.Titles = textRefsFromStrings(req.GetStringSlice("titles", nil))
+		}
+
+		if raw, ok := args["nicknames"]; ok && raw != nil {
+			cur.Nicknames = textRefsFromStrings(req.GetStringSlice("nicknames", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
+
+		if raw, ok := args["names"]; ok && raw != nil {
+			names, err := optionalPersonNames(args, "names")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}
 			cur.Names = names
 		}
 
-		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
-			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

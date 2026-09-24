@@ -62,7 +62,7 @@ func registerArchiveDocumentTools(s *server.MCPServer, archiveDocuments ArchiveD
 
 	tool = mcp.NewTool(
 		"archive_document_update",
-		mcp.WithDescription("Изменить документ внутри единицы учёта: полная замена unit_id/title/kind/since/until/parish/settlements/notes/private; результат — JSON обновлённой записи. Несуществующий unit_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить документ внутри единицы учёта; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательных unit_id/title) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. Несуществующий unit_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("unit_id", mcp.Required(), mcp.Description("id единицы учёта")),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Название документа")),
@@ -203,30 +203,48 @@ func archiveDocumentUpdateHandler(archiveDocuments ArchiveDocumentService) serve
 
 		args := req.GetArguments()
 
-		parish, err := optionalTextRef(args, "parish")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		since, err := optionalFactDate(args, "since")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		until, err := optionalFactDate(args, "until")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		cur.UnitID = models.ID(req.GetString("unit_id", ""))
 		cur.Title = req.GetString("title", "")
-		cur.Kind = req.GetString("kind", "")
-		cur.Since = since
-		cur.Until = until
-		cur.Parish = parish
-		cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Private = req.GetBool("private", false)
+
+		if raw, ok := args["kind"]; ok && raw != nil {
+			cur.Kind = req.GetString("kind", "")
+		}
+
+		if raw, ok := args["since"]; ok && raw != nil {
+			since, err := optionalFactDate(args, "since")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Since = since
+		}
+
+		if raw, ok := args["until"]; ok && raw != nil {
+			until, err := optionalFactDate(args, "until")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Until = until
+		}
+
+		if raw, ok := args["parish"]; ok && raw != nil {
+			parish, err := optionalTextRef(args, "parish")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Parish = parish
+		}
+
+		if raw, ok := args["settlements"]; ok && raw != nil {
+			cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
 
 		if raw, ok := args["sources"]; ok && raw != nil {
 			sources, err := optionalSourceLinks(args, "sources")

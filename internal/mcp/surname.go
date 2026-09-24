@@ -56,7 +56,7 @@ func registerSurnameTools(s *server.MCPServer, surnames SurnameService) {
 
 	tool = mcp.NewTool(
 		"surname_update",
-		mcp.WithDescription("Изменить словарную запись фамилии: полная замена canonical/variants/items/notes; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из surname_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
+		mcp.WithDescription("Изменить словарную запись фамилии: canonical — обязательное поле, заменяется всегда; variants/items/notes — при отсутствии аргумента в вызове сохраняют текущее значение, явный пустой список — очищает его; результат — JSON обновлённой записи. variants/items/notes передаются целиком как текст — если у элемента раньше была ссылка на другую сущность (ref/type из surname_get), она будет потеряна: picker для ссылок ещё не реализован ни в вебе, ни в MCP (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("canonical", mcp.Required(), mcp.Description("Новая каноническая форма")),
 		mcp.WithArray("variants", mcp.WithStringItems(), mcp.Description("Варианты написания")),
@@ -167,10 +167,21 @@ func surnameUpdateHandler(surnames SurnameService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
+		args := req.GetArguments()
+
 		cur.Canonical = req.GetString("canonical", "")
-		cur.Variants = textRefsFromStrings(req.GetStringSlice("variants", nil))
-		cur.Items = textRefsFromStrings(req.GetStringSlice("items", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+
+		if raw, ok := args["variants"]; ok && raw != nil {
+			cur.Variants = textRefsFromStrings(req.GetStringSlice("variants", nil))
+		}
+
+		if raw, ok := args["items"]; ok && raw != nil {
+			cur.Items = textRefsFromStrings(req.GetStringSlice("items", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
 
 		if err := surnames.UpdateSurname(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil

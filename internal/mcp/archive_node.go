@@ -69,7 +69,7 @@ func registerArchiveNodeTools(s *server.MCPServer, archiveNodes ArchiveNodeServi
 
 	tool = mcp.NewTool(
 		"archive_node_update",
-		mcp.WithDescription("Изменить узел архивного дерева: полная замена type/archive_id/parent_id/label/name/since/until/parish/settlements/notes/private; результат — JSON обновлённой записи. Несуществующий archive_id/parent_id, parent_id из другого архива или цикл по parent_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить узел архивного дерева; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательных type/archive_id/label) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его (для parent_id явно пустое значение означает «сделать корнем»). Несуществующий archive_id/parent_id, parent_id из другого архива или цикл по parent_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("type", mcp.Required(), mcp.Description("Уровень узла")),
 		mcp.WithString("archive_id", mcp.Required(), mcp.Description("id архива")),
@@ -219,32 +219,54 @@ func archiveNodeUpdateHandler(archiveNodes ArchiveNodeService) server.ToolHandle
 
 		args := req.GetArguments()
 
-		parish, err := optionalTextRef(args, "parish")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		since, err := optionalFactDate(args, "since")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		until, err := optionalFactDate(args, "until")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		cur.Type = models.ArchiveNodeType(req.GetString("type", ""))
 		cur.ArchiveID = models.ID(req.GetString("archive_id", ""))
-		cur.ParentID = optionalArchiveNodeParentID(req)
+
+		if raw, ok := args["parent_id"]; ok && raw != nil {
+			cur.ParentID = optionalArchiveNodeParentID(req)
+		}
+
 		cur.Label = req.GetString("label", "")
-		cur.Name = req.GetString("name", "")
-		cur.Since = since
-		cur.Until = until
-		cur.Parish = parish
-		cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Private = req.GetBool("private", false)
+
+		if raw, ok := args["name"]; ok && raw != nil {
+			cur.Name = req.GetString("name", "")
+		}
+
+		if raw, ok := args["since"]; ok && raw != nil {
+			since, err := optionalFactDate(args, "since")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Since = since
+		}
+
+		if raw, ok := args["until"]; ok && raw != nil {
+			until, err := optionalFactDate(args, "until")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Until = until
+		}
+
+		if raw, ok := args["parish"]; ok && raw != nil {
+			parish, err := optionalTextRef(args, "parish")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Parish = parish
+		}
+
+		if raw, ok := args["settlements"]; ok && raw != nil {
+			cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
 
 		if raw, ok := args["sources"]; ok && raw != nil {
 			sources, err := optionalSourceLinks(args, "sources")

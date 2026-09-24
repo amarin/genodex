@@ -65,7 +65,7 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 
 	tool = mcp.NewTool(
 		"parish_update",
-		mcp.WithDescription("Изменить приход: полная замена name/church/settlements/since/until/notes; результат — JSON обновлённой записи. church — {text, ref?, type?}: передайте обратно ref/type, полученные из parish_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при любом обновлении через MCP, пока не появится picker (docs/data-model/entity-write.md §5); sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить приход: обновляются переданные поля; при отсутствии аргумента в вызове соответствующее поле (church/settlements/since/until/notes/sources) сохраняет текущее значение, явное пустое значение/пустой список — очищает его; результат — JSON обновлённой записи. church — {text, ref?, type?}: передайте обратно ref/type, полученные из parish_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при обновлении этого поля через MCP, пока не появится picker (docs/data-model/entity-write.md §5)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithObject("church", mcp.Description("Церковь (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
@@ -200,27 +200,39 @@ func parishUpdateHandler(parishes ParishService) server.ToolHandlerFunc {
 
 		args := req.GetArguments()
 
-		church, err := optionalTextRef(args, "church")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		since, err := optionalFactDate(args, "since")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
-		until, err := optionalFactDate(args, "until")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
-
 		cur.Name = req.GetString("name", "")
-		cur.Church = church
-		cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
-		cur.Since = since
-		cur.Until = until
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+
+		if raw, ok := args["church"]; ok && raw != nil {
+			church, err := optionalTextRef(args, "church")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Church = church
+		}
+
+		if raw, ok := args["settlements"]; ok && raw != nil {
+			cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
+		}
+
+		if raw, ok := args["since"]; ok && raw != nil {
+			since, err := optionalFactDate(args, "since")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Since = since
+		}
+
+		if raw, ok := args["until"]; ok && raw != nil {
+			until, err := optionalFactDate(args, "until")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Until = until
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
 
 		if raw, ok := args["sources"]; ok && raw != nil {
 			sources, err := optionalSourceLinks(args, "sources")

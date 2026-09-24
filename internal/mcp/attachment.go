@@ -59,7 +59,7 @@ func registerAttachmentTools(s *server.MCPServer, attachments AttachmentService)
 
 	tool = mcp.NewTool(
 		"attachment_update",
-		mcp.WithDescription("Изменить вложение: полная замена kind/uri/filename/mime/page/node_id/document_id/note/private; результат — JSON обновлённой записи. Несуществующий node_id или document_id — ошибка тула"),
+		mcp.WithDescription("Изменить вложение; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательных kind/node_id) соответствующее поле сохраняет текущее значение, явное пустое значение — очищает его (для document_id явно пустая строка означает «без документа»). Несуществующий node_id или document_id — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("kind", mcp.Required(), mcp.Enum("scan", "document", "audio", "photo"), mcp.Description("Вид вложения")),
 		mcp.WithString("uri", mcp.Description("URI")),
@@ -179,25 +179,46 @@ func attachmentUpdateHandler(attachments AttachmentService) server.ToolHandlerFu
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		page, err := optionalInt(req, "page")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
+		args := req.GetArguments()
 
 		cur.Kind = models.AttachmentKind(req.GetString("kind", ""))
-		cur.URI = req.GetString("uri", "")
-		cur.Filename = req.GetString("filename", "")
-		cur.MIME = req.GetString("mime", "")
-		cur.Page = page
 		cur.NodeID = models.ID(req.GetString("node_id", ""))
-		cur.Note = req.GetString("note", "")
-		cur.Private = req.GetBool("private", false)
 
-		if did := req.GetString("document_id", ""); did != "" {
-			didID := models.ID(did)
-			cur.DocumentID = &didID
-		} else {
-			cur.DocumentID = nil
+		if raw, ok := args["uri"]; ok && raw != nil {
+			cur.URI = req.GetString("uri", "")
+		}
+
+		if raw, ok := args["filename"]; ok && raw != nil {
+			cur.Filename = req.GetString("filename", "")
+		}
+
+		if raw, ok := args["mime"]; ok && raw != nil {
+			cur.MIME = req.GetString("mime", "")
+		}
+
+		if raw, ok := args["page"]; ok && raw != nil {
+			page, err := optionalInt(req, "page")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Page = page
+		}
+
+		if raw, ok := args["note"]; ok && raw != nil {
+			cur.Note = req.GetString("note", "")
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
+
+		if raw, ok := args["document_id"]; ok && raw != nil {
+			if did := req.GetString("document_id", ""); did != "" {
+				didID := models.ID(did)
+				cur.DocumentID = &didID
+			} else {
+				cur.DocumentID = nil
+			}
 		}
 
 		if err := attachments.UpdateAttachment(ctx, cur); err != nil {

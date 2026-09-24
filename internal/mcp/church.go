@@ -17,11 +17,12 @@ import (
 // Model) — клиент, отправляющий обратно ref/type, полученные через
 // church_get/list/search, не потеряет ссылку. settlements/notes — списки
 // текста (v1, только строки, без ref/type). variants — простые строки.
-// ВАЖНО: church_update заменяет parish/settlements/notes целиком — у
-// settlements/notes нет ref/type в MCP-контракте вовсе, так что элемент с
-// такой ссылкой (заданной иначе, не через MCP) будет потерян при любом
-// обновлении через MCP, пока не появится picker; parish эту ссылку сохраняет,
-// если её передать обратно неизменной.
+// ВАЖНО: church_update заменяет переданные списки settlements/notes целиком
+// (при отсутствии аргумента в вызове поле сохраняется) — у settlements/notes
+// нет ref/type в MCP-контракте вовсе, так что элемент с такой ссылкой
+// (заданной иначе, не через MCP) будет потерян при обновлении этого поля
+// через MCP, пока не появится picker; parish эту ссылку сохраняет, если её
+// передать обратно неизменной.
 func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 	tool := mcp.NewTool(
 		"church_list",
@@ -65,7 +66,7 @@ func registerChurchTools(s *server.MCPServer, churches ChurchService) {
 
 	tool = mcp.NewTool(
 		"church_update",
-		mcp.WithDescription("Изменить церковь: полная замена name/parish/settlements/variants/notes; результат — JSON обновлённой записи. parish — {text, ref?, type?}: передайте обратно ref/type, полученные из church_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при любом обновлении через MCP, пока не появится picker (docs/data-model/entity-write.md §5); sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить церковь; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательного name) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. parish — {text, ref?, type?}: передайте обратно ref/type, полученные из church_get, чтобы сохранить ссылку; settlements/notes принимают только текст (без ref/type в MCP-контракте) — ссылка на элементе (если задана иначе) будет потеряна при обновлении этого поля через MCP, пока не появится picker (docs/data-model/entity-write.md §5); sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithObject("parish", mcp.Description("Приход (текст или ссылка {text, ref?, type?}; ref/type сохраняются, если переданы)"), mcp.Properties(textRefObjectProperties())),
@@ -184,19 +185,32 @@ func churchUpdateHandler(churches ChurchService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		parish, err := optionalTextRef(req.GetArguments(), "parish")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
+		args := req.GetArguments()
 
 		cur.Name = req.GetString("name", "")
-		cur.Parish = parish
-		cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
-		cur.Variants = req.GetStringSlice("variants", nil)
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
 
-		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
-			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if raw, ok := args["parish"]; ok && raw != nil {
+			parish, err := optionalTextRef(args, "parish")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Parish = parish
+		}
+
+		if raw, ok := args["settlements"]; ok && raw != nil {
+			cur.Settlements = textRefsFromStrings(req.GetStringSlice("settlements", nil))
+		}
+
+		if raw, ok := args["variants"]; ok && raw != nil {
+			cur.Variants = req.GetStringSlice("variants", nil)
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

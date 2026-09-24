@@ -60,7 +60,7 @@ func registerRepositoryTools(s *server.MCPServer, repositories RepositoryService
 
 	tool = mcp.NewTool(
 		"repository_update",
-		mcp.WithDescription("Изменить хранилище: полная замена name/type/address/urls/notes/private; результат — JSON обновлённой записи; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить хранилище: name/type — обязательные поля, заменяются всегда; address/urls/notes/sources/private — при отсутствии аргумента в вызове сохраняют текущее значение, явное пустое значение/пустой список — очищает его; результат — JSON обновлённой записи"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithString("type", mcp.Required(), mcp.Description("Новый тип")),
@@ -176,15 +176,29 @@ func repositoryUpdateHandler(repositories RepositoryService) server.ToolHandlerF
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
+		args := req.GetArguments()
+
 		cur.Name = req.GetString("name", "")
 		cur.Type = models.RepositoryType(req.GetString("type", ""))
-		cur.Address = req.GetString("address", "")
-		cur.URLs = textRefsFromStrings(req.GetStringSlice("urls", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Private = req.GetBool("private", false)
 
-		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
-			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if raw, ok := args["address"]; ok && raw != nil {
+			cur.Address = req.GetString("address", "")
+		}
+
+		if raw, ok := args["urls"]; ok && raw != nil {
+			cur.URLs = textRefsFromStrings(req.GetStringSlice("urls", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
+
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

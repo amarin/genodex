@@ -225,17 +225,22 @@ func divisionUpdateHandler(divisions DivisionService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
+		args := req.GetArguments()
+
 		row := transport.AdminDivisionUpdate{
-			Name:     req.GetString("name", ""),
-			Type:     models.AdminDivisionType(req.GetString("type", "")),
-			ParentID: optionalParentID(req),
+			Name: req.GetString("name", ""),
+			Type: models.AdminDivisionType(req.GetString("type", "")),
 		}
 		cur.Name = row.Name
 		cur.Type = row.Type
-		cur.ParentID = row.ParentID
 
-		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
-			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if raw, ok := args["parent_id"]; ok && raw != nil {
+			row.ParentID = optionalParentID(req)
+			cur.ParentID = row.ParentID
+		}
+
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

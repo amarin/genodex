@@ -58,7 +58,7 @@ func registerFamilyTools(s *server.MCPServer, families FamilyService) {
 
 	tool = mcp.NewTool(
 		"family_update",
-		mcp.WithDescription("Изменить род: полная замена name/members/notes/private; результат — JSON обновлённой записи; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить род: обновляются переданные поля; при отсутствии аргумента в вызове соответствующее поле (members/notes/sources/private) сохраняет текущее значение, явное пустое значение/пустой список — очищает его; результат — JSON обновлённой записи"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithArray("members", mcp.WithStringItems(), mcp.Description("Члены рода")),
@@ -170,13 +170,24 @@ func familyUpdateHandler(families FamilyService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		cur.Name = req.GetString("name", "")
-		cur.Members = textRefsFromStrings(req.GetStringSlice("members", nil))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Private = req.GetBool("private", false)
+		args := req.GetArguments()
 
-		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
-			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		cur.Name = req.GetString("name", "")
+
+		if raw, ok := args["members"]; ok && raw != nil {
+			cur.Members = textRefsFromStrings(req.GetStringSlice("members", nil))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
+
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

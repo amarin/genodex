@@ -62,7 +62,7 @@ func registerArchiveTools(s *server.MCPServer, archives ArchiveService) {
 
 	tool = mcp.NewTool(
 		"archive_update",
-		mcp.WithDescription("Изменить архив: полная замена name/system/repository_id/notes/private; результат — JSON обновлённой записи. Несуществующий repository_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить архив; результат — JSON обновлённой записи. Обновляются переданные поля; при отсутствии аргумента в вызове (кроме обязательного name) соответствующее поле сохраняет текущее значение, явное пустое значение/пустой список — очищает его. Несуществующий repository_id — ошибка тула; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithObject("system", mcp.Description("Система иерархии — только именем"), mcp.Properties(map[string]any{
@@ -183,19 +183,32 @@ func archiveUpdateHandler(archives ArchiveService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		system, err := optionalTextRef(req.GetArguments(), "system")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
+		args := req.GetArguments()
 
 		cur.Name = req.GetString("name", "")
-		cur.System = system
-		cur.RepositoryID = models.ID(req.GetString("repository_id", ""))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Private = req.GetBool("private", false)
 
-		if raw, ok := req.GetArguments()["sources"]; ok && raw != nil {
-			sources, err := optionalSourceLinks(req.GetArguments(), "sources")
+		if raw, ok := args["system"]; ok && raw != nil {
+			system, err := optionalTextRef(args, "system")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.System = system
+		}
+
+		if raw, ok := args["repository_id"]; ok && raw != nil {
+			cur.RepositoryID = models.ID(req.GetString("repository_id", ""))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
+
+		if raw, ok := args["sources"]; ok && raw != nil {
+			sources, err := optionalSourceLinks(args, "sources")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

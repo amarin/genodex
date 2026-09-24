@@ -57,7 +57,7 @@ func registerSourceTools(s *server.MCPServer, sources SourceService) {
 
 	tool = mcp.NewTool(
 		"source_update",
-		mcp.WithDescription("Изменить источник: полная замена kind/title/author/date/reliability/repository_id/notes/private; результат — JSON обновлённой записи. Несуществующий repository_id — ошибка тула"),
+		mcp.WithDescription("Изменить источник: kind/title/reliability — обязательные поля, заменяются всегда; author/date/repository_id/notes/private — при отсутствии аргумента в вызове сохраняют текущее значение, явное пустое значение/пустой список — очищает его; результат — JSON обновлённой записи. Несуществующий repository_id — ошибка тула"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("kind", mcp.Required(), mcp.Enum("archival-scan", "transcription", "document", "audio", "photo", "memory", "external"), mcp.Description("Вид источника")),
 		mcp.WithString("title", mcp.Required(), mcp.Description("Название")),
@@ -171,19 +171,35 @@ func sourceUpdateHandler(sources SourceService) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}
 
-		date, err := optionalFactDate(req.GetArguments(), "date")
-		if err != nil {
-			return mcp.NewToolResultError(err.Error()), nil
-		}
+		args := req.GetArguments()
 
 		cur.Kind = models.SourceKind(req.GetString("kind", ""))
 		cur.Title = req.GetString("title", "")
-		cur.Author = req.GetString("author", "")
-		cur.Date = date
 		cur.Reliability = models.Reliability(req.GetString("reliability", ""))
-		cur.RepositoryID = models.ID(req.GetString("repository_id", ""))
-		cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
-		cur.Private = req.GetBool("private", false)
+
+		if raw, ok := args["author"]; ok && raw != nil {
+			cur.Author = req.GetString("author", "")
+		}
+
+		if raw, ok := args["date"]; ok && raw != nil {
+			date, err := optionalFactDate(args, "date")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+			cur.Date = date
+		}
+
+		if raw, ok := args["repository_id"]; ok && raw != nil {
+			cur.RepositoryID = models.ID(req.GetString("repository_id", ""))
+		}
+
+		if raw, ok := args["notes"]; ok && raw != nil {
+			cur.Notes = textRefsFromStrings(req.GetStringSlice("notes", nil))
+		}
+
+		if raw, ok := args["private"]; ok && raw != nil {
+			cur.Private = req.GetBool("private", false)
+		}
 
 		if err := sources.UpdateSource(ctx, cur); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось сохранить изменения: %v", err)), nil
