@@ -12,6 +12,12 @@ Project instructions for AI agents (Codex, Claude, LGTM). The authoritative docs
 ## Developer preferences
 - `DEVELOPER-PREFERENCES.md` — project-specific code style, architecture, and development preferences. Always follow.
 
+## One working copy per session
+- Every agent session works in its own git worktree on its own branch (e.g. `git worktree add ../genodex-<topic> -b <topic>`), never in the main checkout. Several sessions may run in parallel; in a shared checkout they edit the same files and one can commit another's work.
+- The main checkout belongs to the owner: the dev server (GoLand, `-web dev`) runs from it against the real `.data/`. Change it only to merge a finished branch (`git merge --ff-only`); after merging, remove the worktree and branch.
+- A worktree server uses its own `-data` directory and port, not the main `.data/`. If it must work with real data, restore a copy from a backup (`./genodex restore`), don't point it at `.data/` directly.
+- Stage only files you changed yourself (`git add <paths>`, not `git add -A`); leave unknown untracked or modified files alone and mention them to the owner.
+
 ## Key documents and sources of truth
 - `/docs` — project documentation (architecture, usage, development).
 - `internal/models` — domain model (single source of truth for entity structure). `internal/transport` — DTOs that define JSON shapes exposed via `/api` and MCP tools.
