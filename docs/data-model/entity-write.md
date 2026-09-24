@@ -190,6 +190,16 @@ Person и др.).
   реализация: `internal/usecases/get_archive/scenario.go` (простой случай,
   есть свой `Private`) и `internal/usecases/get_division/scenario.go`
   (сигнатурный случай, `Private` нет).
+  **Правило НЕ применено ко всем строгим ссылкам на `Private`-сущность
+  поголовно** — только к двум конкретным разобранным случаям (`Person`
+  выше, `Citation` здесь). Другие строгие ссылки на `Private`-сущности,
+  которые эта же логика могла бы затронуть, но пока не затронула:
+  `Archive.RepositoryID` → `Repository`, `ArchiveNode.ArchiveID` →
+  `Archive`, `ArchiveDocument.UnitID` → `ArchiveNode`, `Note.ParentID` →
+  `Note`, `Citation.SourceID` → `Source`, `Source.RepositoryID` →
+  `Repository`, `Attachment.NodeID`/`.DocumentID` → `ArchiveNode`/
+  `ArchiveDocument`. Каждый — кандидат на тот же приём при следующем
+  проходе по access-hardening, не закрыт этим изменением.
 
 ### 3.2. Подпроект 4 (self-ref: `Note`, `Attachment`) — новые паттерны
 
