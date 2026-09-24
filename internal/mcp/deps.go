@@ -210,3 +210,39 @@ type PersonService interface {
 	UpdatePerson(ctx context.Context, p models.Person) error
 	DeletePerson(ctx context.Context, id models.ID) error
 }
+
+// RelationService — контракт сценариев рёбер графа родства, отдаваемых в
+// MCP-тулы: список (необязательный фильтр по персоне), чтение, создание,
+// изменение, удаление. Без поиска — search_relations намеренно не заводится
+// (индекс пуст, docs/data-model/entity-write.md §3.8).
+type RelationService interface {
+	ListRelations(ctx context.Context, access models.Access, q models.RelationQuery) ([]models.Relation, error)
+	GetRelation(ctx context.Context, access models.Access, id models.ID) (models.Relation, error)
+	CreateRelation(ctx context.Context, r models.Relation) (models.Relation, error)
+	UpdateRelation(ctx context.Context, r models.Relation) error
+	DeleteRelation(ctx context.Context, id models.ID) error
+}
+
+// ResidenceService — контракт сценариев проживаний, отдаваемых в MCP-тулы:
+// список (необязательные фильтры по персоне и месту), чтение, создание,
+// изменение, удаление. Без поиска — search_residences намеренно не
+// заводится (см. RelationService).
+type ResidenceService interface {
+	ListResidences(ctx context.Context, access models.Access, q models.ResidenceQuery) ([]models.Residence, error)
+	GetResidence(ctx context.Context, access models.Access, id models.ID) (models.Residence, error)
+	CreateResidence(ctx context.Context, r models.Residence) (models.Residence, error)
+	UpdateResidence(ctx context.Context, r models.Residence) error
+	DeleteResidence(ctx context.Context, id models.ID) error
+}
+
+// EventService — контракт сценариев событий, отдаваемых в MCP-тулы: список
+// (необязательный фильтр по участнику), поиск (по началу текста места),
+// чтение, создание, изменение, удаление.
+type EventService interface {
+	ListEvents(ctx context.Context, access models.Access, q models.EventQuery) ([]models.Event, error)
+	SearchEvents(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Event, error)
+	GetEvent(ctx context.Context, access models.Access, id models.ID) (models.Event, error)
+	CreateEvent(ctx context.Context, e models.Event) (models.Event, error)
+	UpdateEvent(ctx context.Context, e models.Event) error
+	DeleteEvent(ctx context.Context, id models.ID) error
+}

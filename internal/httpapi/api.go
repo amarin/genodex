@@ -29,6 +29,9 @@ type Deps struct {
 	Citations    CitationService
 	Families     FamilyService
 	People       PersonService
+	Relations    RelationService
+	Residences   ResidenceService
+	Events       EventService
 	Auth         AuthService
 	DocsFS       fs.FS
 	TrustProxy   bool
@@ -111,6 +114,18 @@ func NewAPIHandler(deps Deps) http.Handler {
 
 	if deps.People != nil {
 		registerPersonRoutes(mux, deps.People)
+	}
+
+	if deps.Relations != nil {
+		registerRelationRoutes(mux, deps.Relations)
+	}
+
+	if deps.Residences != nil {
+		registerResidenceRoutes(mux, deps.Residences)
+	}
+
+	if deps.Events != nil {
+		registerEventRoutes(mux, deps.Events)
 	}
 
 	registerAuthRoutes(mux, deps.Auth, deps.TrustProxy)

@@ -181,3 +181,95 @@ func (q ArchiveNodeQuery) Validate() error {
 
 	return nil
 }
+
+// RelationQuery — запрос списка рёбер графа родства: необязательный фильтр
+// по персоне (совпадает с PersonA ИЛИ PersonB) — без него список плоский.
+// Замена search_relations (см. docs/data-model/entity-write.md §3.8): у
+// Relation нет собственных поисковых полей (индекс намеренно пуст), поэтому
+// поиск по персоне полезнее полнотекстового.
+type RelationQuery struct {
+	PersonID *ID
+	Page     Page
+}
+
+// Validate проверяет запрос: person_id (если задан) — валидный id персоны;
+// отрицательные размер и сдвиг окна — *ValidationError. Размер окна больше
+// MaxPageLimit не ошибка: Page.Normalized сужает его.
+func (q RelationQuery) Validate() error {
+	switch {
+	case q.Page.Limit < 0:
+		return fieldErr("limit", "не может быть отрицательным: %d", q.Page.Limit)
+	case q.Page.Offset < 0:
+		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
+	}
+
+	if q.PersonID != nil {
+		if err := idErr("person_id", *q.PersonID, TypePerson); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ResidenceQuery — запрос списка проживаний: необязательные фильтры по
+// персоне и по месту (пересекаются, если оба заданы). Замена
+// search_residences (см. docs/data-model/entity-write.md §3.8): у Residence
+// нет собственных поисковых полей (индекс намеренно пуст).
+type ResidenceQuery struct {
+	PersonID *ID
+	PlaceID  *ID
+	Page     Page
+}
+
+// Validate проверяет запрос: person_id/place_id (если заданы) — валидные id
+// персоны/единицы административного деления; отрицательные размер и сдвиг
+// окна — *ValidationError.
+func (q ResidenceQuery) Validate() error {
+	switch {
+	case q.Page.Limit < 0:
+		return fieldErr("limit", "не может быть отрицательным: %d", q.Page.Limit)
+	case q.Page.Offset < 0:
+		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
+	}
+
+	if q.PersonID != nil {
+		if err := idErr("person_id", *q.PersonID, TypePerson); err != nil {
+			return err
+		}
+	}
+
+	if q.PlaceID != nil {
+		if err := idErr("place_id", *q.PlaceID, TypeAdministrativeDivision); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// EventQuery — запрос списка событий: необязательный фильтр по участнику
+// (совпадает с любым из Participants[i].PersonID).
+type EventQuery struct {
+	PersonID *ID
+	Page     Page
+}
+
+// Validate проверяет запрос: person_id (если задан) — валидный id персоны;
+// отрицательные размер и сдвиг окна — *ValidationError.
+func (q EventQuery) Validate() error {
+	switch {
+	case q.Page.Limit < 0:
+		return fieldErr("limit", "не может быть отрицательным: %d", q.Page.Limit)
+	case q.Page.Offset < 0:
+		return fieldErr("offset", "не может быть отрицательным: %d", q.Page.Offset)
+	}
+
+	if q.PersonID != nil {
+		if err := idErr("person_id", *q.PersonID, TypePerson); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

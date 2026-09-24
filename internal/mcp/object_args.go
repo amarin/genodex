@@ -185,6 +185,79 @@ func optionalTextRef(args map[string]any, name string) (*models.TextRef, error) 
 	return &m, nil
 }
 
+// placeRefObjectProperties — JSON-schema свойств объектного аргумента вида
+// PlaceRef ({text, ref?, type?}) — используется в mcp.WithObject для
+// Event.Place. Структурно идентична textRefObjectProperties (см.
+// models.PlaceRef vs models.TextRef), но это отдельный транспортный тип
+// (transport.PlaceRef), поэтому заводится собственная функция, а не
+// переиспользуется textRefObjectProperties.
+func placeRefObjectProperties() map[string]any {
+	return map[string]any{
+		"text": map[string]any{"type": "string", "description": "Текст (обязателен, если нет ссылки)"},
+		"ref":  map[string]any{"type": "string", "description": "id сущности-места (административное деление, церковь или приход); сохраняется, если передать его обратно неизменным (например, из предыдущего *_get); НЕ проверяется на существование — мягкая ссылка"},
+		"type": map[string]any{"type": "string", "description": "тип сущности-ссылки (admin_division/church/parish); сохраняется вместе с ref при неизменной передаче"},
+	}
+}
+
+// optionalPlaceRef читает необязательный объектный аргумент {text, ref?,
+// type?} (см. transport.PlaceRef) из сырых аргументов тула и конвертирует
+// его в модель; отсутствующий или null аргумент — nil, без ошибки.
+func optionalPlaceRef(args map[string]any, name string) (*models.PlaceRef, error) {
+	raw, ok := args[name]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	var p transport.PlaceRef
+	if err := json.Unmarshal(b, &p); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	return p.Model(), nil
+}
+
+// eventParticipantObjectProperties — JSON-schema свойств одного элемента
+// массива participants (участник события, см. transport.EventParticipant).
+// Флат-объект без вложенных объектов (проще sourceLinkObjectProperties/
+// personNameObjectProperties — здесь всего три скаляра); person_id — первая
+// СТРОГАЯ (проверяемая на существование) ссылка внутри массива-объектов
+// MCP-аргумента в программе (docs/data-model/entity-write.md §3.8).
+func eventParticipantObjectProperties() map[string]any {
+	return map[string]any{
+		"person_id": map[string]any{"type": "string", "description": "id персоны-участника (обязателен, проверяется на существование)"},
+		"role":      map[string]any{"type": "string", "description": "Роль в событии (обязательна, непустая)"},
+		"note":      map[string]any{"type": "string", "description": "Заметка"},
+	}
+}
+
+// optionalEventParticipants читает массив объектов вида EventParticipant (см.
+// eventParticipantObjectProperties) из сырых аргументов тула и конвертирует
+// его в модели; отсутствующий или null аргумент — nil, без ошибки (та же
+// механика, что и optionalSourceLinks/optionalPersonNames).
+func optionalEventParticipants(args map[string]any, name string) ([]models.EventParticipant, error) {
+	raw, ok := args[name]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	var ps []transport.EventParticipant
+	if err := json.Unmarshal(b, &ps); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	return transport.EventParticipantsToModel(ps), nil
+}
+
 // optionalFactDate читает необязательный объектный аргумент (структурированная
 // дата, см. transport.FactDate) из сырых аргументов тула и конвертирует его в
 // модель; отсутствующий или null аргумент — nil, без ошибки.

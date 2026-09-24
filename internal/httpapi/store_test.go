@@ -21,13 +21,16 @@ import (
 	create_citation "github.com/amarin/genodex/internal/usecases/create_citation"
 	create_division "github.com/amarin/genodex/internal/usecases/create_division"
 	create_estate "github.com/amarin/genodex/internal/usecases/create_estate"
+	create_event "github.com/amarin/genodex/internal/usecases/create_event"
 	create_family "github.com/amarin/genodex/internal/usecases/create_family"
 	create_given_name "github.com/amarin/genodex/internal/usecases/create_given_name"
 	create_note "github.com/amarin/genodex/internal/usecases/create_note"
 	create_parish "github.com/amarin/genodex/internal/usecases/create_parish"
 	create_patronymic "github.com/amarin/genodex/internal/usecases/create_patronymic"
 	create_person "github.com/amarin/genodex/internal/usecases/create_person"
+	create_relation "github.com/amarin/genodex/internal/usecases/create_relation"
 	create_repository "github.com/amarin/genodex/internal/usecases/create_repository"
+	create_residence "github.com/amarin/genodex/internal/usecases/create_residence"
 	create_source "github.com/amarin/genodex/internal/usecases/create_source"
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
 	create_title "github.com/amarin/genodex/internal/usecases/create_title"
@@ -39,13 +42,16 @@ import (
 	delete_citation "github.com/amarin/genodex/internal/usecases/delete_citation"
 	delete_division "github.com/amarin/genodex/internal/usecases/delete_division"
 	delete_estate "github.com/amarin/genodex/internal/usecases/delete_estate"
+	delete_event "github.com/amarin/genodex/internal/usecases/delete_event"
 	delete_family "github.com/amarin/genodex/internal/usecases/delete_family"
 	delete_given_name "github.com/amarin/genodex/internal/usecases/delete_given_name"
 	delete_note "github.com/amarin/genodex/internal/usecases/delete_note"
 	delete_parish "github.com/amarin/genodex/internal/usecases/delete_parish"
 	delete_patronymic "github.com/amarin/genodex/internal/usecases/delete_patronymic"
 	delete_person "github.com/amarin/genodex/internal/usecases/delete_person"
+	delete_relation "github.com/amarin/genodex/internal/usecases/delete_relation"
 	delete_repository "github.com/amarin/genodex/internal/usecases/delete_repository"
+	delete_residence "github.com/amarin/genodex/internal/usecases/delete_residence"
 	delete_source "github.com/amarin/genodex/internal/usecases/delete_source"
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
 	delete_title "github.com/amarin/genodex/internal/usecases/delete_title"
@@ -57,13 +63,16 @@ import (
 	get_citation "github.com/amarin/genodex/internal/usecases/get_citation"
 	get_division "github.com/amarin/genodex/internal/usecases/get_division"
 	get_estate "github.com/amarin/genodex/internal/usecases/get_estate"
+	get_event "github.com/amarin/genodex/internal/usecases/get_event"
 	get_family "github.com/amarin/genodex/internal/usecases/get_family"
 	get_given_name "github.com/amarin/genodex/internal/usecases/get_given_name"
 	get_note "github.com/amarin/genodex/internal/usecases/get_note"
 	get_parish "github.com/amarin/genodex/internal/usecases/get_parish"
 	get_patronymic "github.com/amarin/genodex/internal/usecases/get_patronymic"
 	get_person "github.com/amarin/genodex/internal/usecases/get_person"
+	get_relation "github.com/amarin/genodex/internal/usecases/get_relation"
 	get_repository "github.com/amarin/genodex/internal/usecases/get_repository"
+	get_residence "github.com/amarin/genodex/internal/usecases/get_residence"
 	get_source "github.com/amarin/genodex/internal/usecases/get_source"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
 	get_title "github.com/amarin/genodex/internal/usecases/get_title"
@@ -75,13 +84,16 @@ import (
 	list_citations "github.com/amarin/genodex/internal/usecases/list_citations"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
 	list_estates "github.com/amarin/genodex/internal/usecases/list_estates"
+	list_events "github.com/amarin/genodex/internal/usecases/list_events"
 	list_families "github.com/amarin/genodex/internal/usecases/list_families"
 	list_given_names "github.com/amarin/genodex/internal/usecases/list_given_names"
 	list_notes "github.com/amarin/genodex/internal/usecases/list_notes"
 	list_parishes "github.com/amarin/genodex/internal/usecases/list_parishes"
 	list_patronymics "github.com/amarin/genodex/internal/usecases/list_patronymics"
 	list_people "github.com/amarin/genodex/internal/usecases/list_people"
+	list_relations "github.com/amarin/genodex/internal/usecases/list_relations"
 	list_repositories "github.com/amarin/genodex/internal/usecases/list_repositories"
+	list_residences "github.com/amarin/genodex/internal/usecases/list_residences"
 	list_sources "github.com/amarin/genodex/internal/usecases/list_sources"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
 	list_titles "github.com/amarin/genodex/internal/usecases/list_titles"
@@ -93,6 +105,7 @@ import (
 	search_citations "github.com/amarin/genodex/internal/usecases/search_citations"
 	search_divisions "github.com/amarin/genodex/internal/usecases/search_divisions"
 	search_estates "github.com/amarin/genodex/internal/usecases/search_estates"
+	search_events "github.com/amarin/genodex/internal/usecases/search_events"
 	search_families "github.com/amarin/genodex/internal/usecases/search_families"
 	search_given_names "github.com/amarin/genodex/internal/usecases/search_given_names"
 	search_notes "github.com/amarin/genodex/internal/usecases/search_notes"
@@ -111,13 +124,16 @@ import (
 	update_citation "github.com/amarin/genodex/internal/usecases/update_citation"
 	update_division "github.com/amarin/genodex/internal/usecases/update_division"
 	update_estate "github.com/amarin/genodex/internal/usecases/update_estate"
+	update_event "github.com/amarin/genodex/internal/usecases/update_event"
 	update_family "github.com/amarin/genodex/internal/usecases/update_family"
 	update_given_name "github.com/amarin/genodex/internal/usecases/update_given_name"
 	update_note "github.com/amarin/genodex/internal/usecases/update_note"
 	update_parish "github.com/amarin/genodex/internal/usecases/update_parish"
 	update_patronymic "github.com/amarin/genodex/internal/usecases/update_patronymic"
 	update_person "github.com/amarin/genodex/internal/usecases/update_person"
+	update_relation "github.com/amarin/genodex/internal/usecases/update_relation"
 	update_repository "github.com/amarin/genodex/internal/usecases/update_repository"
+	update_residence "github.com/amarin/genodex/internal/usecases/update_residence"
 	update_source "github.com/amarin/genodex/internal/usecases/update_source"
 	update_surname "github.com/amarin/genodex/internal/usecases/update_surname"
 	update_title "github.com/amarin/genodex/internal/usecases/update_title"
@@ -512,6 +528,144 @@ func newPersonService(t *testing.T, st *sqlstore.Store) *personService {
 		create: create_person.New(st, idgen.New()),
 		update: update_person.New(st),
 		del:    delete_person.New(st),
+	}
+}
+
+// relationService — фасад httpapi.RelationService на настоящих сценариях
+// (так же собран internal/app's relationService). Без search
+// (search_relations намеренно не заводится, docs/data-model/
+// entity-write.md §3.8).
+type relationService struct {
+	list   *list_relations.Scenario
+	get    *get_relation.Scenario
+	create *create_relation.Scenario
+	update *update_relation.Scenario
+	del    *delete_relation.Scenario
+}
+
+func (s *relationService) ListRelations(ctx context.Context, access models.Access, q models.RelationQuery) ([]models.Relation, error) {
+	return s.list.ListRelations(ctx, access, q)
+}
+
+func (s *relationService) GetRelation(ctx context.Context, access models.Access, id models.ID) (models.Relation, error) {
+	return s.get.GetRelation(ctx, access, id)
+}
+
+func (s *relationService) CreateRelation(ctx context.Context, r models.Relation) (models.Relation, error) {
+	return s.create.CreateRelation(ctx, r)
+}
+
+func (s *relationService) UpdateRelation(ctx context.Context, r models.Relation) error {
+	return s.update.UpdateRelation(ctx, r)
+}
+
+func (s *relationService) DeleteRelation(ctx context.Context, id models.ID) error {
+	return s.del.DeleteRelation(ctx, id)
+}
+
+// newRelationService собирает фасад на настоящем хранилище.
+func newRelationService(t *testing.T, st *sqlstore.Store) *relationService {
+	t.Helper()
+
+	return &relationService{
+		list:   list_relations.New(st),
+		get:    get_relation.New(st),
+		create: create_relation.New(st, idgen.New()),
+		update: update_relation.New(st),
+		del:    delete_relation.New(st),
+	}
+}
+
+// residenceService — фасад httpapi.ResidenceService на настоящих сценариях
+// (так же собран internal/app's residenceService). Без search (см.
+// relationService).
+type residenceService struct {
+	list   *list_residences.Scenario
+	get    *get_residence.Scenario
+	create *create_residence.Scenario
+	update *update_residence.Scenario
+	del    *delete_residence.Scenario
+}
+
+func (s *residenceService) ListResidences(ctx context.Context, access models.Access, q models.ResidenceQuery) ([]models.Residence, error) {
+	return s.list.ListResidences(ctx, access, q)
+}
+
+func (s *residenceService) GetResidence(ctx context.Context, access models.Access, id models.ID) (models.Residence, error) {
+	return s.get.GetResidence(ctx, access, id)
+}
+
+func (s *residenceService) CreateResidence(ctx context.Context, r models.Residence) (models.Residence, error) {
+	return s.create.CreateResidence(ctx, r)
+}
+
+func (s *residenceService) UpdateResidence(ctx context.Context, r models.Residence) error {
+	return s.update.UpdateResidence(ctx, r)
+}
+
+func (s *residenceService) DeleteResidence(ctx context.Context, id models.ID) error {
+	return s.del.DeleteResidence(ctx, id)
+}
+
+// newResidenceService собирает фасад на настоящем хранилище.
+func newResidenceService(t *testing.T, st *sqlstore.Store) *residenceService {
+	t.Helper()
+
+	return &residenceService{
+		list:   list_residences.New(st),
+		get:    get_residence.New(st),
+		create: create_residence.New(st, idgen.New()),
+		update: update_residence.New(st),
+		del:    delete_residence.New(st),
+	}
+}
+
+// eventService — фасад httpapi.EventService на настоящих сценариях (так же
+// собран internal/app's eventService).
+type eventService struct {
+	list   *list_events.Scenario
+	search *search_events.Scenario
+	get    *get_event.Scenario
+	create *create_event.Scenario
+	update *update_event.Scenario
+	del    *delete_event.Scenario
+}
+
+func (s *eventService) ListEvents(ctx context.Context, access models.Access, q models.EventQuery) ([]models.Event, error) {
+	return s.list.ListEvents(ctx, access, q)
+}
+
+func (s *eventService) SearchEvents(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Event, error) {
+	return s.search.SearchEvents(ctx, access, q)
+}
+
+func (s *eventService) GetEvent(ctx context.Context, access models.Access, id models.ID) (models.Event, error) {
+	return s.get.GetEvent(ctx, access, id)
+}
+
+func (s *eventService) CreateEvent(ctx context.Context, e models.Event) (models.Event, error) {
+	return s.create.CreateEvent(ctx, e)
+}
+
+func (s *eventService) UpdateEvent(ctx context.Context, e models.Event) error {
+	return s.update.UpdateEvent(ctx, e)
+}
+
+func (s *eventService) DeleteEvent(ctx context.Context, id models.ID) error {
+	return s.del.DeleteEvent(ctx, id)
+}
+
+// newEventService собирает фасад на настоящем хранилище.
+func newEventService(t *testing.T, st *sqlstore.Store) *eventService {
+	t.Helper()
+
+	return &eventService{
+		list:   list_events.New(st),
+		search: search_events.New(st),
+		get:    get_event.New(st),
+		create: create_event.New(st, idgen.New()),
+		update: update_event.New(st),
+		del:    delete_event.New(st),
 	}
 }
 

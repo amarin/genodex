@@ -218,6 +218,47 @@
   `estates/titles/nicknames/notes`+`sources`+`private`; строка «Персоны» в
   каталоге сущностей (`web/src/api.ts`, `web/src/App.tsx`,
   `web/src/pages/EntityCatalog.tsx`).
+- Граф вокруг Person (`Relation`, `Residence`, `Event`+`EventParticipant`) —
+  подпроект 9, backend: usecase-сценарии, HTTP (`/api/relations*`,
+  `/api/residences*`, `/api/events*`) и MCP (`relation_*`/`residence_*`
+  — по 5 тулов, `event_*` — 6 тулов, включая `event_search`). Три новых
+  паттерна программы:
+  (1) `Relation.PersonA`/`.PersonB` — первая пара строгих ссылок на ОДИН И
+  ТОТ ЖЕ тип (`Person`) у одной сущности; обе проверяются независимо в
+  транзакции (`create_relation`/`update_relation`), модельная `Validate()`
+  дополнительно отвергает `PersonA == PersonB`;
+  (2) осознанный отказ от `search_relations`/`search_residences` — у обеих
+  сущностей нет собственных поисковых полей (`replaceSearchIndex(tx, …,
+  nil)`, generic-слой), полнотекстовый поиск был бы структурно пустым;
+  вместо него — person/place-scoped фильтрация списка (`models.
+  RelationQuery`/`ResidenceQuery`/`EventQuery`, `list_relations`/
+  `list_residences`/`list_events` — full-scan-and-filter по generic-окнам,
+  по образцу `list_archive_nodes`, без новых методов `store.Store`);
+  `Event` search остался (индексируется по началу текста `Place`, ТОЛЬКО
+  это поле — не `type`/`date`);
+  (3) `EventParticipant.PersonID` — первая СТРОГАЯ (проверяемая на
+  существование, индексированная ошибка `participants[i].person_id`)
+  ссылка внутри array-of-objects MCP/HTTP-аргумента в программе (в отличие
+  от мягких/уже-установленных ссылок `PersonName`/`SourceLink`);
+  `Event.Place` (`*models.PlaceRef`) — НИКОГДА не проверяется на
+  существование (мягкая ссылка, тот же принцип, что и любой `TextRef`) и
+  получил presence-ONLY update-guard (не `raw != nil`) как единственный
+  способ очистить одиночное объектное поле явным `null`, по недавнему
+  program-wide фиксу. Новый транспортный тип `transport.PlaceRef`
+  (структурно как `TextRef`, но отдельный тип модели — `models.PlaceRef`)
+  и `transport.EventParticipant` (плоский объект, новый файл по образцу
+  `transport.PersonName`). Веб-слой — отдельная задача, вне этого прохода.
+  (`internal/models/query.go` — `RelationQuery`/`ResidenceQuery`/
+  `EventQuery`; `internal/transport/{relation,residence,event,
+  event_participant,place_ref}{,_write}.go`; `internal/usecases/
+  {list,get,create,update,delete}_relation/`, `internal/usecases/
+  {list,get,create,update,delete}_residence/`, `internal/usecases/
+  {list,search,get,create,update,delete}_event/`;
+  `internal/httpapi/{relation,residence,event}{,_write}.go`;
+  `internal/mcp/{relation,residence,event}.go`,
+  `internal/mcp/object_args.go` — `placeRefObjectProperties`/
+  `optionalPlaceRef`, `eventParticipantObjectProperties`/
+  `optionalEventParticipants`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

@@ -210,6 +210,43 @@ type PersonService interface {
 	DeletePerson(ctx context.Context, id models.ID) error
 }
 
+// RelationService — контракт сценариев рёбер графа родства, отдаваемых в
+// HTTP: список (необязательный фильтр по персоне, см. models.RelationQuery),
+// чтение, создание, изменение, удаление. Без поиска — search_relations
+// намеренно не заводится, см. docs/data-model/entity-write.md §3.8.
+type RelationService interface {
+	ListRelations(ctx context.Context, access models.Access, q models.RelationQuery) ([]models.Relation, error)
+	GetRelation(ctx context.Context, access models.Access, id models.ID) (models.Relation, error)
+	CreateRelation(ctx context.Context, r models.Relation) (models.Relation, error)
+	UpdateRelation(ctx context.Context, r models.Relation) error
+	DeleteRelation(ctx context.Context, id models.ID) error
+}
+
+// ResidenceService — контракт сценариев проживаний, отдаваемых в HTTP:
+// список (необязательные фильтры по персоне и месту, см.
+// models.ResidenceQuery), чтение, создание, изменение, удаление. Без поиска —
+// search_residences намеренно не заводится, см.
+// docs/data-model/entity-write.md §3.8.
+type ResidenceService interface {
+	ListResidences(ctx context.Context, access models.Access, q models.ResidenceQuery) ([]models.Residence, error)
+	GetResidence(ctx context.Context, access models.Access, id models.ID) (models.Residence, error)
+	CreateResidence(ctx context.Context, r models.Residence) (models.Residence, error)
+	UpdateResidence(ctx context.Context, r models.Residence) error
+	DeleteResidence(ctx context.Context, id models.ID) error
+}
+
+// EventService — контракт сценариев событий, отдаваемых в HTTP: список
+// (необязательный фильтр по участнику, см. models.EventQuery), поиск (по
+// началу текста места), чтение, создание, изменение, удаление.
+type EventService interface {
+	ListEvents(ctx context.Context, access models.Access, q models.EventQuery) ([]models.Event, error)
+	SearchEvents(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Event, error)
+	GetEvent(ctx context.Context, access models.Access, id models.ID) (models.Event, error)
+	CreateEvent(ctx context.Context, e models.Event) (models.Event, error)
+	UpdateEvent(ctx context.Context, e models.Event) error
+	DeleteEvent(ctx context.Context, id models.ID) error
+}
+
 // AuthService — контракт auth.Service, отдаваемый в HTTP-обработчики.
 type AuthService interface {
 	Bootstrap(ctx context.Context) (bool, error)

@@ -88,6 +88,18 @@ func NewHandler(deps Deps) http.Handler {
 		registerPersonRoutes(mux, deps.People)
 	}
 
+	if deps.Relations != nil {
+		registerRelationRoutes(mux, deps.Relations)
+	}
+
+	if deps.Residences != nil {
+		registerResidenceRoutes(mux, deps.Residences)
+	}
+
+	if deps.Events != nil {
+		registerEventRoutes(mux, deps.Events)
+	}
+
 	return mux
 }
 
@@ -276,6 +288,42 @@ func registerPersonRoutes(mux *http.ServeMux, people PersonService) {
 	mux.HandleFunc("POST /api/people", handlePersonCreate(people))
 	mux.HandleFunc("PUT /api/people/{id}", handlePersonUpdate(people))
 	mux.HandleFunc("DELETE /api/people/{id}", handlePersonDelete(people))
+}
+
+// registerRelationRoutes регистрирует маршруты /api/relations на переданном
+// mux. Без /search — search_relations намеренно не заводится (индекс пуст,
+// см. docs/data-model/entity-write.md §3.8); список принимает необязательный
+// ?person_id=.
+func registerRelationRoutes(mux *http.ServeMux, relations RelationService) {
+	mux.HandleFunc("GET /api/relations", handleRelationList(relations))
+	mux.HandleFunc("GET /api/relations/{id}", handleRelationGet(relations))
+	mux.HandleFunc("POST /api/relations", handleRelationCreate(relations))
+	mux.HandleFunc("PUT /api/relations/{id}", handleRelationUpdate(relations))
+	mux.HandleFunc("DELETE /api/relations/{id}", handleRelationDelete(relations))
+}
+
+// registerResidenceRoutes регистрирует маршруты /api/residences на
+// переданном mux. Без /search (см. registerRelationRoutes); список
+// принимает необязательные ?person_id=/?place_id=.
+func registerResidenceRoutes(mux *http.ServeMux, residences ResidenceService) {
+	mux.HandleFunc("GET /api/residences", handleResidenceList(residences))
+	mux.HandleFunc("GET /api/residences/{id}", handleResidenceGet(residences))
+	mux.HandleFunc("POST /api/residences", handleResidenceCreate(residences))
+	mux.HandleFunc("PUT /api/residences/{id}", handleResidenceUpdate(residences))
+	mux.HandleFunc("DELETE /api/residences/{id}", handleResidenceDelete(residences))
+}
+
+// registerEventRoutes регистрирует маршруты /api/events на переданном mux.
+// Event ЕСТЬ поисковый индекс (по началу текста места) — полный набор из 6
+// маршрутов, как у большинства сущностей; список принимает необязательный
+// ?person_id=.
+func registerEventRoutes(mux *http.ServeMux, events EventService) {
+	mux.HandleFunc("GET /api/events", handleEventList(events))
+	mux.HandleFunc("GET /api/events/search", handleEventSearch(events))
+	mux.HandleFunc("GET /api/events/{id}", handleEventGet(events))
+	mux.HandleFunc("POST /api/events", handleEventCreate(events))
+	mux.HandleFunc("PUT /api/events/{id}", handleEventUpdate(events))
+	mux.HandleFunc("DELETE /api/events/{id}", handleEventDelete(events))
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

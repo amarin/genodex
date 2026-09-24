@@ -2663,3 +2663,564 @@ func putPersonReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, bo
 
 	return rec
 }
+
+// TestRelationWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» (по образцу TestFamilyWriteContractWithRealStore) для
+// рёбер графа родства — первой сущности программы с двумя строгими ссылками
+// на один и тот же тип (person_a/person_b → Person, docs/data-model/
+// entity-write.md §3.8). Покрывает: create с двумя валидными person_a/
+// person_b → чтение → изменение → удаление → 404; 422 на несуществующий
+// person_a; 422 на несуществующий person_b (обе стороны проверяются
+// независимо); строгий FK sources[0].citation_id; и генуинный
+// PUBLIC → PRIVATE update-флип (не private → private).
+func TestRelationWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		People:     newPersonService(t, st),
+		Relations:  newRelationService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	personA := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Иванов"},"given":{"text":"Иван"}}],"private":false}`, http.StatusCreated)
+	personB := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Иванова"},"given":{"text":"Мария"}}],"private":false}`, http.StatusCreated)
+
+	// Создание.
+	created := createRelation(t, h, owner,
+		fmt.Sprintf(`{"kind":"blood","person_a":%q,"person_b":%q,"notes":[],"private":false}`, personA.ID, personB.ID),
+		http.StatusCreated)
+	if created.Kind != "blood" || created.PersonA != personA.ID || created.PersonB != personB.ID {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "RL-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю.
+	rec := getReq(t, h, "/api/relations/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"kind":"blood"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение: полная замена kind/person_a/person_b/sources/notes/private.
+	rec = putRelationReq(t, h, owner, "/api/relations/"+string(created.ID),
+		fmt.Sprintf(`{"kind":"marriage","person_a":%q,"person_b":%q,"notes":[],"private":false}`, personA.ID, personB.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeRelationS(t, rec)
+	if updated.Kind != "marriage" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/relations/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/relations/"+string(created.ID)), http.StatusNotFound)
+
+	// Строгий FK: несуществующий person_a — 422 на поле person_a.
+	rec = postRelationReq(t, h, owner,
+		fmt.Sprintf(`{"kind":"blood","person_a":"I-01ARZ3NDEKTSV4RRFFQ69G5FA9","person_b":%q,"notes":[],"private":false}`, personB.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"person_a"`) {
+		t.Fatalf("body = %s, want field=person_a", rec.Body)
+	}
+
+	// Строгий FK: person_a существует, person_b — нет — 422 на поле person_b
+	// (обе стороны проверяются независимо).
+	rec = postRelationReq(t, h, owner,
+		fmt.Sprintf(`{"kind":"blood","person_a":%q,"person_b":"I-01ARZ3NDEKTSV4RRFFQ69G5FA9","notes":[],"private":false}`, personA.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"person_b"`) {
+		t.Fatalf("body = %s, want field=person_b", rec.Body)
+	}
+
+	// Строгий FK: sources[0].citation_id несуществующий — 422.
+	rec = postRelationReq(t, h, owner,
+		fmt.Sprintf(`{"kind":"blood","person_a":%q,"person_b":%q,"sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}],"notes":[],"private":false}`, personA.ID, personB.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
+
+	// Строгий FK: существующая цитата — сохраняется.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Метрическая книга","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createRelation(t, h, owner,
+		fmt.Sprintf(`{"kind":"blood","person_a":%q,"person_b":%q,"sources":[{"citation_id":%q}],"notes":[],"private":false}`, personA.ID, personB.ID, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// PUBLIC → PRIVATE update-флип (не private → private).
+	public := createRelation(t, h, owner,
+		fmt.Sprintf(`{"kind":"blood","person_a":%q,"person_b":%q,"notes":[],"private":false}`, personA.ID, personB.ID),
+		http.StatusCreated)
+	requireStatusS(t, getReq(t, h, "/api/relations/"+string(public.ID)), http.StatusOK)
+
+	rec = putRelationReq(t, h, owner, "/api/relations/"+string(public.ID),
+		fmt.Sprintf(`{"kind":"blood","person_a":%q,"person_b":%q,"notes":[],"private":true}`, personA.ID, personB.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	afterUpdate := decodeRelationS(t, rec)
+	if !afterUpdate.Private {
+		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
+	}
+	requireStatusS(t, getReq(t, h, "/api/relations/"+string(public.ID)), http.StatusNotFound)
+
+	// person_id-фильтр списка: совпадает с person_a ИЛИ person_b.
+	listRec := getReq(t, h, "/api/relations?person_id="+string(personA.ID))
+	requireStatusS(t, listRec, http.StatusOK)
+	if !strings.Contains(listRec.Body.String(), string(withCitation.ID)) {
+		t.Fatalf("список по person_id=%q не содержит ребро %q: %s", personA.ID, withCitation.ID, listRec.Body)
+	}
+}
+
+func createRelation(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Relation {
+	t.Helper()
+
+	rec := postRelationReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeRelationS(t, rec)
+}
+
+func decodeRelationS(t *testing.T, rec *httptest.ResponseRecorder) transport.Relation {
+	t.Helper()
+
+	var r transport.Relation
+	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return r
+}
+
+func postRelationReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/relations", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putRelationReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestResidenceWriteContractWithRealStore: сквозной путь «хранилище →
+// сценарии → HTTP» для проживаний. Покрывает: create с валидными person_id/
+// place_id → чтение → изменение → удаление → 404; 422 на несуществующий
+// person_id; 422 на несуществующий place_id; строгий FK
+// sources[0].citation_id; PUBLIC → PRIVATE update-флип.
+func TestResidenceWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		People:     newPersonService(t, st),
+		Residences: newResidenceService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	person := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Сидоров"},"given":{"text":"Пётр"}}],"private":false}`, http.StatusCreated)
+	place := createDivision(t, h, owner, `{"name":"Давыдово","type":"selo"}`, http.StatusCreated)
+
+	// Создание.
+	created := createResidence(t, h, owner,
+		fmt.Sprintf(`{"person_id":%q,"place_id":%q,"note":"изба","private":false}`, person.ID, place.ID),
+		http.StatusCreated)
+	if created.PersonID != person.ID || created.PlaceID != place.ID || created.Note != "изба" {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "RS-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id.
+	rec := getReq(t, h, "/api/residences/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	if !strings.Contains(rec.Body.String(), `"note":"изба"`) {
+		t.Fatalf("body = %s", rec.Body)
+	}
+
+	// Изменение.
+	rec = putResidenceReq(t, h, owner, "/api/residences/"+string(created.ID),
+		fmt.Sprintf(`{"person_id":%q,"place_id":%q,"note":"новая изба","private":false}`, person.ID, place.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeResidenceS(t, rec)
+	if updated.Note != "новая изба" || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/residences/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/residences/"+string(created.ID)), http.StatusNotFound)
+
+	// Строгий FK: несуществующий person_id — 422 на поле person_id.
+	rec = postResidenceReq(t, h, owner,
+		fmt.Sprintf(`{"person_id":"I-01ARZ3NDEKTSV4RRFFQ69G5FA9","place_id":%q,"private":false}`, place.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"person_id"`) {
+		t.Fatalf("body = %s, want field=person_id", rec.Body)
+	}
+
+	// Строгий FK: несуществующий place_id — 422 на поле place_id.
+	rec = postResidenceReq(t, h, owner,
+		fmt.Sprintf(`{"person_id":%q,"place_id":"AD-01ARZ3NDEKTSV4RRFFQ69G5FA9","private":false}`, person.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"place_id"`) {
+		t.Fatalf("body = %s, want field=place_id", rec.Body)
+	}
+
+	// Строгий FK: sources[0].citation_id несуществующий — 422.
+	rec = postResidenceReq(t, h, owner,
+		fmt.Sprintf(`{"person_id":%q,"place_id":%q,"sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}],"private":false}`, person.ID, place.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
+
+	// Строгий FK: существующая цитата — сохраняется.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Ревизская сказка","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createResidence(t, h, owner,
+		fmt.Sprintf(`{"person_id":%q,"place_id":%q,"sources":[{"citation_id":%q}],"private":false}`, person.ID, place.ID, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// PUBLIC → PRIVATE update-флип (не private → private).
+	public := createResidence(t, h, owner,
+		fmt.Sprintf(`{"person_id":%q,"place_id":%q,"private":false}`, person.ID, place.ID), http.StatusCreated)
+	requireStatusS(t, getReq(t, h, "/api/residences/"+string(public.ID)), http.StatusOK)
+
+	rec = putResidenceReq(t, h, owner, "/api/residences/"+string(public.ID),
+		fmt.Sprintf(`{"person_id":%q,"place_id":%q,"private":true}`, person.ID, place.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	afterUpdate := decodeResidenceS(t, rec)
+	if !afterUpdate.Private {
+		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
+	}
+	requireStatusS(t, getReq(t, h, "/api/residences/"+string(public.ID)), http.StatusNotFound)
+
+	// person_id/place_id-фильтры списка.
+	listRec := getReq(t, h, "/api/residences?person_id="+string(person.ID)+"&place_id="+string(place.ID))
+	requireStatusS(t, listRec, http.StatusOK)
+	if !strings.Contains(listRec.Body.String(), string(withCitation.ID)) {
+		t.Fatalf("список по person_id/place_id не содержит запись %q: %s", withCitation.ID, listRec.Body)
+	}
+}
+
+func createResidence(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Residence {
+	t.Helper()
+
+	rec := postResidenceReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeResidenceS(t, rec)
+}
+
+func decodeResidenceS(t *testing.T, rec *httptest.ResponseRecorder) transport.Residence {
+	t.Helper()
+
+	var r transport.Residence
+	if err := json.Unmarshal(rec.Body.Bytes(), &r); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return r
+}
+
+func postResidenceReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/residences", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putResidenceReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+// TestEventWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» для событий. Покрывает: create с двумя участниками → чтение →
+// изменение → удаление → 404; индексированный 422 на несуществующий
+// participants[1].person_id; Place — мягкая ссылка (фабрикованный id
+// круговорот без ошибки); строгий FK sources[0].citation_id;
+// PUBLIC → PRIVATE update-флип; person_id-фильтр списка;
+// search_events по началу текста места.
+func TestEventWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		People:     newPersonService(t, st),
+		Events:     newEventService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	parent := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Кузнецов"},"given":{"text":"Фёдор"}}],"private":false}`, http.StatusCreated)
+	witness := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Смирнов"},"given":{"text":"Егор"}}],"private":false}`, http.StatusCreated)
+
+	// Создание: два участника, оба существуют + мягкая ссылка Place.
+	created := createEvent(t, h, owner, fmt.Sprintf(`{
+		"type": "birth",
+		"place": {"text":"село Давыдово","ref":"AD-01ARZ3NDEKTSV4RRFFQ69G5FA9","type":"administrative_division"},
+		"participants": [
+			{"person_id":%q,"role":"родитель"},
+			{"person_id":%q,"role":"свидетель"}
+		],
+		"notes": [],
+		"private": false
+	}`, parent.ID, witness.ID), http.StatusCreated)
+	if created.Type != "birth" || len(created.Participants) != 2 {
+		t.Fatalf("created = %+v", created)
+	}
+	if !strings.HasPrefix(string(created.ID), "E-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+	// Place — мягкая ссылка на заведомо несуществующий id: round-trip без ошибки.
+	if created.Place == nil || created.Place.Ref != "AD-01ARZ3NDEKTSV4RRFFQ69G5FA9" || created.Place.Text != "село Давыдово" {
+		t.Fatalf("created.Place = %+v, ожидался мягкий round-trip несуществующей ссылки", created.Place)
+	}
+
+	// Чтение по id — ссылки/участники пережили запись и чтение из SQLite.
+	rec := getReq(t, h, "/api/events/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	reread := decodeEventS(t, rec)
+	if len(reread.Participants) != 2 || reread.Place == nil || reread.Place.Ref != "AD-01ARZ3NDEKTSV4RRFFQ69G5FA9" {
+		t.Fatalf("reread (после чтения из SQLite) = %+v", reread)
+	}
+
+	// search_events: по началу текста места (весь place-текст индексируется
+	// как один термин — "Давыд" не подошёл бы, текст начинается с "село").
+	searchRec := getReq(t, h, "/api/events/search?q=село")
+	requireStatusS(t, searchRec, http.StatusOK)
+	if !strings.Contains(searchRec.Body.String(), string(created.ID)) {
+		t.Fatalf("поиск по началу текста места не нашёл событие: %s", searchRec.Body)
+	}
+
+	// person_id-фильтр списка: находит событие по КАЖДОМУ из двух участников.
+	for _, p := range []transport.Person{parent, witness} {
+		listRec := getReq(t, h, "/api/events?person_id="+string(p.ID))
+		requireStatusS(t, listRec, http.StatusOK)
+		if !strings.Contains(listRec.Body.String(), string(created.ID)) {
+			t.Fatalf("список по person_id=%q не содержит событие: %s", p.ID, listRec.Body)
+		}
+	}
+
+	// Изменение: полная замена, участники сокращены до одного.
+	rec = putEventReq(t, h, owner, "/api/events/"+string(created.ID), fmt.Sprintf(`{
+		"type": "death",
+		"participants": [{"person_id":%q,"role":"умерший"}],
+		"notes": [],
+		"private": false
+	}`, parent.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodeEventS(t, rec)
+	if updated.Type != "death" || len(updated.Participants) != 1 || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/events/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/events/"+string(created.ID)), http.StatusNotFound)
+
+	// Строгий FK, индексированная ошибка: participants[0] существует,
+	// participants[1] — нет — 422 на participants[1].person_id.
+	rec = postEventReq(t, h, owner, fmt.Sprintf(`{
+		"type": "birth",
+		"participants": [
+			{"person_id":%q,"role":"родитель"},
+			{"person_id":"I-01ARZ3NDEKTSV4RRFFQ69G5FA9","role":"свидетель"}
+		],
+		"private": false
+	}`, parent.ID))
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"participants[1].person_id"`) {
+		t.Fatalf("body = %s, want field=participants[1].person_id", rec.Body)
+	}
+
+	// Строгий FK: sources[0].citation_id несуществующий — 422.
+	rec = postEventReq(t, h, owner, `{"type":"birth","sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}],"private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
+
+	// Строгий FK: существующая цитата — сохраняется.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Метрическая книга","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createEvent(t, h, owner,
+		fmt.Sprintf(`{"type":"birth","sources":[{"citation_id":%q}],"private":false}`, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// PUBLIC → PRIVATE update-флип (не private → private).
+	public := createEvent(t, h, owner, `{"type":"birth","private":false}`, http.StatusCreated)
+	requireStatusS(t, getReq(t, h, "/api/events/"+string(public.ID)), http.StatusOK)
+
+	rec = putEventReq(t, h, owner, "/api/events/"+string(public.ID), `{"type":"birth","private":true}`)
+	requireStatusS(t, rec, http.StatusOK)
+	afterUpdate := decodeEventS(t, rec)
+	if !afterUpdate.Private {
+		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
+	}
+	requireStatusS(t, getReq(t, h, "/api/events/"+string(public.ID)), http.StatusNotFound)
+}
+
+func createEvent(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Event {
+	t.Helper()
+
+	rec := postEventReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodeEventS(t, rec)
+}
+
+func decodeEventS(t *testing.T, rec *httptest.ResponseRecorder) transport.Event {
+	t.Helper()
+
+	var e transport.Event
+	if err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return e
+}
+
+func postEventReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/events", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putEventReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
