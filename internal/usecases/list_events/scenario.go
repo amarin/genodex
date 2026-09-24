@@ -2,6 +2,7 @@ package list_events
 
 import (
 	"context"
+	"errors"
 
 	"github.com/amarin/genodex/internal/models"
 )
@@ -35,6 +36,11 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 	page := q.Page.Normalized()
 	out := []models.Event{}
 	matched := 0
+	// cache — мемоизация Private по id персоны в рамках ОДНОГО вызова
+	// ListEvents (не переживает вызов, не шарится между запросами): одна и
+	// та же персона часто встречается среди участников нескольких событий
+	// одного скана.
+	cache := map[models.ID]bool{}
 
 	for offset := 0; ; offset += models.MaxPageLimit {
 		list, err := s.events.ListEvents(ctx, access, models.Page{Limit: models.MaxPageLimit, Offset: offset})
@@ -46,7 +52,7 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 			return out, nil
 		}
 
-		full, nextMatched, nextOut, err := applyWindow(ctx, s.events, access, q, list, page, matched, out)
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.events, access, q, list, page, matched, out, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +77,7 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 // веб-сервис); тот же компромисс «без кеша/батчинга», что и в create_event
 // для проверки участников.
 func applyWindow(ctx context.Context, repo EventRepo, access models.Access, q models.EventQuery, list []*models.Event,
-	page models.Page, matched int, out []models.Event,
+	page models.Page, matched int, out []models.Event, cache map[models.ID]bool,
 ) (full bool, nextMatched int, nextOut []models.Event, err error) {
 	for _, e := range list {
 		if q.PersonID != nil && !hasParticipant(e.Participants, *q.PersonID) {
@@ -79,7 +85,7 @@ func applyWindow(ctx context.Context, repo EventRepo, access models.Access, q mo
 		}
 
 		if access != models.AccessFull {
-			hidden, err := eventReferencesPrivatePerson(ctx, repo, e)
+			hidden, err := eventReferencesPrivatePerson(ctx, repo, e, cache)
 			if err != nil {
 				return false, matched, out, err
 			}
@@ -105,21 +111,52 @@ func applyWindow(ctx context.Context, repo EventRepo, access models.Access, q mo
 
 // eventReferencesPrivatePerson сообщает, ссылается ли событие (через
 // участников Participants[i].PersonID) хотя бы на одну приватную персону.
-// Независимая копия одноимённой функции get_event: пакеты сценариев в этом
-// проекте самодостаточны и не делятся кодом друг с другом.
-func eventReferencesPrivatePerson(ctx context.Context, repo EventRepo, e *models.Event) (bool, error) {
+// cache — мемоизация в рамках одного вызова ListEvents, см. её объявление
+// в ListEvents. Независимая копия одноимённой функции get_event (та не
+// использует cache и не глотает ErrNotFound — см. её комментарий): пакеты
+// сценариев в этом проекте самодостаточны и не делятся кодом друг с
+// другом.
+func eventReferencesPrivatePerson(ctx context.Context, repo EventRepo, e *models.Event, cache map[models.ID]bool) (bool, error) {
 	for _, p := range e.Participants {
-		person, err := repo.GetPerson(ctx, p.PersonID)
+		hidden, err := personIsPrivate(ctx, repo, cache, p.PersonID)
 		if err != nil {
 			return false, err
 		}
 
-		if person.Private {
+		if hidden {
 			return true, nil
 		}
 	}
 
 	return false, nil
+}
+
+// personIsPrivate сообщает, приватна ли персона id — с точки зрения
+// сканирующего ListEvents сюда же относится и гонка с конкурентным
+// удалением персоны (models.ErrNotFound от GetPerson): такая персона
+// трактуется как приватная, т.е. событие, ссылающееся на неё, тоже
+// прячется, а не проваливает весь список ошибкой (в отличие от get_event —
+// там единичный неожиданный сбой GetPerson информативнее как ошибка, а не
+// как «запись не найдена»). cache — мемоизация в рамках одного вызова.
+func personIsPrivate(ctx context.Context, repo EventRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	p, err := repo.GetPerson(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	cache[id] = p.Private
+
+	return p.Private, nil
 }
 
 // hasParticipant сообщает, участвует ли персона id в событии.

@@ -2,6 +2,7 @@ package list_residences
 
 import (
 	"context"
+	"errors"
 
 	"github.com/amarin/genodex/internal/models"
 )
@@ -35,6 +36,11 @@ func (s *Scenario) ListResidences(ctx context.Context, access models.Access, q m
 	page := q.Page.Normalized()
 	out := []models.Residence{}
 	matched := 0
+	// cache — мемоизация Private по id персоны в рамках ОДНОГО вызова
+	// ListResidences (не переживает вызов, не шарится между запросами): одна
+	// и та же персона часто встречается в нескольких проживаниях одного
+	// скана.
+	cache := map[models.ID]bool{}
 
 	for offset := 0; ; offset += models.MaxPageLimit {
 		list, err := s.residences.ListResidences(ctx, access, models.Page{Limit: models.MaxPageLimit, Offset: offset})
@@ -46,7 +52,7 @@ func (s *Scenario) ListResidences(ctx context.Context, access models.Access, q m
 			return out, nil
 		}
 
-		full, nextMatched, nextOut, err := applyWindow(ctx, s.residences, access, q, list, page, matched, out)
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.residences, access, q, list, page, matched, out, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -70,7 +76,7 @@ func (s *Scenario) ListResidences(ctx context.Context, access models.Access, q m
 // SQLite, не высоконагруженный веб-сервис); тот же компромисс «без
 // кеша/батчинга», что и в create_event для проверки участников.
 func applyWindow(ctx context.Context, repo ResidenceRepo, access models.Access, q models.ResidenceQuery, list []*models.Residence,
-	page models.Page, matched int, out []models.Residence,
+	page models.Page, matched int, out []models.Residence, cache map[models.ID]bool,
 ) (full bool, nextMatched int, nextOut []models.Residence, err error) {
 	for _, r := range list {
 		if q.PersonID != nil && *q.PersonID != r.PersonID {
@@ -82,7 +88,7 @@ func applyWindow(ctx context.Context, repo ResidenceRepo, access models.Access, 
 		}
 
 		if access != models.AccessFull {
-			hidden, err := residenceReferencesPrivatePerson(ctx, repo, r)
+			hidden, err := residenceReferencesPrivatePerson(ctx, repo, r, cache)
 			if err != nil {
 				return false, matched, out, err
 			}
@@ -107,14 +113,40 @@ func applyWindow(ctx context.Context, repo ResidenceRepo, access models.Access, 
 }
 
 // residenceReferencesPrivatePerson сообщает, ссылается ли проживание
-// (через PersonID) на приватную персону. Независимая копия одноимённой
-// функции get_residence: пакеты сценариев в этом проекте самодостаточны и
-// не делятся кодом друг с другом.
-func residenceReferencesPrivatePerson(ctx context.Context, repo ResidenceRepo, r *models.Residence) (bool, error) {
-	p, err := repo.GetPerson(ctx, r.PersonID)
+// (через PersonID) на приватную персону. cache — мемоизация в рамках
+// одного вызова ListResidences, см. её объявление в ListResidences.
+// Независимая копия одноимённой функции get_residence (та не использует
+// cache и не глотает ErrNotFound — см. её комментарий): пакеты сценариев в
+// этом проекте самодостаточны и не делятся кодом друг с другом.
+func residenceReferencesPrivatePerson(ctx context.Context, repo ResidenceRepo, r *models.Residence, cache map[models.ID]bool) (bool, error) {
+	return personIsPrivate(ctx, repo, cache, r.PersonID)
+}
+
+// personIsPrivate сообщает, приватна ли персона id — с точки зрения
+// сканирующего ListResidences сюда же относится и гонка с конкурентным
+// удалением персоны (models.ErrNotFound от GetPerson): такая персона
+// трактуется как приватная, т.е. проживание, ссылающееся на неё, тоже
+// прячется, а не проваливает весь список ошибкой (в отличие от
+// get_residence — там единичный неожиданный сбой GetPerson информативнее
+// как ошибка, а не как «запись не найдена»). cache — мемоизация в рамках
+// одного вызова.
+func personIsPrivate(ctx context.Context, repo ResidenceRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	p, err := repo.GetPerson(ctx, id)
 	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
 		return false, err
 	}
+
+	cache[id] = p.Private
 
 	return p.Private, nil
 }

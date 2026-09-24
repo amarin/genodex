@@ -36,7 +36,7 @@ func registerRelationTools(s *server.MCPServer, relations RelationService) {
 
 	tool = mcp.NewTool(
 		"relation_get",
-		mcp.WithDescription("Ребро графа родства по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула"),
+		mcp.WithDescription("Ребро графа родства по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула; то же для ребра, ссылающегося на приватную персону (person_a/person_b)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например RL-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, relationGetHandler(relations))

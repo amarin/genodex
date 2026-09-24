@@ -2,6 +2,7 @@ package list_relations
 
 import (
 	"context"
+	"errors"
 
 	"github.com/amarin/genodex/internal/models"
 )
@@ -36,6 +37,10 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 	page := q.Page.Normalized()
 	out := []models.Relation{}
 	matched := 0
+	// cache — мемоизация Private по id персоны в рамках ОДНОГО вызова
+	// ListRelations (не переживает вызов, не шарится между запросами): одна
+	// и та же персона часто встречается в нескольких рёбрах одного скана.
+	cache := map[models.ID]bool{}
 
 	for offset := 0; ; offset += models.MaxPageLimit {
 		list, err := s.relations.ListRelations(ctx, access, models.Page{Limit: models.MaxPageLimit, Offset: offset})
@@ -47,7 +52,7 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 			return out, nil
 		}
 
-		full, nextMatched, nextOut, err := applyWindow(ctx, s.relations, access, q, list, page, matched, out)
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.relations, access, q, list, page, matched, out, cache)
 		if err != nil {
 			return nil, err
 		}
@@ -66,12 +71,13 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 // Помимо q.PersonID, окно фильтрует рёбра, ссылающиеся (PersonA/PersonB) на
 // приватную персону: для access != models.AccessFull такое ребро прячется,
 // даже если само оно не приватно (см. комментарий GetRelation). Это стоит
-// одного дополнительного GetPerson на ребро, попавшее в окно — приемлемо
-// при масштабе этого хранилища (локальный SQLite, не высоконагруженный
-// веб-сервис); тот же компромисс «без кеша/батчинга», что и в
-// create_event для проверки участников.
+// до двух дополнительных GetPerson на ребро, попавшее в окно (по одному на
+// PersonA и PersonB; меньше при попадании в cache) — приемлемо при масштабе
+// этого хранилища (локальный SQLite, не высоконагруженный веб-сервис); тот
+// же компромисс «без батчинга», что и в create_event для проверки
+// участников.
 func applyWindow(ctx context.Context, repo RelationRepo, access models.Access, q models.RelationQuery, list []*models.Relation,
-	page models.Page, matched int, out []models.Relation,
+	page models.Page, matched int, out []models.Relation, cache map[models.ID]bool,
 ) (full bool, nextMatched int, nextOut []models.Relation, err error) {
 	for _, r := range list {
 		if !matchesPerson(q.PersonID, r.PersonA, r.PersonB) {
@@ -79,7 +85,7 @@ func applyWindow(ctx context.Context, repo RelationRepo, access models.Access, q
 		}
 
 		if access != models.AccessFull {
-			hidden, err := relationReferencesPrivatePerson(ctx, repo, r)
+			hidden, err := relationReferencesPrivatePerson(ctx, repo, r, cache)
 			if err != nil {
 				return false, matched, out, err
 			}
@@ -105,25 +111,50 @@ func applyWindow(ctx context.Context, repo RelationRepo, access models.Access, q
 
 // relationReferencesPrivatePerson сообщает, ссылается ли ребро (через
 // PersonA или PersonB) на приватную персону — обе стороны проверяются
-// независимо. Независимая копия одноимённой функции get_relation: пакеты
-// сценариев в этом проекте самодостаточны и не делятся кодом друг с
-// другом.
-func relationReferencesPrivatePerson(ctx context.Context, repo RelationRepo, r *models.Relation) (bool, error) {
-	a, err := repo.GetPerson(ctx, r.PersonA)
+// независимо. cache — мемоизация в рамках одного вызова ListRelations, см.
+// её объявление в ListRelations. Независимая копия одноимённой функции
+// get_relation (та не использует cache и не глотает ErrNotFound — см. её
+// комментарий): пакеты сценариев в этом проекте самодостаточны и не делятся
+// кодом друг с другом.
+func relationReferencesPrivatePerson(ctx context.Context, repo RelationRepo, r *models.Relation, cache map[models.ID]bool) (bool, error) {
+	hiddenA, err := personIsPrivate(ctx, repo, cache, r.PersonA)
 	if err != nil {
 		return false, err
 	}
 
-	if a.Private {
+	if hiddenA {
 		return true, nil
 	}
 
-	b, err := repo.GetPerson(ctx, r.PersonB)
+	return personIsPrivate(ctx, repo, cache, r.PersonB)
+}
+
+// personIsPrivate сообщает, приватна ли персона id — с точки зрения
+// сканирующего ListRelations сюда же относится и гонка с конкурентным
+// удалением персоны (models.ErrNotFound от GetPerson): такая персона
+// трактуется как приватная, т.е. ребро, ссылающееся на неё, тоже прячется,
+// а не проваливает весь список ошибкой (в отличие от get_relation — там
+// единичный неожиданный сбой GetPerson информативнее как ошибка, а не как
+// «запись не найдена»). cache — мемоизация в рамках одного вызова.
+func personIsPrivate(ctx context.Context, repo RelationRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	p, err := repo.GetPerson(ctx, id)
 	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
 		return false, err
 	}
 
-	return b.Private, nil
+	cache[id] = p.Private
+
+	return p.Private, nil
 }
 
 // matchesPerson сообщает, проходит ли ребро фильтр по персоне: nil — без

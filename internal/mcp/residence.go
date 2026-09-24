@@ -32,7 +32,7 @@ func registerResidenceTools(s *server.MCPServer, residences ResidenceService) {
 
 	tool = mcp.NewTool(
 		"residence_get",
-		mcp.WithDescription("Проживание по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула"),
+		mcp.WithDescription("Проживание по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула; то же для записи, ссылающейся на приватную персону (person_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например RS-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, residenceGetHandler(residences))

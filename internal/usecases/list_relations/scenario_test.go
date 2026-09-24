@@ -209,3 +209,54 @@ func TestListRelationsDoesNotHideRelationsReferencingPublicPeople(t *testing.T) 
 		t.Fatalf("got %v, %v; ожидались все три ребра — все референсные персоны публичны", ids(got), err)
 	}
 }
+
+// TestListRelationsPersonFilterComposesWithPrivacyHiding: q.PersonID и
+// приватность-по-ссылке должны компоноваться корректно — ребро,
+// подходящее под фильтр, но ссылающееся на приватную персону, всё равно
+// скрыто; ребро, ссылающееся только на публичных персон, фильтром и
+// приватностью не затрагивается (Fix 6.2 ревью).
+//
+// person1 фигурирует в rl1 (как PersonA) и rl3 (как PersonB) — оба
+// проходят фильтр по person1. person1 приватна ⇒ оба должны быть скрыты
+// для access=Public, несмотря на совпадение с фильтром. rl2 фильтром не
+// затронут (в нём person1 не участвует).
+func TestListRelationsPersonFilterComposesWithPrivacyHiding(t *testing.T) {
+	person1 := pID('1')
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: true},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+		pID('4'): {ID: pID('4'), Private: false},
+		pID('5'): {ID: pID('5'), Private: false},
+	}
+
+	got, err := New(repo).ListRelations(context.Background(), models.AccessPublic,
+		models.RelationQuery{PersonID: &person1})
+	if err != nil {
+		t.Fatalf("ListRelations: %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("got %v; ожидался пустой результат — оба совпавших с фильтром ребра ссылаются на приватную person1", ids(got))
+	}
+
+	// Тот же фильтр, но с полным доступом — оба ребра, совпавшие с
+	// фильтром, видимы (приватность не скрывает при AccessFull).
+	gotFull, err := New(repo).ListRelations(context.Background(), models.AccessFull,
+		models.RelationQuery{PersonID: &person1})
+	if err != nil || !sameIDs(ids(gotFull), rlID('1'), rlID('3')) {
+		t.Fatalf("got %v, %v; при полном доступе ожидались rl1 и rl3", ids(gotFull), err)
+	}
+
+	// Фильтр по публичной person3 (участвует только в rl2, где обе стороны
+	// публичны) — виден как обычно, приватность соседних рёбер тут ни при
+	// чём.
+	person3 := pID('3')
+
+	gotPublicPerson, err := New(repo).ListRelations(context.Background(), models.AccessPublic,
+		models.RelationQuery{PersonID: &person3})
+	if err != nil || !sameIDs(ids(gotPublicPerson), rlID('2')) {
+		t.Fatalf("got %v, %v; ожидался только rl2 (person3 публична, обе стороны rl2 публичны)", ids(gotPublicPerson), err)
+	}
+}

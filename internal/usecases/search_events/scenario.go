@@ -36,6 +36,11 @@ func (s *Scenario) SearchEvents(ctx context.Context, access models.Access, q mod
 	page := q.Page.Normalized()
 	out := []models.Event{}
 	matched := 0
+	// cache — мемоизация Private по id персоны в рамках ОДНОГО вызова
+	// SearchEvents (не переживает вызов, не шарится между запросами):
+	// один и тот же участник часто встречается в нескольких найденных
+	// событиях одного скана.
+	cache := map[models.ID]bool{}
 
 	for offset := 0; ; offset += models.MaxPageLimit {
 		hits, err := s.events.Search(ctx, text, access,
@@ -53,16 +58,16 @@ func (s *Scenario) SearchEvents(ctx context.Context, access models.Access, q mod
 				continue
 			}
 
-			if matched < page.Offset {
-				matched++
-
-				continue
-			}
-
+			// Сначала загружаем запись и проверяем приватность — и только
+			// ПОТОМ считаем сдвиг (offset). Иначе скрытый (приватный или
+			// исчезнувший) хит съедает часть offset-бюджета, предназначенного
+			// для видимых записей: matched/offset должны отражать только то,
+			// что реально попало (или могло попасть) в видимый результат,
+			// иначе соседние страницы дублируют и пропускают записи (см.
+			// коммит "fix: ревью — пагинация search_events").
 			got, err := s.events.GetEvent(ctx, h.ID)
 			if err != nil {
 				if errors.Is(err, models.ErrNotFound) {
-					matched++
 					continue
 				}
 
@@ -74,15 +79,20 @@ func (s *Scenario) SearchEvents(ctx context.Context, access models.Access, q mod
 			// ссылается (через участников) на приватную персону — тот же
 			// принцип, что и в get_event/list_events (см. их комментарии).
 			if access != models.AccessFull {
-				hidden, err := eventReferencesPrivatePerson(ctx, s.events, got)
+				hidden, err := eventReferencesPrivatePerson(ctx, s.events, got, cache)
 				if err != nil {
 					return nil, err
 				}
 
 				if hidden {
-					matched++
 					continue
 				}
+			}
+
+			if matched < page.Offset {
+				matched++
+
+				continue
 			}
 
 			out = append(out, *got)
@@ -101,17 +111,47 @@ func (s *Scenario) SearchEvents(ctx context.Context, access models.Access, q mod
 // Независимая копия одноимённой функции get_event/list_events: пакеты
 // сценариев в этом проекте самодостаточны и не делятся кодом друг с
 // другом.
-func eventReferencesPrivatePerson(ctx context.Context, repo EventRepo, e *models.Event) (bool, error) {
+func eventReferencesPrivatePerson(ctx context.Context, repo EventRepo, e *models.Event, cache map[models.ID]bool) (bool, error) {
 	for _, p := range e.Participants {
-		person, err := repo.GetPerson(ctx, p.PersonID)
+		hidden, err := personIsPrivate(ctx, repo, cache, p.PersonID)
 		if err != nil {
 			return false, err
 		}
 
-		if person.Private {
+		if hidden {
 			return true, nil
 		}
 	}
 
 	return false, nil
+}
+
+// personIsPrivate сообщает, приватна ли персона id — с точки зрения
+// сканирующего List*/Search*-сценария сюда же относится и гонка с
+// конкурентным удалением персоны (models.ErrNotFound от GetPerson):
+// такая персона трактуется как приватная, т.е. запись, ссылающаяся на
+// неё, тоже прячется, а не проваливает весь вызов ошибкой (в отличие от
+// get_event/get_relation/get_residence — там единичный неожиданный сбой
+// GetPerson информативнее как ошибка, а не как «запись не найдена»).
+// cache — мемоизация в рамках одного вызова, см. её объявление в
+// SearchEvents.
+func personIsPrivate(ctx context.Context, repo EventRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	p, err := repo.GetPerson(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	cache[id] = p.Private
+
+	return p.Private, nil
 }
