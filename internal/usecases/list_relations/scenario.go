@@ -47,8 +47,13 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 			return out, nil
 		}
 
-		var full bool
-		if full, matched, out = applyWindow(q, list, page, matched, out); full {
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.relations, access, q, list, page, matched, out)
+		if err != nil {
+			return nil, err
+		}
+
+		matched, out = nextMatched, nextOut
+		if full {
 			return out, nil
 		}
 	}
@@ -57,26 +62,68 @@ func (s *Scenario) ListRelations(ctx context.Context, access models.Access, q mo
 // applyWindow прогоняет одно окно репозитория через фильтр запроса и
 // накапливает результат окна запроса. full — окно запроса заполнено (обход
 // можно остановить).
-func applyWindow(q models.RelationQuery, list []*models.Relation,
+//
+// Помимо q.PersonID, окно фильтрует рёбра, ссылающиеся (PersonA/PersonB) на
+// приватную персону: для access != models.AccessFull такое ребро прячется,
+// даже если само оно не приватно (см. комментарий GetRelation). Это стоит
+// одного дополнительного GetPerson на ребро, попавшее в окно — приемлемо
+// при масштабе этого хранилища (локальный SQLite, не высоконагруженный
+// веб-сервис); тот же компромисс «без кеша/батчинга», что и в
+// create_event для проверки участников.
+func applyWindow(ctx context.Context, repo RelationRepo, access models.Access, q models.RelationQuery, list []*models.Relation,
 	page models.Page, matched int, out []models.Relation,
-) (full bool, nextMatched int, nextOut []models.Relation) {
+) (full bool, nextMatched int, nextOut []models.Relation, err error) {
 	for _, r := range list {
 		if !matchesPerson(q.PersonID, r.PersonA, r.PersonB) {
 			continue
+		}
+
+		if access != models.AccessFull {
+			hidden, err := relationReferencesPrivatePerson(ctx, repo, r)
+			if err != nil {
+				return false, matched, out, err
+			}
+
+			if hidden {
+				continue
+			}
 		}
 
 		if matched >= page.Offset {
 			out = append(out, *r)
 
 			if len(out) == page.Limit {
-				return true, matched, out
+				return true, matched, out, nil
 			}
 		}
 
 		matched++
 	}
 
-	return false, matched, out
+	return false, matched, out, nil
+}
+
+// relationReferencesPrivatePerson сообщает, ссылается ли ребро (через
+// PersonA или PersonB) на приватную персону — обе стороны проверяются
+// независимо. Независимая копия одноимённой функции get_relation: пакеты
+// сценариев в этом проекте самодостаточны и не делятся кодом друг с
+// другом.
+func relationReferencesPrivatePerson(ctx context.Context, repo RelationRepo, r *models.Relation) (bool, error) {
+	a, err := repo.GetPerson(ctx, r.PersonA)
+	if err != nil {
+		return false, err
+	}
+
+	if a.Private {
+		return true, nil
+	}
+
+	b, err := repo.GetPerson(ctx, r.PersonB)
+	if err != nil {
+		return false, err
+	}
+
+	return b.Private, nil
 }
 
 // matchesPerson сообщает, проходит ли ребро фильтр по персоне: nil — без

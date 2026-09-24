@@ -20,7 +20,10 @@ func New(residences ResidenceRepo) *Scenario {
 // идентификатора — *models.ValidationError (поле id), репозиторий не
 // вызывается; нет такой записи — models.ErrNotFound. Приватная запись
 // (Private == true) для вызывающего без полного доступа тоже отдаётся как
-// models.ErrNotFound.
+// models.ErrNotFound. Тот же принцип распространяется на персону, на
+// которую ссылается запись: приватный PersonID прячет проживание целиком,
+// даже если Private == false у самой записи (docs/data-model/
+// entity-write.md §3.1).
 func (s *Scenario) GetResidence(ctx context.Context, access models.Access, id models.ID) (models.Residence, error) {
 	if err := validateID(id); err != nil {
 		return models.Residence{}, err
@@ -35,7 +38,29 @@ func (s *Scenario) GetResidence(ctx context.Context, access models.Access, id mo
 		return models.Residence{}, models.ErrNotFound
 	}
 
+	if access != models.AccessFull {
+		hidden, err := residenceReferencesPrivatePerson(ctx, s.residences, r)
+		if err != nil {
+			return models.Residence{}, err
+		}
+
+		if hidden {
+			return models.Residence{}, models.ErrNotFound
+		}
+	}
+
 	return *r, nil
+}
+
+// residenceReferencesPrivatePerson сообщает, ссылается ли проживание
+// (через PersonID) на приватную персону.
+func residenceReferencesPrivatePerson(ctx context.Context, repo ResidenceRepo, r *models.Residence) (bool, error) {
+	p, err := repo.GetPerson(ctx, r.PersonID)
+	if err != nil {
+		return false, err
+	}
+
+	return p.Private, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

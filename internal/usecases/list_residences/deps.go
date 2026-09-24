@@ -11,4 +11,5 @@ import (
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type ResidenceRepo interface {
 	ListResidences(ctx context.Context, access models.Access, page models.Page) ([]*models.Residence, error)
+	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
 }

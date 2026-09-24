@@ -46,8 +46,13 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 			return out, nil
 		}
 
-		var full bool
-		if full, matched, out = applyWindow(q, list, page, matched, out); full {
+		full, nextMatched, nextOut, err := applyWindow(ctx, s.events, access, q, list, page, matched, out)
+		if err != nil {
+			return nil, err
+		}
+
+		matched, out = nextMatched, nextOut
+		if full {
 			return out, nil
 		}
 	}
@@ -56,26 +61,65 @@ func (s *Scenario) ListEvents(ctx context.Context, access models.Access, q model
 // applyWindow прогоняет одно окно репозитория через фильтр запроса и
 // накапливает результат окна запроса. full — окно запроса заполнено (обход
 // можно остановить).
-func applyWindow(q models.EventQuery, list []*models.Event,
+//
+// Помимо q.PersonID, окно фильтрует события, ссылающиеся (через
+// Participants[i].PersonID) хотя бы на одну приватную персону: для
+// access != models.AccessFull такое событие прячется, даже если само оно
+// не приватно (см. комментарий GetEvent). Это стоит одного дополнительного
+// GetPerson на каждого участника события, попавшего в окно — приемлемо при
+// масштабе этого хранилища (локальный SQLite, не высоконагруженный
+// веб-сервис); тот же компромисс «без кеша/батчинга», что и в create_event
+// для проверки участников.
+func applyWindow(ctx context.Context, repo EventRepo, access models.Access, q models.EventQuery, list []*models.Event,
 	page models.Page, matched int, out []models.Event,
-) (full bool, nextMatched int, nextOut []models.Event) {
+) (full bool, nextMatched int, nextOut []models.Event, err error) {
 	for _, e := range list {
 		if q.PersonID != nil && !hasParticipant(e.Participants, *q.PersonID) {
 			continue
+		}
+
+		if access != models.AccessFull {
+			hidden, err := eventReferencesPrivatePerson(ctx, repo, e)
+			if err != nil {
+				return false, matched, out, err
+			}
+
+			if hidden {
+				continue
+			}
 		}
 
 		if matched >= page.Offset {
 			out = append(out, *e)
 
 			if len(out) == page.Limit {
-				return true, matched, out
+				return true, matched, out, nil
 			}
 		}
 
 		matched++
 	}
 
-	return false, matched, out
+	return false, matched, out, nil
+}
+
+// eventReferencesPrivatePerson сообщает, ссылается ли событие (через
+// участников Participants[i].PersonID) хотя бы на одну приватную персону.
+// Независимая копия одноимённой функции get_event: пакеты сценариев в этом
+// проекте самодостаточны и не делятся кодом друг с другом.
+func eventReferencesPrivatePerson(ctx context.Context, repo EventRepo, e *models.Event) (bool, error) {
+	for _, p := range e.Participants {
+		person, err := repo.GetPerson(ctx, p.PersonID)
+		if err != nil {
+			return false, err
+		}
+
+		if person.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // hasParticipant сообщает, участвует ли персона id в событии.

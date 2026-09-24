@@ -782,6 +782,22 @@ func getReq(t *testing.T, h http.Handler, path string) *httptest.ResponseRecorde
 	return rec
 }
 
+// getReqWithCookies — GET с cookies (в отличие от getReq, который всегда
+// анонимный); нужен для сравнения «владельцу видно / анониму — 404».
+func getReqWithCookies(t *testing.T, h http.Handler, cookies []*http.Cookie, path string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodGet, path, nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
 func putReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 
@@ -2793,6 +2809,26 @@ func TestRelationWriteContractWithRealStore(t *testing.T) {
 	if !strings.Contains(listRec.Body.String(), string(withCitation.ID)) {
 		t.Fatalf("список по person_id=%q не содержит ребро %q: %s", personA.ID, withCitation.ID, listRec.Body)
 	}
+
+	// Приватность референсной персоны: ребро САМО ПО СЕБЕ публично
+	// (private=false), но ссылается на приватную персону — владельцу видно,
+	// анонимному посетителю — 404 (утечка id и метаданных приватной
+	// персоны через публичное ребро, docs/data-model/entity-write.md §3.1).
+	privatePerson := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Тайнов"},"given":{"text":"Скрытко"}}],"private":true}`, http.StatusCreated)
+	refPublic := createRelation(t, h, owner,
+		fmt.Sprintf(`{"kind":"blood","person_a":%q,"person_b":%q,"notes":[],"private":false}`, privatePerson.ID, personA.ID),
+		http.StatusCreated)
+	if refPublic.Private {
+		t.Fatalf("refPublic.Private = %v, want false (само ребро публично)", refPublic.Private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/relations/"+string(refPublic.ID)), http.StatusNotFound)
+
+	ownerRec := getReqWithCookies(t, h, owner, "/api/relations/"+string(refPublic.ID))
+	requireStatusS(t, ownerRec, http.StatusOK)
+	if !strings.Contains(ownerRec.Body.String(), string(privatePerson.ID)) {
+		t.Fatalf("владельцу должно быть видно ребро с person_a=%q: %s", privatePerson.ID, ownerRec.Body)
+	}
 }
 
 func createRelation(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Relation {
@@ -2969,6 +3005,26 @@ func TestResidenceWriteContractWithRealStore(t *testing.T) {
 	requireStatusS(t, listRec, http.StatusOK)
 	if !strings.Contains(listRec.Body.String(), string(withCitation.ID)) {
 		t.Fatalf("список по person_id/place_id не содержит запись %q: %s", withCitation.ID, listRec.Body)
+	}
+
+	// Приватность референсной персоны: проживание САМО ПО СЕБЕ публично
+	// (private=false), но ссылается на приватную персону — владельцу
+	// видно, анонимному посетителю — 404 (docs/data-model/entity-write.md
+	// §3.1).
+	privatePerson := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Тайнов"},"given":{"text":"Скрытко"}}],"private":true}`, http.StatusCreated)
+	refPublic := createResidence(t, h, owner,
+		fmt.Sprintf(`{"person_id":%q,"place_id":%q,"private":false}`, privatePerson.ID, place.ID),
+		http.StatusCreated)
+	if refPublic.Private {
+		t.Fatalf("refPublic.Private = %v, want false (сама запись публична)", refPublic.Private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/residences/"+string(refPublic.ID)), http.StatusNotFound)
+
+	ownerRec := getReqWithCookies(t, h, owner, "/api/residences/"+string(refPublic.ID))
+	requireStatusS(t, ownerRec, http.StatusOK)
+	if !strings.Contains(ownerRec.Body.String(), string(privatePerson.ID)) {
+		t.Fatalf("владельцу должно быть видно проживание с person_id=%q: %s", privatePerson.ID, ownerRec.Body)
 	}
 }
 
@@ -3171,6 +3227,30 @@ func TestEventWriteContractWithRealStore(t *testing.T) {
 		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
 	}
 	requireStatusS(t, getReq(t, h, "/api/events/"+string(public.ID)), http.StatusNotFound)
+
+	// Приватность референсной персоны: событие САМО ПО СЕБЕ публично
+	// (private=false), но один из участников приватен — владельцу видно,
+	// анонимному посетителю — 404 (docs/data-model/entity-write.md §3.1).
+	privatePerson := createPerson(t, h, owner, `{"names":[{"type":"main","surname":{"text":"Тайнов"},"given":{"text":"Скрытко"}}],"private":true}`, http.StatusCreated)
+	refPublic := createEvent(t, h, owner, fmt.Sprintf(`{
+		"type": "birth",
+		"participants": [
+			{"person_id":%q,"role":"родитель"},
+			{"person_id":%q,"role":"свидетель"}
+		],
+		"private": false
+	}`, privatePerson.ID, witness.ID), http.StatusCreated)
+	if refPublic.Private {
+		t.Fatalf("refPublic.Private = %v, want false (само событие публично)", refPublic.Private)
+	}
+
+	requireStatusS(t, getReq(t, h, "/api/events/"+string(refPublic.ID)), http.StatusNotFound)
+
+	ownerRec := getReqWithCookies(t, h, owner, "/api/events/"+string(refPublic.ID))
+	requireStatusS(t, ownerRec, http.StatusOK)
+	if !strings.Contains(ownerRec.Body.String(), string(privatePerson.ID)) {
+		t.Fatalf("владельцу должно быть видно событие с участником person_id=%q: %s", privatePerson.ID, ownerRec.Body)
+	}
 }
 
 func createEvent(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Event {

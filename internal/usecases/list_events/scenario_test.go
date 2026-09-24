@@ -9,9 +9,19 @@ import (
 )
 
 type fakeRepo struct {
-	list  []*models.Event
-	err   error
-	calls []models.Page
+	list   []*models.Event
+	err    error
+	calls  []models.Page
+	people map[models.ID]*models.Person
+}
+
+func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, error) {
+	p, ok := f.people[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return p, nil
 }
 
 func window(list []*models.Event, page models.Page) []*models.Event {
@@ -133,5 +143,52 @@ func TestListEventsPropagatesRepoError(t *testing.T) {
 
 	if _, err := New(&fakeRepo{err: wantErr}).ListEvents(context.Background(), models.AccessFull, models.EventQuery{}); !errors.Is(err, wantErr) {
 		t.Errorf("err=%v, want %v", err, wantErr)
+	}
+}
+
+// TestListEventsHidesEventReferencingPrivateParticipant: событие само по
+// себе не приватно, но один из его участников приватен — для вызывающего
+// без полного доступа оно исключается из списка.
+func TestListEventsHidesEventReferencingPrivateParticipant(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: true},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+	}
+
+	got, err := New(repo).ListEvents(context.Background(), models.AccessPublic, models.EventQuery{})
+	if err != nil || !sameIDs(ids(got), eID('2')) {
+		t.Fatalf("got %v, %v; ожидался только e2 (e1/e3 ссылаются на приватную person1)", ids(got), err)
+	}
+}
+
+// TestListEventsShowsEventReferencingPrivateParticipantWithFullAccess: та
+// же выборка, но для вызывающего с полным доступом — все события видимы.
+func TestListEventsShowsEventReferencingPrivateParticipantWithFullAccess(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: true},
+	}
+
+	got, err := New(repo).ListEvents(context.Background(), models.AccessFull, models.EventQuery{})
+	if err != nil || !sameIDs(ids(got), eID('1'), eID('2'), eID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три события при полном доступе", ids(got), err)
+	}
+}
+
+// TestListEventsDoesNotHideEventsReferencingPublicParticipants: ни один из
+// участников не приватен — список не урезается ошибочно.
+func TestListEventsDoesNotHideEventsReferencingPublicParticipants(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: false},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+	}
+
+	got, err := New(repo).ListEvents(context.Background(), models.AccessPublic, models.EventQuery{})
+	if err != nil || !sameIDs(ids(got), eID('1'), eID('2'), eID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три события — все участники публичны", ids(got), err)
 	}
 }

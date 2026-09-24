@@ -11,4 +11,5 @@ import (
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type RelationRepo interface {
 	GetRelation(ctx context.Context, id models.ID) (*models.Relation, error)
+	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
 }

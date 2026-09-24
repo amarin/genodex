@@ -9,9 +9,19 @@ import (
 )
 
 type fakeRepo struct {
-	list  []*models.Residence
-	err   error
-	calls []models.Page
+	list   []*models.Residence
+	err    error
+	calls  []models.Page
+	people map[models.ID]*models.Person
+}
+
+func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, error) {
+	p, ok := f.people[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return p, nil
 }
 
 func window(list []*models.Residence, page models.Page) []*models.Residence {
@@ -143,5 +153,50 @@ func TestListResidencesPropagatesRepoError(t *testing.T) {
 
 	if _, err := New(&fakeRepo{err: wantErr}).ListResidences(context.Background(), models.AccessFull, models.ResidenceQuery{}); !errors.Is(err, wantErr) {
 		t.Errorf("err=%v, want %v", err, wantErr)
+	}
+}
+
+// TestListResidencesHidesResidenceReferencingPrivatePerson: запись сама по
+// себе не приватна, но её PersonID приватен — для вызывающего без полного
+// доступа она исключается из списка.
+func TestListResidencesHidesResidenceReferencingPrivatePerson(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: true},
+		pID('2'): {ID: pID('2'), Private: false},
+	}
+
+	got, err := New(repo).ListResidences(context.Background(), models.AccessPublic, models.ResidenceQuery{})
+	if err != nil || !sameIDs(ids(got), rsID('3')) {
+		t.Fatalf("got %v, %v; ожидался только rs3 (rs1/rs2 ссылаются на приватную person1)", ids(got), err)
+	}
+}
+
+// TestListResidencesShowsResidenceReferencingPrivatePersonWithFullAccess:
+// та же выборка, но для вызывающего с полным доступом — все записи видимы.
+func TestListResidencesShowsResidenceReferencingPrivatePersonWithFullAccess(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: true},
+	}
+
+	got, err := New(repo).ListResidences(context.Background(), models.AccessFull, models.ResidenceQuery{})
+	if err != nil || !sameIDs(ids(got), rsID('1'), rsID('2'), rsID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три записи при полном доступе", ids(got), err)
+	}
+}
+
+// TestListResidencesDoesNotHideResidencesReferencingPublicPeople: ни одна
+// из референсных персон не приватна — список не урезается ошибочно.
+func TestListResidencesDoesNotHideResidencesReferencingPublicPeople(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: false},
+		pID('2'): {ID: pID('2'), Private: false},
+	}
+
+	got, err := New(repo).ListResidences(context.Background(), models.AccessPublic, models.ResidenceQuery{})
+	if err != nil || !sameIDs(ids(got), rsID('1'), rsID('2'), rsID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три записи — все референсные персоны публичны", ids(got), err)
 	}
 }

@@ -21,7 +21,11 @@ func New(relations RelationRepo) *Scenario {
 // вызывается; нет такой записи — models.ErrNotFound. Приватная запись
 // (Private == true) для вызывающего без полного доступа тоже отдаётся как
 // models.ErrNotFound — тот же принцип «прячем как отсутствующее», что и в
-// List/Search.
+// List/Search. Тот же принцип распространяется и на персон, на которых
+// ссылается ребро: если PersonA или PersonB приватны, ребро целиком
+// прячется как отсутствующее, даже если Private == false у самого ребра
+// (docs/data-model/entity-write.md §3.1) — иначе публичное ребро выдаёт
+// сам факт существования и id приватной персоны.
 func (s *Scenario) GetRelation(ctx context.Context, access models.Access, id models.ID) (models.Relation, error) {
 	if err := validateID(id); err != nil {
 		return models.Relation{}, err
@@ -36,7 +40,39 @@ func (s *Scenario) GetRelation(ctx context.Context, access models.Access, id mod
 		return models.Relation{}, models.ErrNotFound
 	}
 
+	if access != models.AccessFull {
+		hidden, err := relationReferencesPrivatePerson(ctx, s.relations, r)
+		if err != nil {
+			return models.Relation{}, err
+		}
+
+		if hidden {
+			return models.Relation{}, models.ErrNotFound
+		}
+	}
+
 	return *r, nil
+}
+
+// relationReferencesPrivatePerson сообщает, ссылается ли ребро (через
+// PersonA или PersonB) на приватную персону — обе стороны проверяются
+// независимо, чтобы приватность любой из них скрывала ребро целиком.
+func relationReferencesPrivatePerson(ctx context.Context, repo RelationRepo, r *models.Relation) (bool, error) {
+	a, err := repo.GetPerson(ctx, r.PersonA)
+	if err != nil {
+		return false, err
+	}
+
+	if a.Private {
+		return true, nil
+	}
+
+	b, err := repo.GetPerson(ctx, r.PersonB)
+	if err != nil {
+		return false, err
+	}
+
+	return b.Private, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

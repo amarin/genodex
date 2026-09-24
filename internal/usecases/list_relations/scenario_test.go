@@ -9,9 +9,19 @@ import (
 )
 
 type fakeRepo struct {
-	list  []*models.Relation
-	err   error
-	calls []models.Page
+	list   []*models.Relation
+	err    error
+	calls  []models.Page
+	people map[models.ID]*models.Person
+}
+
+func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, error) {
+	p, ok := f.people[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return p, nil
 }
 
 func window(list []*models.Relation, page models.Page) []*models.Relation {
@@ -143,5 +153,59 @@ func TestListRelationsWindowAppliedAfterFilter(t *testing.T) {
 	got, err := New(sample()).ListRelations(context.Background(), models.AccessFull, q)
 	if err != nil || !sameIDs(ids(got), rlID('3')) {
 		t.Fatalf("got %v, %v; ожидался второй элемент отфильтрованного списка (rl3)", ids(got), err)
+	}
+}
+
+// TestListRelationsHidesRelationReferencingPrivatePerson: ребро само по
+// себе не приватно, но одна из сторон (PersonA/PersonB) приватна — для
+// вызывающего без полного доступа ребро исключается из списка, как если бы
+// оно тоже было приватным.
+func TestListRelationsHidesRelationReferencingPrivatePerson(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: true},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+		pID('4'): {ID: pID('4'), Private: false},
+		pID('5'): {ID: pID('5'), Private: false},
+	}
+
+	got, err := New(repo).ListRelations(context.Background(), models.AccessPublic, models.RelationQuery{})
+	if err != nil || !sameIDs(ids(got), rlID('2')) {
+		t.Fatalf("got %v, %v; ожидалось только rl2 (rl1/rl3 ссылаются на приватную person1)", ids(got), err)
+	}
+}
+
+// TestListRelationsShowsRelationReferencingPrivatePersonWithFullAccess: тот
+// же набор данных, но для вызывающего с полным доступом — все рёбра
+// видимы.
+func TestListRelationsShowsRelationReferencingPrivatePersonWithFullAccess(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: true},
+	}
+
+	got, err := New(repo).ListRelations(context.Background(), models.AccessFull, models.RelationQuery{})
+	if err != nil || !sameIDs(ids(got), rlID('1'), rlID('2'), rlID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три ребра при полном доступе", ids(got), err)
+	}
+}
+
+// TestListRelationsDoesNotHideRelationsReferencingPublicPeople: ни одна из
+// референсных персон не приватна — список не урезается ошибочно (защита от
+// false positive).
+func TestListRelationsDoesNotHideRelationsReferencingPublicPeople(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: false},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+		pID('4'): {ID: pID('4'), Private: false},
+		pID('5'): {ID: pID('5'), Private: false},
+	}
+
+	got, err := New(repo).ListRelations(context.Background(), models.AccessPublic, models.RelationQuery{})
+	if err != nil || !sameIDs(ids(got), rlID('1'), rlID('2'), rlID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три ребра — все референсные персоны публичны", ids(got), err)
 	}
 }

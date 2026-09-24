@@ -12,4 +12,5 @@ import (
 type EventRepo interface {
 	Search(ctx context.Context, text string, access models.Access, page models.Page) ([]models.Hit, error)
 	GetEvent(ctx context.Context, id models.ID) (*models.Event, error)
+	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
 }

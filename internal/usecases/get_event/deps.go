@@ -11,4 +11,5 @@ import (
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type EventRepo interface {
 	GetEvent(ctx context.Context, id models.ID) (*models.Event, error)
+	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
 }

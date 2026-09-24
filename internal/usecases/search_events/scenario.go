@@ -69,6 +69,22 @@ func (s *Scenario) SearchEvents(ctx context.Context, access models.Access, q mod
 				return nil, err
 			}
 
+			// Search уже отфильтровал события с Private == true (контракт
+			// generic-индекса); здесь дополнительно прячем событие, если оно
+			// ссылается (через участников) на приватную персону — тот же
+			// принцип, что и в get_event/list_events (см. их комментарии).
+			if access != models.AccessFull {
+				hidden, err := eventReferencesPrivatePerson(ctx, s.events, got)
+				if err != nil {
+					return nil, err
+				}
+
+				if hidden {
+					matched++
+					continue
+				}
+			}
+
 			out = append(out, *got)
 
 			if len(out) == page.Limit {
@@ -78,4 +94,24 @@ func (s *Scenario) SearchEvents(ctx context.Context, access models.Access, q mod
 			matched++
 		}
 	}
+}
+
+// eventReferencesPrivatePerson сообщает, ссылается ли событие (через
+// участников Participants[i].PersonID) хотя бы на одну приватную персону.
+// Независимая копия одноимённой функции get_event/list_events: пакеты
+// сценариев в этом проекте самодостаточны и не делятся кодом друг с
+// другом.
+func eventReferencesPrivatePerson(ctx context.Context, repo EventRepo, e *models.Event) (bool, error) {
+	for _, p := range e.Participants {
+		person, err := repo.GetPerson(ctx, p.PersonID)
+		if err != nil {
+			return false, err
+		}
+
+		if person.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }

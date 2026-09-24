@@ -10,6 +10,7 @@ import (
 
 type fakeRepo struct {
 	events map[models.ID]*models.Event
+	people map[models.ID]*models.Person
 }
 
 func (f *fakeRepo) GetEvent(_ context.Context, id models.ID) (*models.Event, error) {
@@ -19,6 +20,15 @@ func (f *fakeRepo) GetEvent(_ context.Context, id models.ID) (*models.Event, err
 	}
 
 	return e, nil
+}
+
+func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, error) {
+	p, ok := f.people[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return p, nil
 }
 
 func TestGetEventReturnsRecord(t *testing.T) {
@@ -76,5 +86,107 @@ func TestGetEventPrivateVisibleToFullAccess(t *testing.T) {
 
 	if !got.Private {
 		t.Fatalf("Private = %v", got.Private)
+	}
+}
+
+// TestGetEventHiddenWhenParticipantPrivate: событие само по себе не
+// приватно, но один из участников приватен — прячется как отсутствующее
+// для вызывающего без полного доступа.
+func TestGetEventHiddenWhenParticipantPrivate(t *testing.T) {
+	id := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p1 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p2 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	repo := &fakeRepo{
+		events: map[models.ID]*models.Event{id: {
+			ID: id, Private: false,
+			Participants: []models.EventParticipant{{PersonID: p1}, {PersonID: p2}},
+		}},
+		people: map[models.ID]*models.Person{
+			p1: {ID: p1, Private: true},
+			p2: {ID: p2, Private: false},
+		},
+	}
+
+	_, err := New(repo).GetEvent(context.Background(), models.AccessPublic, id)
+	if !errors.Is(err, models.ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound for public event with a private participant", err)
+	}
+}
+
+// TestGetEventVisibleToFullAccessWhenParticipantPrivate: то же событие, но
+// для вызывающего с полным доступом — видно.
+func TestGetEventVisibleToFullAccessWhenParticipantPrivate(t *testing.T) {
+	id := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p1 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p2 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	repo := &fakeRepo{
+		events: map[models.ID]*models.Event{id: {
+			ID: id, Private: false,
+			Participants: []models.EventParticipant{{PersonID: p1}, {PersonID: p2}},
+		}},
+		people: map[models.ID]*models.Person{
+			p1: {ID: p1, Private: true},
+			p2: {ID: p2, Private: false},
+		},
+	}
+
+	got, err := New(repo).GetEvent(context.Background(), models.AccessFull, id)
+	if err != nil {
+		t.Fatalf("GetEvent: %v", err)
+	}
+
+	if got.ID != id {
+		t.Fatalf("got = %+v", got)
+	}
+}
+
+// TestGetEventHiddenWhenOtherParticipantPrivate: первый участник публичен,
+// второй приватен — событие всё равно прячется, каждый участник
+// проверяется независимо (не только первый).
+func TestGetEventHiddenWhenOtherParticipantPrivate(t *testing.T) {
+	id := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p1 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p2 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	repo := &fakeRepo{
+		events: map[models.ID]*models.Event{id: {
+			ID: id, Private: false,
+			Participants: []models.EventParticipant{{PersonID: p1}, {PersonID: p2}},
+		}},
+		people: map[models.ID]*models.Person{
+			p1: {ID: p1, Private: false},
+			p2: {ID: p2, Private: true},
+		},
+	}
+
+	_, err := New(repo).GetEvent(context.Background(), models.AccessPublic, id)
+	if !errors.Is(err, models.ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound when the second participant is private", err)
+	}
+}
+
+// TestGetEventNotHiddenWhenParticipantsPublic: оба участника публичны —
+// событие не прячется ошибочно (защита от false positive).
+func TestGetEventNotHiddenWhenParticipantsPublic(t *testing.T) {
+	id := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p1 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	p2 := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	repo := &fakeRepo{
+		events: map[models.ID]*models.Event{id: {
+			ID: id, Private: false,
+			Participants: []models.EventParticipant{{PersonID: p1}, {PersonID: p2}},
+		}},
+		people: map[models.ID]*models.Person{
+			p1: {ID: p1, Private: false},
+			p2: {ID: p2, Private: false},
+		},
+	}
+
+	got, err := New(repo).GetEvent(context.Background(), models.AccessPublic, id)
+	if err != nil {
+		t.Fatalf("GetEvent: %v", err)
+	}
+
+	if got.ID != id {
+		t.Fatalf("got = %+v", got)
 	}
 }

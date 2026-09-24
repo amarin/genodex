@@ -303,6 +303,26 @@
   списках, пакетная загрузка (без N+1) для людей и административных делений,
   `Search` и `ChildrenOfDivision`.
 
+### Fixed
+
+- **Утечка приватности через публичные `Relation`/`Residence`/`Event`,
+  ссылающиеся на приватную `Person`.** Запись, у которой `Private == false`,
+  но которая держит строгую ссылку на приватную персону
+  (`Relation.PersonA`/`.PersonB`, `Residence.PersonID`,
+  `Event.Participants[i].PersonID`), теперь тоже прячется как
+  отсутствующее (`models.ErrNotFound` из `Get*`, исключение из
+  `List*`/`Search*`) для читателя без `models.AccessFull` — раньше такая
+  запись была полностью видна анонимному/невладельческому читателю и
+  выдавала id и метаданные приватной персоны. Тот же принцип «прячем как
+  отсутствующее», что уже применялся к собственному `Private` записи
+  (docs/data-model/entity-write.md §3.1); `SourceLink.CitationID` →
+  приватная `Citation` — известный отдельный случай того же класса,
+  сознательно не тронут этим исправлением.
+  (`internal/usecases/get_relation`, `internal/usecases/list_relations`,
+  `internal/usecases/get_residence`, `internal/usecases/list_residences`,
+  `internal/usecases/get_event`, `internal/usecases/list_events`,
+  `internal/usecases/search_events`).
+
 ### Changed
 
 - **Меняет поведение MCP `<entity>_update` тулов (все сущности, ~18 тулов):**
