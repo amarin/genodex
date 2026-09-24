@@ -1611,3 +1611,131 @@ export async function updateArchiveDocument(
 export async function deleteArchiveDocument(id: string): Promise<void> {
   return authFetch<void>(`/api/archive-documents/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+// PersonName — контракт одного имени персоны (transport.PersonName):
+// вложенная подформа Person.names — вид имени + три мягкие ссылки на
+// словари (Surname/GivenName/Patronymic, тот же TextRef, что и одиночные
+// поля/списки TextRef в других сущностях — НЕ picker, docs/data-model/
+// entity-write.md §3.7/§4) + служебные части имени (prefix/suffix) + период
+// действия (FactDate since/until, тот же FactDateEditor, что у Parish).
+export type PersonNameType = "" | "main" | "birth" | "married" | "changed" | "pseudonym";
+
+export interface PersonName {
+  type?: PersonNameType;
+  surname: TextRef;
+  given: TextRef;
+  patronymic: TextRef;
+  prefix?: string;
+  suffix?: string;
+  since?: FactDate | null;
+  until?: FactDate | null;
+}
+
+// Person — персона, ядро графа генеалогии (transport.Person). gender —
+// простая строка (не TextRef). names — первая в проекте вложенная подформа
+// «массив объектов» (не массив строк/TextRef — PersonNameListEditor,
+// docs/data-model/entity-write.md §3.7).
+export type PersonGender = "" | "male" | "female" | "unknown";
+
+// GENDER_OPTIONS/genderLabel — models.PersonGender (internal/models/person_gender.go),
+// по образцу ADMIN_DIVISION_TYPE_LABELS/adminDivisionTypeLabel выше.
+export const GENDER_OPTIONS: { value: PersonGender; label: string }[] = [
+  { value: "", label: "Не указан" },
+  { value: "male", label: "Мужской" },
+  { value: "female", label: "Женский" },
+  { value: "unknown", label: "Неизвестен" },
+];
+
+export function genderLabel(g: string | undefined): string {
+  return GENDER_OPTIONS.find((o) => o.value === (g ?? ""))?.label ?? (g || "");
+}
+
+export interface Person {
+  id: string;
+  gender?: PersonGender;
+  names: PersonName[];
+  estates: TextRef[];
+  titles: TextRef[];
+  nicknames: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+// PersonInput — тело POST/PUT /api/people (transport.PersonCreate и
+// transport.PersonUpdate имеют одинаковую форму: полная замена всех полей).
+// names и sources — обязательные поля (полная замена), как и у всех прочих
+// *Input с рождения контракта.
+export interface PersonInput {
+  gender?: PersonGender;
+  names: PersonName[];
+  estates: TextRef[];
+  titles: TextRef[];
+  nicknames: TextRef[];
+  notes: TextRef[];
+  sources: SourceLink[];
+  private: boolean;
+}
+
+export interface PersonQuery {
+  limit?: number;
+  offset?: number;
+}
+
+export interface PersonSearchQuery {
+  q: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchPeople(query: PersonQuery = {}): Promise<Person[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/people${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function searchPeople(query: PersonSearchQuery): Promise<Person[]> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined) {
+      params.set(key, String(value));
+    }
+  }
+  const qs = params.toString();
+  const resp = await fetch(`/api/people/search${qs ? `?${qs}` : ""}`);
+  if (!resp.ok) {
+    throw new Error(`API error: ${resp.status}`);
+  }
+  return resp.json();
+}
+
+export async function fetchPerson(id: string): Promise<Person> {
+  return authFetch<Person>(`/api/people/${encodeURIComponent(id)}`);
+}
+
+export async function createPerson(input: PersonInput): Promise<Person> {
+  return authFetch<Person>("/api/people", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updatePerson(id: string, input: PersonInput): Promise<Person> {
+  return authFetch<Person>(`/api/people/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deletePerson(id: string): Promise<void> {
+  return authFetch<void>(`/api/people/${encodeURIComponent(id)}`, { method: "DELETE" });
+}

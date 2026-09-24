@@ -39,6 +39,8 @@ import CitationsList from "./pages/CitationsList";
 import CitationView from "./pages/CitationView";
 import FamiliesList from "./pages/FamiliesList";
 import FamilyView from "./pages/FamilyView";
+import PeopleList from "./pages/PeopleList";
+import PersonView from "./pages/PersonView";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -100,6 +102,8 @@ export default function App() {
           <Route path="/citations/:id" element={<PageLayout><CitationView /></PageLayout>} />
           <Route path="/families" element={<PageLayout><FamiliesList /></PageLayout>} />
           <Route path="/families/:id" element={<PageLayout><FamilyView /></PageLayout>} />
+          <Route path="/people" element={<PageLayout><PeopleList /></PageLayout>} />
+          <Route path="/people/:id" element={<PageLayout><PersonView /></PageLayout>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/settings" element={<SettingsPage />} />

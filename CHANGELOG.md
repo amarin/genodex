@@ -176,7 +176,7 @@
   `update_family`/`delete_family`), `internal/httpapi/family{,_write}.go`,
   `internal/mcp/family.go`, `web/src/pages/{FamiliesList,FamilyForm,
   FamilyView}.tsx`, `web/src/App.tsx`, `web/src/pages/EntityCatalog.tsx`).
-- Персоны (`Person`) — подпроект 8, backend (веб — отдельная работа): ядро
+- Персоны (`Person`) — подпроект 8: ядро
   графа генеалогии, usecase-сценарии, HTTP (`/api/people*`) и MCP
   (`person_list/search/get/create/update/delete`). Единственная строго
   проверяемая ссылка — `Sources[i].CitationID`, как и везде; все прочие
@@ -206,7 +206,18 @@
   (`internal/transport/{person,person_name,person_write}.go`,
   `internal/usecases/{list,search}_people/`, `internal/usecases/
   {get,create,update,delete}_person/`, `internal/httpapi/person{,_write}.go`,
-  `internal/mcp/person.go`).
+  `internal/mcp/person.go`). Веб: новый переиспользуемый паттерн
+  `PersonNameListEditor` (`web/src/PersonNameList.tsx`) — первая в
+  программе повторяющаяся форма-редактор со strong-typed baseline-per-mount
+  ref-preservation (сохраняет `ref`/`type` поля `surname`/`given`/
+  `patronymic`, только если их текст не изменился по сравнению со значением
+  на момент монтирования компонента, по строке — независимо друг от
+  друга); страницы «Персоны» — список/просмотр/редактирование/создание
+  (`web/src/pages/{PeopleList,PersonForm,PersonView}.tsx`), поля `gender`
+  (`Select`) и `names` добавлены поверх существующего паттерна
+  `estates/titles/nicknames/notes`+`sources`+`private`; строка «Персоны» в
+  каталоге сущностей (`web/src/api.ts`, `web/src/App.tsx`,
+  `web/src/pages/EntityCatalog.tsx`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице
