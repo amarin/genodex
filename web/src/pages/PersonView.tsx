@@ -86,15 +86,12 @@ function SourceLinkListView({ items }: { items: SourceLink[] }) {
 // период для полного просмотра.
 function personNameLine(n: PersonName): string {
   const parts: string[] = [];
-  const typeLabel = personNameTypeLabel(n.type);
-  if (typeLabel !== "") {
-    parts.push(typeLabel);
+  if (n.type !== "") {
+    parts.push(personNameTypeLabel(n.type));
   }
-  const name = formatPersonName(n);
-  parts.push(name !== "" ? name : "—");
-  if (n.prefix) {
-    parts.push(n.prefix);
-  }
+  const core = formatPersonName(n);
+  const namePiece = core !== "" ? core : "—";
+  parts.push(n.prefix ? `${n.prefix} ${namePiece}` : namePiece);
   if (n.suffix) {
     parts.push(n.suffix);
   }

@@ -6,8 +6,8 @@ import "github.com/amarin/genodex/internal/models"
 // Person.Names, models.PersonName): вид имени + три мягкие ссылки на
 // словари (Surname/GivenName/Patronymic, того же TextRef-контракта, что и
 // одиночные списки TextRef в других сущностях) + служебные части имени +
-// период действия (FactDate). Первая вложенная подформа-«массив объектов» в
-// программе (docs/data-model/entity-write.md §3.7).
+// период действия (FactDate). Первый массив объектов, чьи собственные
+// элементы несут вложенные объекты (docs/data-model/entity-write.md §3.7).
 type PersonName struct {
 	Type       string    `json:"type,omitempty"`
 	Surname    TextRef   `json:"surname"`

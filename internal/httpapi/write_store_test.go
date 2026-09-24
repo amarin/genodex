@@ -2560,17 +2560,34 @@ func TestPersonWriteContractWithRealStore(t *testing.T) {
 	// та проверка ловит только "update сбрасывает private в false", а не
 	// "update не выставляет private в true у публичной записи"; тот же
 	// урок, что и финальное ревью подпроекта 7).
-	public := createPerson(t, h, owner, `{"names":[],"estates":[],"titles":[],"nicknames":[],"notes":[],"private":false}`, http.StatusCreated)
+	public := createPerson(t, h, owner,
+		`{"names":[{"type":"main","surname":{"text":"Тайнова"},"given":{"text":"Анна"}}],"estates":[],"titles":[],"nicknames":[],"notes":[],"private":false}`,
+		http.StatusCreated)
 	requireStatusS(t, getReq(t, h, "/api/people/"+string(public.ID)), http.StatusOK)
 
 	rec = putPersonReq(t, h, owner, "/api/people/"+string(public.ID),
-		`{"names":[],"estates":[],"titles":[],"nicknames":[],"notes":[],"private":true}`)
+		`{"names":[{"type":"main","surname":{"text":"Тайнова"},"given":{"text":"Анна"}}],"estates":[],"titles":[],"nicknames":[],"notes":[],"private":true}`)
 	requireStatusS(t, rec, http.StatusOK)
 	afterUpdate := decodePersonS(t, rec)
 	if !afterUpdate.Private {
 		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
 	}
 	requireStatusS(t, getReq(t, h, "/api/people/"+string(public.ID)), http.StatusNotFound)
+
+	// Приватность работает не только на прямом GET по id — те же правила
+	// доступа обязаны отфильтровывать приватную запись и в списке
+	// (listByIDs), и в поиске (searchSQL): это отдельные от Get пути,
+	// которые теоретически могли бы разойтись.
+	listRec := getReq(t, h, "/api/people")
+	requireStatusS(t, listRec, http.StatusOK)
+	if strings.Contains(listRec.Body.String(), string(public.ID)) {
+		t.Fatalf("анонимный список /api/people содержит приватную персону: %s", listRec.Body)
+	}
+	searchPrivateRec := getReq(t, h, "/api/people/search?q=Тайнова")
+	requireStatusS(t, searchPrivateRec, http.StatusOK)
+	if strings.Contains(searchPrivateRec.Body.String(), string(public.ID)) {
+		t.Fatalf("анонимный поиск /api/people/search содержит приватную персону: %s", searchPrivateRec.Body)
+	}
 
 	// Строгий FK: существующая цитата — сохраняется.
 	src := createSource(t, h, owner,
