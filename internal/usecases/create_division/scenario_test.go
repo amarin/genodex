@@ -3,6 +3,7 @@ package create_division
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/amarin/genodex/internal/models"
@@ -269,5 +270,29 @@ func TestCreateDivisionSourceCitationNotFound(t *testing.T) {
 
 	if len(st.tx.saved) != 0 {
 		t.Fatalf("сохранено %d единиц при несуществующей цитате", len(st.tx.saved))
+	}
+}
+
+// TestCreateDivisionNesting: губерния внутри уезда — *ValidationError по полю
+// type, ничего не сохраняется.
+func TestCreateDivisionNesting(t *testing.T) {
+	parent := &models.AdministrativeDivision{ID: adID('0'), Name: "Боровский", Type: models.AdminDivisionUezd}
+	st := &fakeStore{tx: newFakeTx(parent)}
+
+	in := models.AdministrativeDivision{Name: "Калужская", Type: models.AdminDivisionGuberniya}
+	pid := parent.ID
+	in.ParentID = &pid
+
+	_, err := New(st, &stubIDs{id: adID('V')}).CreateDivision(context.Background(), in)
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "type" {
+		t.Fatalf("err = %v, ожидалась *ValidationError по полю type", err)
+	}
+	if !strings.Contains(ve.Reason, "volost") {
+		t.Errorf("Reason = %q, ожидался перечень допустимых типов", ve.Reason)
+	}
+	if len(st.tx.saved) != 0 {
+		t.Fatalf("saved=%v; ничего не должно сохраняться", st.tx.saved)
 	}
 }

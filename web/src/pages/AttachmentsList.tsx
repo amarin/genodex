@@ -73,7 +73,7 @@ export default function AttachmentsList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Вложения" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Вложения" }]}
       />
       <Card
         title="Вложения"

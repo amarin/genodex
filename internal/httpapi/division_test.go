@@ -81,6 +81,10 @@ func (f *fakeDivisions) DeleteDivision(_ context.Context, id models.ID) error {
 	return f.deleteErr
 }
 
+func (f *fakeDivisions) ListDivisionTypes(_ context.Context) ([]models.AdminDivisionTypeInfo, error) {
+	return models.AdminDivisionTypeInfos(), nil
+}
+
 func get(t *testing.T, h http.Handler, target string) *httptest.ResponseRecorder {
 	t.Helper()
 

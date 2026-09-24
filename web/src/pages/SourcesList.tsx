@@ -69,7 +69,7 @@ export default function SourcesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Источники" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Источники" }]}
       />
       <Card
         title="Источники"

@@ -226,7 +226,7 @@ export default function RepositoryView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/repositories">Хранилища</Link> },
           { title: repository.name },
         ]}

@@ -128,7 +128,7 @@ export default function DivisionsList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Административное деление" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Административное деление" }]}
       />
       <Card
         title="Административное деление"
@@ -170,6 +170,7 @@ export default function DivisionsList() {
         <CreateDivisionModal
           open={createOpen}
           parentId={null}
+          parentType={null}
           onClose={() => setCreateOpen(false)}
           onCreated={(d) => {
             setCreateOpen(false);

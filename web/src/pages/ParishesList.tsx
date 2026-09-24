@@ -72,7 +72,7 @@ export default function ParishesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Приходы" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Приходы" }]}
       />
       <Card
         title="Приходы"

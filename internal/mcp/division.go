@@ -24,6 +24,11 @@ func divisionTypeList() string {
 	return strings.Join(names, ", ")
 }
 
+// divisionNestingHint — правило вложенности типов для описаний тулов записи.
+const divisionNestingHint = "Вложенность проверяется: тип единицы должен быть допустим внутри типа родителя " +
+	"(ранг ниже родительского: губерния > уезд > волость > населённые пункты; other — без ограничений). " +
+	"Ранги и допустимые дочерние типы — тул division_type_list"
+
 // registerDivisionTools регистрирует тулы для работы с единицами административного деления.
 func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 	tool := mcp.NewTool(
@@ -58,7 +63,8 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 
 	tool = mcp.NewTool(
 		"division_create",
-		mcp.WithDescription("Создать единицу административного деления; id генерируется сервером; результат — JSON созданной единицы. Неверные name/type или несуществующий parent_id — ошибка тула"),
+		mcp.WithDescription("Создать единицу административного деления; id генерируется сервером; результат — JSON созданной единицы. Неверные name/type, несуществующий parent_id или недопустимая вложенность — ошибка тула. "+
+			"name — только имя собственное, без типа (\"Боровский\", не \"Боровский уезд\"). "+divisionNestingHint),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Название единицы")),
 		mcp.WithString("type", mcp.Required(), mcp.Description(divisionTypeList())),
 		mcp.WithString("parent_id", mcp.Description("id родительской единицы; пусто — корень")),
@@ -72,7 +78,8 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 
 	tool = mcp.NewTool(
 		"division_update",
-		mcp.WithDescription("Изменить единицу административного деления: результат — JSON обновлённой единицы. name/type — обязательны, заменяются всегда; parent_id — при отсутствии в вызове сохраняет текущего родителя, явная пустая строка делает единицу корнем; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
+		mcp.WithDescription("Изменить единицу административного деления: результат — JSON обновлённой единицы. name/type — обязательны, заменяются всегда; parent_id — при отсутствии в вызове сохраняет текущего родителя, явная пустая строка делает единицу корнем; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их. "+
+			"При смене type или parent_id проверяется вложенность: новый тип должен быть допустим в родителе и допускать типы текущих дочерних единиц. "+divisionNestingHint),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
 		mcp.WithString("type", mcp.Required(), mcp.Description(divisionTypeList())),
@@ -91,6 +98,28 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы")),
 	)
 	s.AddTool(tool, divisionDeleteHandler(divisions))
+
+	tool = mcp.NewTool(
+		"division_type_list",
+		mcp.WithDescription("Справочник типов единиц административного деления: для каждого типа — код (type), "+
+			"русское название (label), ранг в иерархии (rank; null у other), признак населённого пункта "+
+			"(settlement) и типы, допустимые внутри единицы этого типа (children). Используйте перед "+
+			"division_create/division_update, чтобы выбрать допустимый тип"),
+	)
+	s.AddTool(tool, divisionTypeListHandler(divisions))
+}
+
+// divisionTypeListHandler — тул division_type_list: отдаёт справочник типов
+// контрактом transport.AdminDivisionTypeInfo.
+func divisionTypeListHandler(divisions DivisionService) server.ToolHandlerFunc {
+	return func(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		infos, err := divisions.ListDivisionTypes(ctx)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить справочник типов: %v", err)), nil
+		}
+
+		return toolJSONResult(transport.AdminDivisionTypeInfosFromModels(infos))
+	}
 }
 
 // divisionListHandler возвращает обработчик тула division_list: разбирает

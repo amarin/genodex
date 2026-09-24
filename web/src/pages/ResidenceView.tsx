@@ -236,7 +236,7 @@ export default function ResidenceView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/residences">Проживания</Link> },
           { title },
         ]}

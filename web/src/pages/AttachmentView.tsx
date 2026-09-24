@@ -209,7 +209,7 @@ export default function AttachmentView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/attachments">Вложения</Link> },
           { title: attachmentLabel(attachment) },
         ]}

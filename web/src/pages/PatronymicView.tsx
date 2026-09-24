@@ -187,7 +187,7 @@ export default function PatronymicView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/patronymics">Отчества</Link> },
           { title: patronymic.canonical },
         ]}

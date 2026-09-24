@@ -104,6 +104,7 @@ func NewHandler(deps Deps) http.Handler {
 }
 
 // registerDivisionRoutes регистрирует маршруты /api/admin-divisions,
+// /api/admin-division-types,
 // /api/docs, /api/health на переданном mux — общий код NewHandler и
 // NewAPIHandler.
 func registerDivisionRoutes(mux *http.ServeMux, divisions DivisionService, docsFS fs.FS) {
@@ -114,6 +115,7 @@ func registerDivisionRoutes(mux *http.ServeMux, divisions DivisionService, docsF
 	mux.HandleFunc("POST /api/admin-divisions", handleDivisionCreate(divisions))
 	mux.HandleFunc("PUT /api/admin-divisions/{id}", handleDivisionUpdate(divisions))
 	mux.HandleFunc("DELETE /api/admin-divisions/{id}", handleDivisionDelete(divisions))
+	mux.HandleFunc("GET /api/admin-division-types", handleDivisionTypeList(divisions))
 	mux.HandleFunc("GET /api/docs", handleDocList(docsFS))
 	mux.HandleFunc("GET /api/docs/{path}", handleDocContent(docsFS))
 }

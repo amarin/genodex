@@ -72,7 +72,7 @@ export default function PatronymicsList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Отчества" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Отчества" }]}
       />
       <Card
         title="Отчества"

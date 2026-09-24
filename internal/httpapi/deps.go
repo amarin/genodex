@@ -8,7 +8,8 @@ import (
 )
 
 // DivisionService — контракт сценариев административного деления, отдаваемых
-// в HTTP: список, чтение, создание, изменение, удаление.
+// в HTTP: список, чтение, создание, изменение, удаление,
+// справочник типов.
 type DivisionService interface {
 	ListDivisions(ctx context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error)
 	SearchDivisions(ctx context.Context, access models.Access, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error)
@@ -16,6 +17,7 @@ type DivisionService interface {
 	CreateDivision(ctx context.Context, d models.AdministrativeDivision) (models.AdministrativeDivision, error)
 	UpdateDivision(ctx context.Context, d models.AdministrativeDivision) error
 	DeleteDivision(ctx context.Context, id models.ID) error
+	ListDivisionTypes(ctx context.Context) ([]models.AdminDivisionTypeInfo, error)
 }
 
 // SurnameService — контракт сценариев словарных записей фамилий, отдаваемых

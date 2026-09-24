@@ -31,6 +31,14 @@ import {
 import { ApiError, type ApiErrorReferrer } from "../auth";
 import { useSession } from "../session";
 import { SourceLinkListEditor } from "../SourceLinkList";
+import {
+  allowedChildTypes,
+  childKinds,
+  childKindsPhrase,
+  DIVISION_NAME_PLACEHOLDER,
+  DIVISION_NAME_RULES,
+  useAdminDivisionTypes,
+} from "../divisionTypes";
 import { CreateDivisionModal, TYPE_OPTIONS } from "./DivisionForm";
 
 function divisionLabel(d: AdminDivision): string {
@@ -76,6 +84,7 @@ export default function DivisionView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { session } = useSession();
+  const typeInfos = useAdminDivisionTypes();
 
   const [division, setDivision] = useState<AdminDivision | null>(null);
   const [parent, setParent] = useState<AdminDivision | null>(null);
@@ -285,12 +294,14 @@ export default function DivisionView() {
     return error != null ? <Alert type="error" showIcon message={error} /> : null;
   }
 
+  const addChildPhrase = childKindsPhrase(childKinds(allowedChildTypes(typeInfos, division.type)));
+
   return (
     <Card>
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/divisions">Административное деление</Link> },
           ...(parent != null
             ? [{ title: <Link to={`/divisions/${parent.id}`}>{parent.name}</Link> }]
@@ -316,7 +327,9 @@ export default function DivisionView() {
           {session != null && (
             <Space style={{ marginTop: 16 }}>
               <Button onClick={startEdit}>Редактировать</Button>
-              <Button onClick={() => setAddChildOpen(true)}>+ добавить дочернюю</Button>
+              {addChildPhrase != null && (
+                <Button onClick={() => setAddChildOpen(true)}>+ {addChildPhrase}</Button>
+              )}
               <Popconfirm
                 title={`Удалить «${division.name}»?`}
                 description="Действие необратимо."
@@ -339,9 +352,9 @@ export default function DivisionView() {
           <Form.Item
             name="name"
             label="Название"
-            rules={[{ required: true, whitespace: true, message: "Введите название" }]}
+            rules={DIVISION_NAME_RULES}
           >
-            <Input />
+            <Input placeholder={DIVISION_NAME_PLACEHOLDER} />
           </Form.Item>
           <Form.Item name="type" label="Тип" rules={[{ required: true, message: "Выберите тип" }]}>
             <Select options={TYPE_OPTIONS} />
@@ -412,6 +425,7 @@ export default function DivisionView() {
       <CreateDivisionModal
         open={addChildOpen}
         parentId={division.id}
+        parentType={division.type}
         onClose={() => setAddChildOpen(false)}
         onCreated={() => {
           setAddChildOpen(false);

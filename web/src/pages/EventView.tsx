@@ -279,7 +279,7 @@ export default function EventView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/events">События</Link> },
           { title },
         ]}

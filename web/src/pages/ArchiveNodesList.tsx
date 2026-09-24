@@ -150,7 +150,7 @@ export default function ArchiveNodesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Архивные единицы" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Архивные единицы" }]}
       />
       <Card
         title="Архивные единицы"

@@ -74,7 +74,7 @@ export default function NotesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Заметки" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Заметки" }]}
       />
       <Card
         title="Заметки"

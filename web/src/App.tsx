@@ -47,6 +47,8 @@ import ResidencesList from "./pages/ResidencesList";
 import ResidenceView from "./pages/ResidenceView";
 import EventsList from "./pages/EventsList";
 import EventView from "./pages/EventView";
+import ReferenceCatalog from "./pages/ReferenceCatalog";
+import DivisionTypesPage from "./pages/DivisionTypesPage";
 import LoginPage from "./pages/Login";
 import RegisterPage from "./pages/Register";
 import SettingsPage from "./pages/Settings";
@@ -72,6 +74,8 @@ export default function App() {
       <SessionProvider>
         <Routes>
           <Route path="/" element={<PageLayout><EntityCatalog /></PageLayout>} />
+          <Route path="/reference" element={<PageLayout><ReferenceCatalog /></PageLayout>} />
+          <Route path="/reference/division-types" element={<PageLayout><DivisionTypesPage /></PageLayout>} />
           <Route path="/docs" element={<PageLayout><DocsPanel /></PageLayout>} />
           <Route path="/docs/:docPath*" element={<PageLayout><DocsPanel /></PageLayout>} />
           <Route path="/divisions" element={<PageLayout><DivisionsList /></PageLayout>} />

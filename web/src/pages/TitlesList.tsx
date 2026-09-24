@@ -72,7 +72,7 @@ export default function TitlesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Титулы" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Титулы" }]}
       />
       <Card
         title="Титулы"

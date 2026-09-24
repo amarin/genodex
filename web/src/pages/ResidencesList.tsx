@@ -74,7 +74,7 @@ export default function ResidencesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Проживания" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Проживания" }]}
       />
       <Card
         title="Проживания"

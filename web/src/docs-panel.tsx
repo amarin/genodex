@@ -136,7 +136,7 @@ export default function DocsPanel() {
       <>
         <Breadcrumb
           items={[
-            { title: <Link to="/">Сущности</Link> },
+            { title: <Link to="/">Данные</Link> },
             { title: <a onClick={backToList}>Документация</a> },
             { title: currentFile.title },
           ]}
@@ -158,7 +158,7 @@ export default function DocsPanel() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Документация" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Документация" }]}
       />
       {error != null && <Alert type="error" showIcon message={error} />}
       {!loading && error == null && (

@@ -209,7 +209,7 @@ export default function GivenNameView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/given-names">Имена</Link> },
           { title: givenName.canonical },
         ]}

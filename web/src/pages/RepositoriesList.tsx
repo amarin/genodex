@@ -72,7 +72,7 @@ export default function RepositoriesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Хранилища" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Хранилища" }]}
       />
       <Card
         title="Хранилища"

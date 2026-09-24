@@ -72,7 +72,7 @@ export default function GivenNamesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Имена" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Имена" }]}
       />
       <Card
         title="Имена"

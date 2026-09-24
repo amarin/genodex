@@ -82,6 +82,7 @@ import (
 	list_attachments "github.com/amarin/genodex/internal/usecases/list_attachments"
 	list_churches "github.com/amarin/genodex/internal/usecases/list_churches"
 	list_citations "github.com/amarin/genodex/internal/usecases/list_citations"
+	list_division_types "github.com/amarin/genodex/internal/usecases/list_division_types"
 	list_divisions "github.com/amarin/genodex/internal/usecases/list_divisions"
 	list_estates "github.com/amarin/genodex/internal/usecases/list_estates"
 	list_events "github.com/amarin/genodex/internal/usecases/list_events"
@@ -148,6 +149,7 @@ type divisionService struct {
 	create *create_division.Scenario
 	update *update_division.Scenario
 	del    *delete_division.Scenario
+	types  *list_division_types.Scenario
 }
 
 func (s *divisionService) ListDivisions(ctx context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error) {
@@ -174,6 +176,10 @@ func (s *divisionService) DeleteDivision(ctx context.Context, id models.ID) erro
 	return s.del.DeleteDivision(ctx, id)
 }
 
+func (s *divisionService) ListDivisionTypes(ctx context.Context) ([]models.AdminDivisionTypeInfo, error) {
+	return s.types.ListDivisionTypes(ctx)
+}
+
 // newDivisionService собирает фасад на настоящем хранилище.
 func newDivisionService(t *testing.T, st *sqlstore.Store) *divisionService {
 	t.Helper()
@@ -185,6 +191,7 @@ func newDivisionService(t *testing.T, st *sqlstore.Store) *divisionService {
 		create: create_division.New(st, idgen.New()),
 		update: update_division.New(st),
 		del:    delete_division.New(st),
+		types:  list_division_types.New(),
 	}
 }
 

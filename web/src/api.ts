@@ -65,6 +65,38 @@ export function adminDivisionTypeLabel(t: string): string {
   return ADMIN_DIVISION_TYPE_LABELS[t as AdminDivisionType] ?? t;
 }
 
+// AdminDivisionTypeInfo — transport.AdminDivisionTypeInfo: запись справочника
+// типов (GET /api/admin-division-types). rank — null у other; children —
+// типы, допустимые внутри единицы этого типа (правило вложенности сервера).
+export interface AdminDivisionTypeInfo {
+  type: AdminDivisionType;
+  label: string;
+  rank: number | null;
+  settlement: boolean;
+  children: AdminDivisionType[];
+}
+
+// Справочник статичен в пределах сборки сервера — один запрос на сессию
+// страницы; неудачный запрос не кешируется.
+let divisionTypesPromise: Promise<AdminDivisionTypeInfo[]> | null = null;
+
+export function fetchAdminDivisionTypes(): Promise<AdminDivisionTypeInfo[]> {
+  if (divisionTypesPromise == null) {
+    divisionTypesPromise = fetch("/api/admin-division-types")
+      .then((resp) => {
+        if (!resp.ok) {
+          throw new Error(`API error: ${resp.status}`);
+        }
+        return resp.json() as Promise<AdminDivisionTypeInfo[]>;
+      })
+      .catch((e) => {
+        divisionTypesPromise = null;
+        throw e;
+      });
+  }
+  return divisionTypesPromise;
+}
+
 // AdminDivisionInput — тело POST/PUT /api/admin-divisions (transport.AdminDivisionCreate
 // и transport.AdminDivisionUpdate имеют одинаковую форму: полная замена name/type/parent_id;
 // с подпроекта 5 сюда же входит sources — тоже полная замена).

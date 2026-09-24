@@ -87,7 +87,7 @@ export default function EventsList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "События" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "События" }]}
       />
       <Card
         title="События"

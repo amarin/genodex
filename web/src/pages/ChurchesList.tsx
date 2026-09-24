@@ -72,7 +72,7 @@ export default function ChurchesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Церкви" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Церкви" }]}
       />
       <Card
         title="Церкви"

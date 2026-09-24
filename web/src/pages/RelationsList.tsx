@@ -61,7 +61,7 @@ export default function RelationsList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Связи" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Связи" }]}
       />
       <Card
         title="Связи"

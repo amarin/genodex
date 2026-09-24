@@ -253,7 +253,7 @@ export default function RelationView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/relations">Связи</Link> },
           { title },
         ]}

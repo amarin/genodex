@@ -72,7 +72,7 @@ export default function FamiliesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Роды" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Роды" }]}
       />
       <Card
         title="Роды"

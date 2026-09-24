@@ -72,7 +72,7 @@ export default function SurnamesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Фамилии" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Фамилии" }]}
       />
       <Card
         title="Фамилии"

@@ -228,7 +228,7 @@ export default function ParishView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/parishes">Приходы</Link> },
           { title: parish.name },
         ]}

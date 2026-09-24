@@ -274,7 +274,7 @@ export default function PersonView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/people">Персоны</Link> },
           { title },
         ]}

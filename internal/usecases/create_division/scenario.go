@@ -22,11 +22,14 @@ func New(st DivisionStore, ids IDGenerator) *Scenario {
 
 // CreateDivision создаёт единицу деления: генерирует идентификатор, проверяет
 // инварианты, в одной транзакции убеждается в существовании родителя и
-// сохраняет. Возвращает созданную единицу с заполненным ID.
+// сохраняет. Тип единицы должен быть допустим внутри родителя
+// (models.AdminDivisionType.CanContain). Возвращает созданную единицу с
+// заполненным ID.
 //
 // Ошибки: непустой входной ID (явный идентификатор допустим только для
-// импорта), невалидная сущность и несуществующий родитель —
-// *models.ValidationError (поля id, соответствующее и parent_id); прочее —
+// импорта), невалидная сущность, несуществующий родитель и недопустимая
+// вложенность — *models.ValidationError (поля id, соответствующее, parent_id
+// и type); прочее —
 // ошибки хранилища как есть.
 func (s *Scenario) CreateDivision(ctx context.Context, d models.AdministrativeDivision) (models.AdministrativeDivision, error) {
 	if d.ID != "" {
@@ -45,12 +48,17 @@ func (s *Scenario) CreateDivision(ctx context.Context, d models.AdministrativeDi
 
 	err := s.store.InTx(ctx, func(tx store.Store) error {
 		if d.ParentID != nil {
-			if _, err := tx.GetAdministrativeDivision(ctx, *d.ParentID); err != nil {
+			parent, err := tx.GetAdministrativeDivision(ctx, *d.ParentID)
+			if err != nil {
 				if errors.Is(err, models.ErrNotFound) {
 					return parentErr("родитель %q не найден", *d.ParentID)
 				}
 
 				return err
+			}
+
+			if e := models.NestingError("type", parent.Type, d.Type); e != nil {
+				return e
 			}
 		}
 

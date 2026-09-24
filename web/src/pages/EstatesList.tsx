@@ -72,7 +72,7 @@ export default function EstatesList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Сословия" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Сословия" }]}
       />
       <Card
         title="Сословия"

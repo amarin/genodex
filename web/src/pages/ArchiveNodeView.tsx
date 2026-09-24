@@ -300,7 +300,7 @@ export default function ArchiveNodeView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to={`/archive-nodes?archive_id=${encodeURIComponent(node.archive_id)}`}>Архивные единицы</Link> },
           ...(parent != null
             ? [{ title: <Link to={`/archive-nodes/${parent.id}`}>{nodeLabel(parent)}</Link> }]

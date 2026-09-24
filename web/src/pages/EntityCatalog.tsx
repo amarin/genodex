@@ -33,7 +33,7 @@ const SORTED_ENTRIES = [...CATALOG_ENTRIES].sort((a, b) => a.label.localeCompare
 
 export default function EntityCatalog() {
   return (
-    <Card title="Сущности">
+    <Card title="Данные">
       <List
         dataSource={SORTED_ENTRIES}
         renderItem={(entry) => (

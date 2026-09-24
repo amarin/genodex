@@ -221,7 +221,7 @@ export default function FamilyView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/families">Роды</Link> },
           { title: family.name },
         ]}

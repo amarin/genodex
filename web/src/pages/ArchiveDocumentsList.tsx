@@ -74,7 +74,7 @@ export default function ArchiveDocumentsList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Архивные документы" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Архивные документы" }]}
       />
       <Card
         title="Архивные документы"

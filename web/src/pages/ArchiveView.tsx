@@ -235,7 +235,7 @@ export default function ArchiveView() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/">Сущности</Link> },
+          { title: <Link to="/">Данные</Link> },
           { title: <Link to="/archives">Архивы</Link> },
           { title: archive.name },
         ]}

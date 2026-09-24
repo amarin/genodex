@@ -73,7 +73,7 @@ export default function CitationsList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Цитаты" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Цитаты" }]}
       />
       <Card
         title="Цитаты"

@@ -21,10 +21,12 @@ func New(st DivisionStore) *Scenario {
 
 // UpdateDivision полностью заменяет единицу деления по d.ID: проверяет
 // инварианты, в одной транзакции убеждается, что единица существует, а цепочка
-// родителей не проходит через неё саму (цикл), и сохраняет.
+// родителей не проходит через неё саму (цикл), вложенность типов допустима
+// (checkNesting), и сохраняет.
 //
-// Ошибки: невалидная сущность, несуществующий родитель и цикл по parent_id —
-// *models.ValidationError (соответствующее поле и parent_id); нет такой
+// Ошибки: невалидная сущность, несуществующий родитель, цикл по parent_id и
+// недопустимая вложенность — *models.ValidationError (соответствующее поле,
+// parent_id и type); нет такой
 // единицы — models.ErrNotFound; прочее — ошибки хранилища как есть.
 func (s *Scenario) UpdateDivision(ctx context.Context, d models.AdministrativeDivision) error {
 	if err := d.Validate(); err != nil {
@@ -32,11 +34,16 @@ func (s *Scenario) UpdateDivision(ctx context.Context, d models.AdministrativeDi
 	}
 
 	return s.store.InTx(ctx, func(tx store.Store) error {
-		if _, err := tx.GetAdministrativeDivision(ctx, d.ID); err != nil {
+		cur, err := tx.GetAdministrativeDivision(ctx, d.ID)
+		if err != nil {
 			return err
 		}
 
 		if err := checkParentChain(ctx, tx, &d); err != nil {
+			return err
+		}
+
+		if err := checkNesting(ctx, tx, cur, &d); err != nil {
 			return err
 		}
 
@@ -80,6 +87,70 @@ func checkParentChain(ctx context.Context, tx store.Store, d *models.Administrat
 	}
 
 	return nil
+}
+
+// checkNesting проверяет вложенность типов (models.AdminDivisionType.CanContain),
+// но только если меняется тип или родитель: правка остальных полей единицы,
+// сохранённой до появления правил, не должна ломаться. Новый родитель должен
+// допускать тип единицы (ошибка по parent_id, а при неизменном родителе — по
+// type); при смене типа он должен допускать типы всех текущих дочерних единиц
+// (ошибка по type). Родитель к этому моменту уже проверен checkParentChain.
+func checkNesting(ctx context.Context, tx store.Store, cur, d *models.AdministrativeDivision) error {
+	typeChanged := cur.Type != d.Type
+	parentChanged := !sameID(cur.ParentID, d.ParentID)
+
+	if !typeChanged && !parentChanged {
+		return nil
+	}
+
+	if d.ParentID != nil {
+		parent, err := tx.GetAdministrativeDivision(ctx, *d.ParentID)
+		if err != nil {
+			return err
+		}
+
+		field := "type"
+		if parentChanged {
+			field = "parent_id"
+		}
+
+		if e := models.NestingError(field, parent.Type, d.Type); e != nil {
+			return e
+		}
+	}
+
+	if !typeChanged {
+		return nil
+	}
+
+	for offset := 0; ; offset += models.MaxPageLimit {
+		children, err := tx.ChildrenOfDivision(ctx, d.ID, models.AccessFull,
+			models.Page{Limit: models.MaxPageLimit, Offset: offset})
+		if err != nil {
+			return err
+		}
+
+		for _, c := range children {
+			if e := models.NestingError("type", d.Type, c.Type); e != nil {
+				e.Reason = fmt.Sprintf("дочерняя единица %q: %s", c.ID, e.Reason)
+
+				return e
+			}
+		}
+
+		if len(children) < models.MaxPageLimit {
+			return nil
+		}
+	}
+}
+
+// sameID сообщает, указывают ли два необязательных id на одно и то же.
+func sameID(a, b *models.ID) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return *a == *b
 }
 
 // parentErr — *models.ValidationError по полю parent_id.

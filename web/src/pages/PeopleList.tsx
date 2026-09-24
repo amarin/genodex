@@ -71,7 +71,7 @@ export default function PeopleList() {
     <>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: <Link to="/">Сущности</Link> }, { title: "Персоны" }]}
+        items={[{ title: <Link to="/">Данные</Link> }, { title: "Персоны" }]}
       />
       <Card
         title="Персоны"
