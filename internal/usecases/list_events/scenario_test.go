@@ -9,10 +9,11 @@ import (
 )
 
 type fakeRepo struct {
-	list   []*models.Event
-	err    error
-	calls  []models.Page
-	people map[models.ID]*models.Person
+	list      []*models.Event
+	err       error
+	calls     []models.Page
+	people    map[models.ID]*models.Person
+	citations map[models.ID]*models.Citation
 }
 
 func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, error) {
@@ -22,6 +23,15 @@ func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, e
 	}
 
 	return p, nil
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 func window(list []*models.Event, page models.Page) []*models.Event {
@@ -42,8 +52,9 @@ func (f *fakeRepo) ListEvents(_ context.Context, _ models.Access, page models.Pa
 	return window(f.list, page), nil
 }
 
-func pID(last byte) models.ID { return models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
-func eID(last byte) models.ID { return models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
+func pID(last byte) models.ID   { return models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
+func eID(last byte) models.ID   { return models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
+func citID(last byte) models.ID { return models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
 
 func ids(list []models.Event) []models.ID {
 	out := make([]models.ID, 0, len(list))
@@ -190,5 +201,72 @@ func TestListEventsDoesNotHideEventsReferencingPublicParticipants(t *testing.T) 
 	got, err := New(repo).ListEvents(context.Background(), models.AccessPublic, models.EventQuery{})
 	if err != nil || !sameIDs(ids(got), eID('1'), eID('2'), eID('3')) {
 		t.Fatalf("got %v, %v; ожидались все три события — все участники публичны", ids(got), err)
+	}
+}
+
+// TestListEventsHidesEventReferencingPrivateCitation: событие само по себе
+// не приватно и участники публичны, но одна из его Sources ссылается на
+// приватную цитату — для вызывающего без полного доступа оно исключается
+// из списка. Независимая проверка, параллельная
+// TestListEventsHidesEventReferencingPrivateParticipant.
+func TestListEventsHidesEventReferencingPrivateCitation(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: false},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+	}
+	repo.list[0].Sources = []models.SourceLink{{CitationID: citID('1')}}
+	repo.citations = map[models.ID]*models.Citation{
+		citID('1'): {ID: citID('1'), Private: true},
+	}
+
+	got, err := New(repo).ListEvents(context.Background(), models.AccessPublic, models.EventQuery{})
+	if err != nil || !sameIDs(ids(got), eID('2'), eID('3')) {
+		t.Fatalf("got %v, %v; ожидались e2 и e3 (e1 ссылается на приватную цитату)", ids(got), err)
+	}
+}
+
+// TestListEventsShowsEventReferencingPrivateCitationWithFullAccess: та же
+// выборка, но для вызывающего с полным доступом — все события видимы.
+func TestListEventsShowsEventReferencingPrivateCitationWithFullAccess(t *testing.T) {
+	repo := sample()
+	repo.list[0].Sources = []models.SourceLink{{CitationID: citID('1')}}
+	repo.citations = map[models.ID]*models.Citation{
+		citID('1'): {ID: citID('1'), Private: true},
+	}
+
+	got, err := New(repo).ListEvents(context.Background(), models.AccessFull, models.EventQuery{})
+	if err != nil || !sameIDs(ids(got), eID('1'), eID('2'), eID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три события при полном доступе", ids(got), err)
+	}
+}
+
+// TestListEventsPagesWithoutDuplicatesWhenHitHiddenByCitation: из двух
+// событий первое скрыто приватной цитатой — offset=0/limit=1 дважды подряд
+// не должен ни дублировать, ни терять второе (видимое) событие.
+func TestListEventsPagesWithoutDuplicatesWhenHitHiddenByCitation(t *testing.T) {
+	repo := &fakeRepo{list: []*models.Event{
+		{ID: eID('1'), Participants: []models.EventParticipant{{PersonID: pID('1')}}, Sources: []models.SourceLink{{CitationID: citID('1')}}},
+		{ID: eID('2'), Participants: []models.EventParticipant{{PersonID: pID('2')}}},
+	}}
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: false},
+		pID('2'): {ID: pID('2'), Private: false},
+	}
+	repo.citations = map[models.ID]*models.Citation{
+		citID('1'): {ID: citID('1'), Private: true},
+	}
+
+	page1, err := New(repo).ListEvents(context.Background(), models.AccessPublic,
+		models.EventQuery{Page: models.Page{Limit: 1, Offset: 0}})
+	if err != nil || !sameIDs(ids(page1), eID('2')) {
+		t.Fatalf("page1 = %v, %v; ожидался e2 (e1 скрыт приватной цитатой)", ids(page1), err)
+	}
+
+	page2, err := New(repo).ListEvents(context.Background(), models.AccessPublic,
+		models.EventQuery{Page: models.Page{Limit: 1, Offset: 1}})
+	if err != nil || len(page2) != 0 {
+		t.Fatalf("page2 = %v, %v; ожидался пустой результат (второй страницы нет)", ids(page2), err)
 	}
 }

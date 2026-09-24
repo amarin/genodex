@@ -51,6 +51,17 @@ func (s *Scenario) GetRelation(ctx context.Context, access models.Access, id mod
 		}
 	}
 
+	if access != models.AccessFull {
+		hidden, err := relationReferencesPrivateCitation(ctx, s.relations, r)
+		if err != nil {
+			return models.Relation{}, err
+		}
+
+		if hidden {
+			return models.Relation{}, models.ErrNotFound
+		}
+	}
+
 	return *r, nil
 }
 
@@ -73,6 +84,26 @@ func relationReferencesPrivatePerson(ctx context.Context, repo RelationRepo, r *
 	}
 
 	return b.Private, nil
+}
+
+// relationReferencesPrivateCitation сообщает, ссылается ли ребро (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату — независимая
+// проверка, параллельная relationReferencesPrivatePerson (см. её
+// комментарий и комментарий GetRelation): цитата приватна независимо от
+// приватности ребра и приватности персон, на которых оно ссылается.
+func relationReferencesPrivateCitation(ctx context.Context, repo RelationRepo, r *models.Relation) (bool, error) {
+	for _, sl := range r.Sources {
+		c, err := repo.GetCitation(ctx, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if c.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

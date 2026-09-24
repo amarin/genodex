@@ -13,12 +13,13 @@ type ctxKey struct{}
 
 // fakeRepo отдаёт окна списка как настоящий репозиторий и запоминает вызовы.
 type fakeRepo struct {
-	list     []*models.ArchiveNode
-	err      error
-	errAt    int // номер вызова (с 1), на котором возвращается err; 0 — на любом
-	gotCtx   context.Context
-	calls    []models.Page
-	accesses []models.Access
+	list      []*models.ArchiveNode
+	err       error
+	errAt     int // номер вызова (с 1), на котором возвращается err; 0 — на любом
+	gotCtx    context.Context
+	calls     []models.Page
+	accesses  []models.Access
+	citations map[models.ID]*models.Citation
 }
 
 // window нарезает список по окну, как настоящий репозиторий.
@@ -41,6 +42,15 @@ func (f *fakeRepo) ListArchiveNodes(ctx context.Context, access models.Access, p
 	}
 
 	return window(f.list, page), nil
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 const (
@@ -272,4 +282,72 @@ func padded(i int) string {
 	}
 
 	return s
+}
+
+// TestListArchiveNodesHidesRecordReferencingPrivateCitation: узел сам не
+// приватен, но ссылается (Sources[i].CitationID) на приватную цитату — для
+// вызывающего без полного доступа он исключается из списка, как если бы
+// был приватным сам.
+func TestListArchiveNodesHidesRecordReferencingPrivateCitation(t *testing.T) {
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	hidden := node(root1, archive1, nil)
+	hidden.Sources = []models.SourceLink{{CitationID: citationID}}
+
+	repo := &fakeRepo{
+		list:      []*models.ArchiveNode{hidden, node(node4, archive1, nil)},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
+
+	got, err := New(repo).ListArchiveNodes(context.Background(), models.AccessPublic, models.ArchiveNodeQuery{ArchiveID: archive1})
+	if err != nil || !sameIDs(ids(got), node4) {
+		t.Fatalf("got %v, %v; ожидался только node4 (root1 ссылается на приватную цитату)", ids(got), err)
+	}
+}
+
+// TestListArchiveNodesShowsRecordReferencingPrivateCitationWithFullAccess:
+// тот же случай, но для вызывающего с полным доступом видны оба узла.
+func TestListArchiveNodesShowsRecordReferencingPrivateCitationWithFullAccess(t *testing.T) {
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	hidden := node(root1, archive1, nil)
+	hidden.Sources = []models.SourceLink{{CitationID: citationID}}
+
+	repo := &fakeRepo{
+		list:      []*models.ArchiveNode{hidden, node(node4, archive1, nil)},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
+
+	got, err := New(repo).ListArchiveNodes(context.Background(), models.AccessFull, models.ArchiveNodeQuery{ArchiveID: archive1})
+	if err != nil || !sameIDs(ids(got), root1, node4) {
+		t.Fatalf("got %v, %v; ожидались оба узла при полном доступе", ids(got), err)
+	}
+}
+
+// TestListArchiveNodesPagesWithoutDuplicatesWhenHiddenBeforeOffset:
+// регрессия на баг, ранее исправленный в search_events — узел, скрытый по
+// приватной цитате и предшествующий offset, не должен «съедать»
+// offset-бюджет наравне с видимыми, иначе соседние страницы начинают
+// дублировать/терять записи.
+func TestListArchiveNodesPagesWithoutDuplicatesWhenHiddenBeforeOffset(t *testing.T) {
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	hidden := node(root1, archive1, nil)
+	hidden.Sources = []models.SourceLink{{CitationID: citationID}}
+
+	repo := &fakeRepo{
+		list:      []*models.ArchiveNode{hidden, node(node4, archive1, nil), node(node2, archive1, nil)},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
+
+	q := models.ArchiveNodeQuery{ArchiveID: archive1, Page: models.Page{Limit: 1, Offset: 0}}
+
+	page1, err := New(repo).ListArchiveNodes(context.Background(), models.AccessPublic, q)
+	if err != nil || !sameIDs(ids(page1), node4) {
+		t.Fatalf("page1 = %v, %v; want [node4]", ids(page1), err)
+	}
+
+	q.Page.Offset = 1
+
+	page2, err := New(repo).ListArchiveNodes(context.Background(), models.AccessPublic, q)
+	if err != nil || !sameIDs(ids(page2), node2) {
+		t.Fatalf("page2 = %v, %v; want [node2]", ids(page2), err)
+	}
 }

@@ -38,7 +38,38 @@ func (s *Scenario) GetNote(ctx context.Context, access models.Access, id models.
 		return models.Note{}, models.ErrNotFound
 	}
 
+	if access != models.AccessFull {
+		hidden, err := noteReferencesPrivateCitation(ctx, s.notes, n)
+		if err != nil {
+			return models.Note{}, err
+		}
+
+		if hidden {
+			return models.Note{}, models.ErrNotFound
+		}
+	}
+
 	return *n, nil
+}
+
+// noteReferencesPrivateCitation сообщает, ссылается ли заметка (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату — тот же принцип,
+// что и собственный Private заметки (см. комментарий GetNote): публичная
+// заметка, ссылающаяся на приватную цитату, тоже прячется как отсутствующая,
+// иначе она выдаёт сам факт существования и id приватной цитаты.
+func noteReferencesPrivateCitation(ctx context.Context, repo NoteRepo, n *models.Note) (bool, error) {
+	for _, sl := range n.Sources {
+		c, err := repo.GetCitation(ctx, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if c.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

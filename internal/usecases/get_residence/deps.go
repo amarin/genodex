@@ -12,4 +12,5 @@ import (
 type ResidenceRepo interface {
 	GetResidence(ctx context.Context, id models.ID) (*models.Residence, error)
 	GetPerson(ctx context.Context, id models.ID) (*models.Person, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

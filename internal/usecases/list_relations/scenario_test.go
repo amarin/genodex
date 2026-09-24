@@ -9,10 +9,11 @@ import (
 )
 
 type fakeRepo struct {
-	list   []*models.Relation
-	err    error
-	calls  []models.Page
-	people map[models.ID]*models.Person
+	list      []*models.Relation
+	err       error
+	calls     []models.Page
+	people    map[models.ID]*models.Person
+	citations map[models.ID]*models.Citation
 }
 
 func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, error) {
@@ -22,6 +23,15 @@ func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, e
 	}
 
 	return p, nil
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 func window(list []*models.Relation, page models.Page) []*models.Relation {
@@ -42,8 +52,9 @@ func (f *fakeRepo) ListRelations(_ context.Context, _ models.Access, page models
 	return window(f.list, page), nil
 }
 
-func pID(last byte) models.ID  { return models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
-func rlID(last byte) models.ID { return models.ID("RL-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
+func pID(last byte) models.ID   { return models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
+func rlID(last byte) models.ID  { return models.ID("RL-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
+func citID(last byte) models.ID { return models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA" + string(last)) }
 
 func ids(list []models.Relation) []models.ID {
 	out := make([]models.ID, 0, len(list))
@@ -258,5 +269,78 @@ func TestListRelationsPersonFilterComposesWithPrivacyHiding(t *testing.T) {
 		models.RelationQuery{PersonID: &person3})
 	if err != nil || !sameIDs(ids(gotPublicPerson), rlID('2')) {
 		t.Fatalf("got %v, %v; ожидался только rl2 (person3 публична, обе стороны rl2 публичны)", ids(gotPublicPerson), err)
+	}
+}
+
+// TestListRelationsHidesRelationReferencingPrivateCitation: ребро само по
+// себе не приватно и обе персоны публичны, но одна из его Sources
+// ссылается на приватную цитату — для вызывающего без полного доступа
+// ребро исключается из списка. Независимая проверка, параллельная
+// приватности персон (см. TestListRelationsHidesRelationReferencingPrivatePerson).
+func TestListRelationsHidesRelationReferencingPrivateCitation(t *testing.T) {
+	repo := sample()
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: false},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+		pID('4'): {ID: pID('4'), Private: false},
+		pID('5'): {ID: pID('5'), Private: false},
+	}
+	repo.list[0].Sources = []models.SourceLink{{CitationID: citID('1')}}
+	repo.citations = map[models.ID]*models.Citation{
+		citID('1'): {ID: citID('1'), Private: true},
+	}
+
+	got, err := New(repo).ListRelations(context.Background(), models.AccessPublic, models.RelationQuery{})
+	if err != nil || !sameIDs(ids(got), rlID('2'), rlID('3')) {
+		t.Fatalf("got %v, %v; ожидались rl2 и rl3 (rl1 ссылается на приватную цитату)", ids(got), err)
+	}
+}
+
+// TestListRelationsShowsRelationReferencingPrivateCitationWithFullAccess:
+// тот же набор данных, но для вызывающего с полным доступом — все рёбра
+// видимы.
+func TestListRelationsShowsRelationReferencingPrivateCitationWithFullAccess(t *testing.T) {
+	repo := sample()
+	repo.list[0].Sources = []models.SourceLink{{CitationID: citID('1')}}
+	repo.citations = map[models.ID]*models.Citation{
+		citID('1'): {ID: citID('1'), Private: true},
+	}
+
+	got, err := New(repo).ListRelations(context.Background(), models.AccessFull, models.RelationQuery{})
+	if err != nil || !sameIDs(ids(got), rlID('1'), rlID('2'), rlID('3')) {
+		t.Fatalf("got %v, %v; ожидались все три ребра при полном доступе", ids(got), err)
+	}
+}
+
+// TestListRelationsPagesWithoutDuplicatesWhenHitHiddenByCitation: из двух
+// рёбер первое скрыто приватной цитатой — offset=0/limit=1 дважды подряд
+// не должен ни дублировать, ни терять второе (видимое) ребро (по образцу
+// search_events/scenario_test.go:TestSearchEventsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden).
+func TestListRelationsPagesWithoutDuplicatesWhenHitHiddenByCitation(t *testing.T) {
+	repo := &fakeRepo{list: []*models.Relation{
+		{ID: rlID('1'), PersonA: pID('1'), PersonB: pID('2'), Sources: []models.SourceLink{{CitationID: citID('1')}}},
+		{ID: rlID('2'), PersonA: pID('3'), PersonB: pID('4')},
+	}}
+	repo.people = map[models.ID]*models.Person{
+		pID('1'): {ID: pID('1'), Private: false},
+		pID('2'): {ID: pID('2'), Private: false},
+		pID('3'): {ID: pID('3'), Private: false},
+		pID('4'): {ID: pID('4'), Private: false},
+	}
+	repo.citations = map[models.ID]*models.Citation{
+		citID('1'): {ID: citID('1'), Private: true},
+	}
+
+	page1, err := New(repo).ListRelations(context.Background(), models.AccessPublic,
+		models.RelationQuery{Page: models.Page{Limit: 1, Offset: 0}})
+	if err != nil || !sameIDs(ids(page1), rlID('2')) {
+		t.Fatalf("page1 = %v, %v; ожидался rl2 (rl1 скрыт приватной цитатой)", ids(page1), err)
+	}
+
+	page2, err := New(repo).ListRelations(context.Background(), models.AccessPublic,
+		models.RelationQuery{Page: models.Page{Limit: 1, Offset: 1}})
+	if err != nil || len(page2) != 0 {
+		t.Fatalf("page2 = %v, %v; ожидался пустой результат (второй страницы нет)", ids(page2), err)
 	}
 }

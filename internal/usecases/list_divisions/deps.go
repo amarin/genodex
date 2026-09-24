@@ -12,4 +12,5 @@ import (
 type AdminDivisionRepo interface {
 	ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error)
 	ChildrenOfDivision(ctx context.Context, parent models.ID, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

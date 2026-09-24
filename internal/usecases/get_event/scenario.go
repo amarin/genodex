@@ -49,6 +49,17 @@ func (s *Scenario) GetEvent(ctx context.Context, access models.Access, id models
 		}
 	}
 
+	if access != models.AccessFull {
+		hidden, err := eventReferencesPrivateCitation(ctx, s.events, e)
+		if err != nil {
+			return models.Event{}, err
+		}
+
+		if hidden {
+			return models.Event{}, models.ErrNotFound
+		}
+	}
+
 	return *e, nil
 }
 
@@ -63,6 +74,25 @@ func eventReferencesPrivatePerson(ctx context.Context, repo EventRepo, e *models
 		}
 
 		if person.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// eventReferencesPrivateCitation сообщает, ссылается ли событие (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату — независимая
+// проверка, параллельная eventReferencesPrivatePerson (см. её комментарий и
+// комментарий GetEvent).
+func eventReferencesPrivateCitation(ctx context.Context, repo EventRepo, e *models.Event) (bool, error) {
+	for _, sl := range e.Sources {
+		c, err := repo.GetCitation(ctx, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if c.Private {
 			return true, nil
 		}
 	}

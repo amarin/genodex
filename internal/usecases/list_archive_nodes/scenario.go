@@ -2,6 +2,7 @@ package list_archive_nodes
 
 import (
 	"context"
+	"errors"
 
 	"github.com/amarin/genodex/internal/models"
 )
@@ -30,6 +31,11 @@ func New(archiveNodes ArchiveNodeRepo) *Scenario {
 // с q.ParentID (сравнение nil-safe, см. sameParent). При объёме данных
 // этой сущности (архивные деревья, не тысячи записей) полное сканирование
 // приемлемо; выделенный метод хранилища не оправдан.
+//
+// Помимо фильтра запроса, окно исключает узлы, ссылающиеся (через
+// Sources[i].CitationID) на приватную цитату — для вызывающего без полного
+// доступа такой узел скрывается целиком, даже если сам он не приватен (см.
+// комментарий GetArchiveNode).
 func (s *Scenario) ListArchiveNodes(ctx context.Context, access models.Access, q models.ArchiveNodeQuery) ([]models.ArchiveNode, error) {
 	if err := q.Validate(); err != nil {
 		return nil, err
@@ -38,6 +44,9 @@ func (s *Scenario) ListArchiveNodes(ctx context.Context, access models.Access, q
 	page := q.Page.Normalized()
 	out := []models.ArchiveNode{}
 	matched := 0 // сколько узлов прошло фильтр (для сдвига окна)
+	// cache — мемоизация Private по id цитаты в рамках ОДНОГО вызова
+	// ListArchiveNodes (не переживает вызов, не шарится между запросами).
+	cache := map[models.ID]bool{}
 
 	// репозиторий отдаёт окна: обходим их до пустого или до заполнения окна запроса
 	for offset := 0; ; offset += models.MaxPageLimit {
@@ -52,7 +61,9 @@ func (s *Scenario) ListArchiveNodes(ctx context.Context, access models.Access, q
 		}
 
 		var full bool
-		if full, matched, out = applyWindow(q, nodes, page, matched, out); full {
+		if full, matched, out, err = applyWindow(ctx, s.archiveNodes, access, q, nodes, page, matched, out, cache); err != nil {
+			return nil, err
+		} else if full {
 			return out, nil
 		}
 	}
@@ -60,27 +71,88 @@ func (s *Scenario) ListArchiveNodes(ctx context.Context, access models.Access, q
 
 // applyWindow прогоняет одно окно репозитория через фильтр запроса и
 // накапливает результат окна запроса. full — окно запроса заполнено (обход
-// можно остановить).
-func applyWindow(q models.ArchiveNodeQuery, nodes []*models.ArchiveNode,
-	page models.Page, matched int, out []models.ArchiveNode,
-) (full bool, nextMatched int, nextOut []models.ArchiveNode) {
+// можно остановить). Помимо q.ArchiveID/q.ParentID, окно фильтрует узлы,
+// ссылающиеся на приватную цитату (см. комментарий ListArchiveNodes) —
+// для access != models.AccessFull; проверка идёт вторым условием, после
+// фильтра запроса.
+func applyWindow(ctx context.Context, repo ArchiveNodeRepo, access models.Access, q models.ArchiveNodeQuery, nodes []*models.ArchiveNode,
+	page models.Page, matched int, out []models.ArchiveNode, cache map[models.ID]bool,
+) (full bool, nextMatched int, nextOut []models.ArchiveNode, err error) {
 	for _, n := range nodes {
 		if n.ArchiveID != q.ArchiveID || !sameParent(n.ParentID, q.ParentID) {
 			continue
+		}
+
+		if access != models.AccessFull {
+			hidden, err := archiveNodeReferencesPrivateCitation(ctx, repo, n, cache)
+			if err != nil {
+				return false, matched, out, err
+			}
+
+			if hidden {
+				continue
+			}
 		}
 
 		if matched >= page.Offset {
 			out = append(out, *n)
 
 			if len(out) == page.Limit {
-				return true, matched, out
+				return true, matched, out, nil
 			}
 		}
 
 		matched++
 	}
 
-	return false, matched, out
+	return false, matched, out, nil
+}
+
+// archiveNodeReferencesPrivateCitation сообщает, ссылается ли узел (через
+// Sources[i].CitationID) хотя бы на одну приватную цитату. Независимая
+// копия одноимённой функции get_archive_node (та не использует cache):
+// пакеты сценариев в этом проекте самодостаточны и не делятся кодом друг с
+// другом. cache — мемоизация в рамках одного вызова ListArchiveNodes.
+func archiveNodeReferencesPrivateCitation(ctx context.Context, repo ArchiveNodeRepo, rec *models.ArchiveNode, cache map[models.ID]bool) (bool, error) {
+	for _, sl := range rec.Sources {
+		hidden, err := citationIsPrivate(ctx, repo, cache, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if hidden {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+// citationIsPrivate сообщает, приватна ли цитата id — с точки зрения
+// сканирующего List*/Search*-сценария сюда же относится и гонка с
+// конкурентным удалением цитаты (models.ErrNotFound от GetCitation): такая
+// цитата трактуется как приватная, т.е. узел, ссылающийся на неё, тоже
+// прячется, а не проваливает весь вызов ошибкой. cache — мемоизация в
+// рамках одного вызова.
+func citationIsPrivate(ctx context.Context, repo ArchiveNodeRepo, cache map[models.ID]bool, id models.ID) (bool, error) {
+	if v, ok := cache[id]; ok {
+		return v, nil
+	}
+
+	c, err := repo.GetCitation(ctx, id)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			cache[id] = true
+
+			return true, nil
+		}
+
+		return false, err
+	}
+
+	cache[id] = c.Private
+
+	return c.Private, nil
 }
 
 // sameParent сравнивает два необязательных id родителя nil-safe: оба nil —

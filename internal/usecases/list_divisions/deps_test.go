@@ -56,6 +56,21 @@ func (mr *MockAdminDivisionRepoMockRecorder) ChildrenOfDivision(ctx, parent, acc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChildrenOfDivision", reflect.TypeOf((*MockAdminDivisionRepo)(nil).ChildrenOfDivision), ctx, parent, access, page)
 }
 
+// GetCitation mocks base method.
+func (m *MockAdminDivisionRepo) GetCitation(ctx context.Context, id models.ID) (*models.Citation, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCitation", ctx, id)
+	ret0, _ := ret[0].(*models.Citation)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCitation indicates an expected call of GetCitation.
+func (mr *MockAdminDivisionRepoMockRecorder) GetCitation(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCitation", reflect.TypeOf((*MockAdminDivisionRepo)(nil).GetCitation), ctx, id)
+}
+
 // ListAdministrativeDivisions mocks base method.
 func (m *MockAdminDivisionRepo) ListAdministrativeDivisions(ctx context.Context, access models.Access, page models.Page) ([]*models.AdministrativeDivision, error) {
 	m.ctrl.T.Helper()

@@ -42,7 +42,7 @@ func registerPersonTools(s *server.MCPServer, people PersonService) {
 
 	tool = mcp.NewTool(
 		"person_get",
-		mcp.WithDescription("Персона по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула"),
+		mcp.WithDescription("Персона по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула; то же для персоны, ссылающейся на приватную цитату среди источников (sources[i].citation_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например I-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, personGetHandler(people))

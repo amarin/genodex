@@ -12,4 +12,5 @@ import (
 type FamilyRepo interface {
 	Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error)
 	GetFamily(ctx context.Context, id models.ID) (*models.Family, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

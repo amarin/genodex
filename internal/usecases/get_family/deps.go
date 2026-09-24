@@ -11,4 +11,5 @@ import (
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type FamilyRepo interface {
 	GetFamily(ctx context.Context, id models.ID) (*models.Family, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

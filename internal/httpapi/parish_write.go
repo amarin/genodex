@@ -51,7 +51,7 @@ func handleParishUpdate(parishes ParishService) http.HandlerFunc {
 			return
 		}
 
-		cur, err := parishes.GetParish(r.Context(), id)
+		cur, err := parishes.GetParish(r.Context(), AccessFromContext(r.Context()), id)
 		if err != nil {
 			writeError(w, err)
 

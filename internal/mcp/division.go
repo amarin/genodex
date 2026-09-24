@@ -41,7 +41,7 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 
 	tool = mcp.NewTool(
 		"division_get",
-		mcp.WithDescription("Единица административного деления по id; результат — JSON единицы. Неверный формат id или отсутствующая единица — ошибка тула"),
+		mcp.WithDescription("Единица административного деления по id; результат — JSON единицы. Неверный формат id или отсутствующая единица — ошибка тула; то же для единицы, ссылающейся на приватную цитату среди источников (sources[i].citation_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы, например AD-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, divisionGetHandler(divisions))
@@ -178,7 +178,7 @@ func optionalInt(req mcp.CallToolRequest, name string) (int, error) {
 // формата id и проверка существования — в сценарии; его ошибки — ошибки тула.
 func divisionGetHandler(divisions DivisionService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		d, err := divisions.GetDivision(ctx, models.ID(req.GetString("id", "")))
+		d, err := divisions.GetDivision(ctx, AccessFromContext(ctx), models.ID(req.GetString("id", "")))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить единицу: %v", err)), nil
 		}
@@ -223,7 +223,7 @@ func divisionUpdateHandler(divisions DivisionService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := models.ID(req.GetString("id", ""))
 
-		cur, err := divisions.GetDivision(ctx, id)
+		cur, err := divisions.GetDivision(ctx, AccessFromContext(ctx), id)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}

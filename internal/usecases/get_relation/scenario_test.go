@@ -11,6 +11,7 @@ import (
 type fakeRepo struct {
 	relations map[models.ID]*models.Relation
 	people    map[models.ID]*models.Person
+	citations map[models.ID]*models.Citation
 	personErr error // если задан, GetPerson всегда возвращает эту ошибку
 }
 
@@ -34,6 +35,15 @@ func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, e
 	}
 
 	return p, nil
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 func TestGetRelationReturnsRecord(t *testing.T) {
@@ -208,5 +218,98 @@ func TestGetRelationPropagatesNonNotFoundPersonError(t *testing.T) {
 
 	if errors.Is(err, models.ErrNotFound) {
 		t.Fatalf("err = %v, must NOT be treated as ErrNotFound", err)
+	}
+}
+
+// TestGetRelationHiddenWhenReferencedCitationPrivate: ребро само по себе не
+// приватно (Private == false) и обе персоны публичны, но одна из Sources
+// ссылается на приватную цитату — ребро всё равно прячется как
+// отсутствующее для вызывающего без полного доступа. Независимая проверка,
+// параллельная TestGetRelationHiddenWhenReferencedPersonPrivate.
+func TestGetRelationHiddenWhenReferencedCitationPrivate(t *testing.T) {
+	id := models.ID("RL-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	personA := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	personB := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	citation := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		relations: map[models.ID]*models.Relation{id: {
+			ID: id, PersonA: personA, PersonB: personB, Private: false,
+			Sources: []models.SourceLink{{CitationID: citation}},
+		}},
+		people: map[models.ID]*models.Person{
+			personA: {ID: personA, Private: false},
+			personB: {ID: personB, Private: false},
+		},
+		citations: map[models.ID]*models.Citation{
+			citation: {ID: citation, Private: true},
+		},
+	}
+
+	_, err := New(repo).GetRelation(context.Background(), models.AccessPublic, id)
+	if !errors.Is(err, models.ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound for public relation referencing a private citation", err)
+	}
+}
+
+// TestGetRelationVisibleToFullAccessWhenReferencedCitationPrivate: то же
+// ребро, но для вызывающего с полным доступом — видно.
+func TestGetRelationVisibleToFullAccessWhenReferencedCitationPrivate(t *testing.T) {
+	id := models.ID("RL-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	personA := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	personB := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	citation := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		relations: map[models.ID]*models.Relation{id: {
+			ID: id, PersonA: personA, PersonB: personB, Private: false,
+			Sources: []models.SourceLink{{CitationID: citation}},
+		}},
+		people: map[models.ID]*models.Person{
+			personA: {ID: personA, Private: false},
+			personB: {ID: personB, Private: false},
+		},
+		citations: map[models.ID]*models.Citation{
+			citation: {ID: citation, Private: true},
+		},
+	}
+
+	got, err := New(repo).GetRelation(context.Background(), models.AccessFull, id)
+	if err != nil {
+		t.Fatalf("GetRelation: %v", err)
+	}
+
+	if got.ID != id {
+		t.Fatalf("got = %+v", got)
+	}
+}
+
+// TestGetRelationNotHiddenWhenReferencedCitationsPublic: ссылка на цитату
+// есть, но цитата публична — ребро не прячется ошибочно (защита от false
+// positive).
+func TestGetRelationNotHiddenWhenReferencedCitationsPublic(t *testing.T) {
+	id := models.ID("RL-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	personA := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	personB := models.ID("I-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	citation := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		relations: map[models.ID]*models.Relation{id: {
+			ID: id, PersonA: personA, PersonB: personB, Private: false,
+			Sources: []models.SourceLink{{CitationID: citation}},
+		}},
+		people: map[models.ID]*models.Person{
+			personA: {ID: personA, Private: false},
+			personB: {ID: personB, Private: false},
+		},
+		citations: map[models.ID]*models.Citation{
+			citation: {ID: citation, Private: false},
+		},
+	}
+
+	got, err := New(repo).GetRelation(context.Background(), models.AccessPublic, id)
+	if err != nil {
+		t.Fatalf("GetRelation: %v", err)
+	}
+
+	if got.ID != id {
+		t.Fatalf("got = %+v", got)
 	}
 }

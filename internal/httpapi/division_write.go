@@ -14,7 +14,7 @@ import (
 // анонимному посетителю (auth.md §6 — Access здесь не проверяется).
 func handleDivisionGet(divisions DivisionService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		d, err := divisions.GetDivision(r.Context(), pathDivisionID(r))
+		d, err := divisions.GetDivision(r.Context(), AccessFromContext(r.Context()), pathDivisionID(r))
 		if err != nil {
 			writeError(w, err)
 
@@ -72,7 +72,7 @@ func handleDivisionUpdate(divisions DivisionService) http.HandlerFunc {
 			return
 		}
 
-		cur, err := divisions.GetDivision(r.Context(), id)
+		cur, err := divisions.GetDivision(r.Context(), AccessFromContext(r.Context()), id)
 		if err != nil {
 			writeError(w, err)
 

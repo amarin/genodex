@@ -36,7 +36,7 @@ func registerRepositoryTools(s *server.MCPServer, repositories RepositoryService
 
 	tool = mcp.NewTool(
 		"repository_get",
-		mcp.WithDescription("Хранилище по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
+		mcp.WithDescription("Хранилище по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула; то же для хранилища, ссылающегося на приватную цитату среди источников (sources[i].citation_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например R-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, repositoryGetHandler(repositories))

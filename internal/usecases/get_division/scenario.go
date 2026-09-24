@@ -18,8 +18,13 @@ func New(divisions DivisionRepo) *Scenario {
 
 // GetDivision возвращает единицу деления по идентификатору. Неверный формат
 // идентификатора — *models.ValidationError (поле id), репозиторий не
-// вызывается; нет такой единицы — models.ErrNotFound.
-func (s *Scenario) GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error) {
+// вызывается; нет такой единицы — models.ErrNotFound. У AdministrativeDivision
+// нет своего Private, но единица целиком прячется как отсутствующая для
+// вызывающего без полного доступа, если хотя бы один её Sources[i]
+// ссылается на приватную Citation — иначе публичная единица выдаёт сам факт
+// существования и id приватной цитаты (тот же принцип, что и для
+// Relation/Event → Person, см. get_relation.GetRelation).
+func (s *Scenario) GetDivision(ctx context.Context, access models.Access, id models.ID) (models.AdministrativeDivision, error) {
 	if err := validateID(id); err != nil {
 		return models.AdministrativeDivision{}, err
 	}
@@ -29,7 +34,35 @@ func (s *Scenario) GetDivision(ctx context.Context, id models.ID) (models.Admini
 		return models.AdministrativeDivision{}, err
 	}
 
+	if access != models.AccessFull {
+		hidden, err := divisionReferencesPrivateCitation(ctx, s.divisions, d)
+		if err != nil {
+			return models.AdministrativeDivision{}, err
+		}
+
+		if hidden {
+			return models.AdministrativeDivision{}, models.ErrNotFound
+		}
+	}
+
 	return *d, nil
+}
+
+// divisionReferencesPrivateCitation сообщает, ссылается ли единица деления
+// (через Sources[i].CitationID) хотя бы на одну приватную цитату.
+func divisionReferencesPrivateCitation(ctx context.Context, repo DivisionRepo, rec *models.AdministrativeDivision) (bool, error) {
+	for _, sl := range rec.Sources {
+		c, err := repo.GetCitation(ctx, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if c.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // validateID проверяет формат идентификатора деления; ошибка —

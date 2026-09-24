@@ -37,7 +37,7 @@ func (f *fakeParishes) SearchParishes(_ context.Context, _ models.Access, q mode
 	return f.search, f.err
 }
 
-func (f *fakeParishes) GetParish(_ context.Context, id models.ID) (models.Parish, error) {
+func (f *fakeParishes) GetParish(_ context.Context, _ models.Access, id models.ID) (models.Parish, error) {
 	f.gotIDs = append(f.gotIDs, id)
 	if f.err != nil {
 		return models.Parish{}, f.err

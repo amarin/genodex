@@ -12,7 +12,7 @@ import (
 type DivisionService interface {
 	ListDivisions(ctx context.Context, access models.Access, q models.DivisionQuery) ([]models.AdministrativeDivision, error)
 	SearchDivisions(ctx context.Context, access models.Access, q models.DivisionSearchQuery) ([]models.AdministrativeDivision, error)
-	GetDivision(ctx context.Context, id models.ID) (models.AdministrativeDivision, error)
+	GetDivision(ctx context.Context, access models.Access, id models.ID) (models.AdministrativeDivision, error)
 	CreateDivision(ctx context.Context, d models.AdministrativeDivision) (models.AdministrativeDivision, error)
 	UpdateDivision(ctx context.Context, d models.AdministrativeDivision) error
 	DeleteDivision(ctx context.Context, id models.ID) error
@@ -89,7 +89,7 @@ type RepositoryService interface {
 type ChurchService interface {
 	ListChurches(ctx context.Context, access models.Access, page models.Page) ([]models.Church, error)
 	SearchChurches(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Church, error)
-	GetChurch(ctx context.Context, id models.ID) (models.Church, error)
+	GetChurch(ctx context.Context, access models.Access, id models.ID) (models.Church, error)
 	CreateChurch(ctx context.Context, c models.Church) (models.Church, error)
 	UpdateChurch(ctx context.Context, c models.Church) error
 	DeleteChurch(ctx context.Context, id models.ID) error
@@ -100,7 +100,7 @@ type ChurchService interface {
 type ParishService interface {
 	ListParishes(ctx context.Context, access models.Access, page models.Page) ([]models.Parish, error)
 	SearchParishes(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Parish, error)
-	GetParish(ctx context.Context, id models.ID) (models.Parish, error)
+	GetParish(ctx context.Context, access models.Access, id models.ID) (models.Parish, error)
 	CreateParish(ctx context.Context, p models.Parish) (models.Parish, error)
 	UpdateParish(ctx context.Context, p models.Parish) error
 	DeleteParish(ctx context.Context, id models.ID) error

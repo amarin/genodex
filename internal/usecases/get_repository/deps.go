@@ -11,4 +11,5 @@ import (
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type RepositoryRepo interface {
 	GetRepository(ctx context.Context, id models.ID) (*models.Repository, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

@@ -21,6 +21,16 @@ type fakeRepo struct {
 	gotParent *models.ID
 	calls     []models.Page
 	accesses  []models.Access
+	citations map[models.ID]*models.Citation
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 // window нарезает список по окну, как настоящий репозиторий.
@@ -346,5 +356,62 @@ func TestListDivisionsInvalidParentDoesNotTouchRepo(t *testing.T) {
 	}
 	if len(repo.calls) != 0 {
 		t.Fatalf("репозиторий вызван %d раз при некорректном parent_id", len(repo.calls))
+	}
+}
+
+// TestListDivisionsHidesReferenceToPrivateCitation: единица, ссылающаяся на
+// приватную цитату среди источников, исключается из результата для
+// вызывающего без полного доступа, но видна с AccessFull.
+func TestListDivisionsHidesReferenceToPrivateCitation(t *testing.T) {
+	citID := models.ID("CI-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	hidden := division("ad-hidden", models.AdminDivisionSelo)
+	hidden.Sources = []models.SourceLink{{CitationID: citID}}
+
+	repo := &fakeRepo{
+		list:      []*models.AdministrativeDivision{hidden, division("ad-visible", models.AdminDivisionSelo)},
+		citations: map[models.ID]*models.Citation{citID: {ID: citID, Private: true}},
+	}
+
+	got, err := New(repo).ListDivisions(context.Background(), models.AccessPublic, models.DivisionQuery{})
+	if err != nil || !sameIDs(ids(got), "ad-visible") {
+		t.Fatalf("got %v, %v; ожидалась только ad-visible (ad-hidden ссылается на приватную цитату)", ids(got), err)
+	}
+
+	got, err = New(repo).ListDivisions(context.Background(), models.AccessFull, models.DivisionQuery{})
+	if err != nil || !sameIDs(ids(got), "ad-hidden", "ad-visible") {
+		t.Fatalf("got %v, %v; с AccessFull ожидались обе единицы", ids(got), err)
+	}
+}
+
+// TestListDivisionsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden:
+// единица, скрытая приватной цитатой и предшествующая запрошенному offset,
+// не должна «съедать» offset-бюджет вслепую — постранично (limit=1) с
+// offset=0 и offset=1 должны вернуться разные видимые единицы, без дублей и
+// без пропусков (тот же принцип, что и
+// search_events.TestSearchEventsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden).
+func TestListDivisionsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden(t *testing.T) {
+	citID := models.ID("CI-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	hidden := division("ad-hidden", models.AdminDivisionSelo)
+	hidden.Sources = []models.SourceLink{{CitationID: citID}}
+
+	repo := &fakeRepo{
+		list: []*models.AdministrativeDivision{
+			hidden,
+			division("ad-a", models.AdminDivisionSelo),
+			division("ad-b", models.AdminDivisionSelo),
+		},
+		citations: map[models.ID]*models.Citation{citID: {ID: citID, Private: true}},
+	}
+
+	page1, err := New(repo).ListDivisions(context.Background(), models.AccessPublic,
+		models.DivisionQuery{Page: models.Page{Limit: 1, Offset: 0}})
+	if err != nil || !sameIDs(ids(page1), "ad-a") {
+		t.Fatalf("page1 = %v, %v; want [ad-a]", ids(page1), err)
+	}
+
+	page2, err := New(repo).ListDivisions(context.Background(), models.AccessPublic,
+		models.DivisionQuery{Page: models.Page{Limit: 1, Offset: 1}})
+	if err != nil || !sameIDs(ids(page2), "ad-b") {
+		t.Fatalf("page2 = %v, %v; want [ad-b]", ids(page2), err)
 	}
 }

@@ -46,7 +46,7 @@ func registerEventTools(s *server.MCPServer, events EventService) {
 
 	tool = mcp.NewTool(
 		"event_get",
-		mcp.WithDescription("Событие по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула; то же для события, ссылающегося на приватного участника (participants[i].person_id) — и в event_search"),
+		mcp.WithDescription("Событие по id; результат — JSON записи. Неверный формат id или отсутствующая/приватная (для не-владельца) запись — ошибка тула; то же для события, ссылающегося на приватного участника (participants[i].person_id) — и в event_search; то же для события, ссылающегося на приватную цитату среди источников (sources[i].citation_id) — и в event_search"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например E-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, eventGetHandler(events))

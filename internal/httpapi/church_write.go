@@ -51,7 +51,7 @@ func handleChurchUpdate(churches ChurchService) http.HandlerFunc {
 			return
 		}
 
-		cur, err := churches.GetChurch(r.Context(), id)
+		cur, err := churches.GetChurch(r.Context(), AccessFromContext(r.Context()), id)
 		if err != nil {
 			writeError(w, err)
 

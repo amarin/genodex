@@ -49,6 +49,17 @@ func (s *Scenario) GetResidence(ctx context.Context, access models.Access, id mo
 		}
 	}
 
+	if access != models.AccessFull {
+		hidden, err := residenceReferencesPrivateCitation(ctx, s.residences, r)
+		if err != nil {
+			return models.Residence{}, err
+		}
+
+		if hidden {
+			return models.Residence{}, models.ErrNotFound
+		}
+	}
+
 	return *r, nil
 }
 
@@ -61,6 +72,25 @@ func residenceReferencesPrivatePerson(ctx context.Context, repo ResidenceRepo, r
 	}
 
 	return p.Private, nil
+}
+
+// residenceReferencesPrivateCitation сообщает, ссылается ли проживание
+// (через Sources[i].CitationID) хотя бы на одну приватную цитату —
+// независимая проверка, параллельная residenceReferencesPrivatePerson (см.
+// её комментарий и комментарий GetResidence).
+func residenceReferencesPrivateCitation(ctx context.Context, repo ResidenceRepo, r *models.Residence) (bool, error) {
+	for _, sl := range r.Sources {
+		c, err := repo.GetCitation(ctx, sl.CitationID)
+		if err != nil {
+			return false, err
+		}
+
+		if c.Private {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // validateID проверяет формат идентификатора; ошибка — *models.ValidationError

@@ -37,7 +37,7 @@ func (f *fakeChurches) SearchChurches(_ context.Context, _ models.Access, q mode
 	return f.search, f.err
 }
 
-func (f *fakeChurches) GetChurch(_ context.Context, id models.ID) (models.Church, error) {
+func (f *fakeChurches) GetChurch(_ context.Context, _ models.Access, id models.ID) (models.Church, error) {
 	f.gotIDs = append(f.gotIDs, id)
 	if f.err != nil {
 		return models.Church{}, f.err

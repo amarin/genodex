@@ -41,7 +41,7 @@ func registerParishTools(s *server.MCPServer, parishes ParishService) {
 
 	tool = mcp.NewTool(
 		"parish_get",
-		mcp.WithDescription("Приход по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула"),
+		mcp.WithDescription("Приход по id; результат — JSON записи. Неверный формат id или отсутствующая запись — ошибка тула; то же для записи, ссылающейся на приватную цитату среди источников (sources[i].citation_id)"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи, например PR-01ARZ3NDEKTSV4RRFFQ69G5FA9")),
 	)
 	s.AddTool(tool, parishGetHandler(parishes))
@@ -137,7 +137,7 @@ func parishSearchHandler(parishes ParishService) server.ToolHandlerFunc {
 
 func parishGetHandler(parishes ParishService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		p, err := parishes.GetParish(ctx, models.ID(req.GetString("id", "")))
+		p, err := parishes.GetParish(ctx, AccessFromContext(ctx), models.ID(req.GetString("id", "")))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить запись: %v", err)), nil
 		}
@@ -193,7 +193,7 @@ func parishUpdateHandler(parishes ParishService) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		id := models.ID(req.GetString("id", ""))
 
-		cur, err := parishes.GetParish(ctx, id)
+		cur, err := parishes.GetParish(ctx, AccessFromContext(ctx), id)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("не удалось получить текущую версию: %v", err)), nil
 		}

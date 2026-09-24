@@ -11,4 +11,5 @@ import (
 //go:generate mockgen -source $GOFILE -destination deps_test.go -package ${GOPACKAGE}
 type ArchiveRepo interface {
 	GetArchive(ctx context.Context, id models.ID) (*models.Archive, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }

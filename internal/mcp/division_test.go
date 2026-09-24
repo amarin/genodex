@@ -49,7 +49,7 @@ func (f *fakeDivisions) SearchDivisions(_ context.Context, access models.Access,
 	return f.search, f.searchErr
 }
 
-func (f *fakeDivisions) GetDivision(_ context.Context, id models.ID) (models.AdministrativeDivision, error) {
+func (f *fakeDivisions) GetDivision(_ context.Context, _ models.Access, id models.ID) (models.AdministrativeDivision, error) {
 	f.gotIDs = append(f.gotIDs, id)
 
 	if f.err != nil {

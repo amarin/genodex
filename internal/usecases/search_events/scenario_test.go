@@ -8,9 +8,10 @@ import (
 )
 
 type fakeRepo struct {
-	hits   []models.Hit
-	events map[models.ID]*models.Event
-	people map[models.ID]*models.Person
+	hits      []models.Hit
+	events    map[models.ID]*models.Event
+	people    map[models.ID]*models.Person
+	citations map[models.ID]*models.Citation
 }
 
 // Search эмулирует хранилищное окно generic-индекса: возвращает срез
@@ -47,6 +48,15 @@ func (f *fakeRepo) GetPerson(_ context.Context, id models.ID) (*models.Person, e
 	}
 
 	return p, nil
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 func TestSearchEventsFiltersByType(t *testing.T) {
@@ -238,5 +248,137 @@ func TestSearchEventsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden(t *testin
 
 	if len(all) != 2 || all[0].ID != idA || all[1].ID != idB {
 		t.Fatalf("all = %+v, want [A, B]", all)
+	}
+}
+
+// TestSearchEventsHidesHitReferencingPrivateCitation: найденное событие само
+// по себе не приватно и участники публичны, но одна из его Sources
+// ссылается на приватную цитату — для вызывающего без полного доступа оно
+// исключается из результата поиска. Независимая проверка, параллельная
+// TestSearchEventsHidesHitReferencingPrivateParticipant.
+func TestSearchEventsHidesHitReferencingPrivateCitation(t *testing.T) {
+	id := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	citation := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		hits: []models.Hit{{Type: models.TypeEvent, ID: id}},
+		events: map[models.ID]*models.Event{
+			id: {
+				ID: id, Private: false, Place: &models.PlaceRef{Text: "Давыдово"},
+				Sources: []models.SourceLink{{CitationID: citation}},
+			},
+		},
+		citations: map[models.ID]*models.Citation{citation: {ID: citation, Private: true}},
+	}
+
+	got, err := New(repo).SearchEvents(context.Background(), models.AccessPublic, models.SearchQuery{Text: "Дав"})
+	if err != nil {
+		t.Fatalf("SearchEvents: %v", err)
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("got = %+v, want empty (цитата приватна)", got)
+	}
+}
+
+// TestSearchEventsShowsHitReferencingPrivateCitationWithFullAccess: то же
+// событие, но для вызывающего с полным доступом — находится.
+func TestSearchEventsShowsHitReferencingPrivateCitationWithFullAccess(t *testing.T) {
+	id := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	citation := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		hits: []models.Hit{{Type: models.TypeEvent, ID: id}},
+		events: map[models.ID]*models.Event{
+			id: {
+				ID: id, Private: false, Place: &models.PlaceRef{Text: "Давыдово"},
+				Sources: []models.SourceLink{{CitationID: citation}},
+			},
+		},
+		citations: map[models.ID]*models.Citation{citation: {ID: citation, Private: true}},
+	}
+
+	got, err := New(repo).SearchEvents(context.Background(), models.AccessFull, models.SearchQuery{Text: "Дав"})
+	if err != nil {
+		t.Fatalf("SearchEvents: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id {
+		t.Fatalf("got = %+v", got)
+	}
+}
+
+// TestSearchEventsDoesNotHideHitReferencingPublicCitation: ссылка на цитату
+// есть, но цитата публична — событие не пропадает из результата ошибочно.
+func TestSearchEventsDoesNotHideHitReferencingPublicCitation(t *testing.T) {
+	id := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	citation := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	repo := &fakeRepo{
+		hits: []models.Hit{{Type: models.TypeEvent, ID: id}},
+		events: map[models.ID]*models.Event{
+			id: {
+				ID: id, Private: false, Place: &models.PlaceRef{Text: "Давыдово"},
+				Sources: []models.SourceLink{{CitationID: citation}},
+			},
+		},
+		citations: map[models.ID]*models.Citation{citation: {ID: citation, Private: false}},
+	}
+
+	got, err := New(repo).SearchEvents(context.Background(), models.AccessPublic, models.SearchQuery{Text: "Дав"})
+	if err != nil {
+		t.Fatalf("SearchEvents: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != id {
+		t.Fatalf("got = %+v", got)
+	}
+}
+
+// TestSearchEventsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHiddenByCitation:
+// та же регрессия-пагинация, что и
+// TestSearchEventsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHidden, но хит
+// скрыт приватной цитатой, а не приватным участником — offset должен
+// учитывать только реально видимые хиты.
+func TestSearchEventsPagesWithoutDuplicatesWhenHitBeforeOffsetIsHiddenByCitation(t *testing.T) {
+	hiddenID := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	idA := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	idB := models.ID("E-01ARZ3NDEKTSV4RRFFQ69G5FA3")
+	privateCitation := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+
+	repo := &fakeRepo{
+		hits: []models.Hit{
+			{Type: models.TypeEvent, ID: hiddenID},
+			{Type: models.TypeEvent, ID: idA},
+			{Type: models.TypeEvent, ID: idB},
+		},
+		events: map[models.ID]*models.Event{
+			hiddenID: {
+				ID: hiddenID, Private: false, Place: &models.PlaceRef{Text: "Давыдово-0"},
+				Sources: []models.SourceLink{{CitationID: privateCitation}},
+			},
+			idA: {ID: idA, Private: false, Place: &models.PlaceRef{Text: "Давыдово-A"}},
+			idB: {ID: idB, Private: false, Place: &models.PlaceRef{Text: "Давыдово-B"}},
+		},
+		citations: map[models.ID]*models.Citation{privateCitation: {ID: privateCitation, Private: true}},
+	}
+
+	scenario := New(repo)
+
+	page1, err := scenario.SearchEvents(context.Background(), models.AccessPublic,
+		models.SearchQuery{Text: "Дав", Page: models.Page{Limit: 1, Offset: 0}})
+	if err != nil {
+		t.Fatalf("SearchEvents (page1): %v", err)
+	}
+
+	if len(page1) != 1 || page1[0].ID != idA {
+		t.Fatalf("page1 = %+v, want [A]", page1)
+	}
+
+	page2, err := scenario.SearchEvents(context.Background(), models.AccessPublic,
+		models.SearchQuery{Text: "Дав", Page: models.Page{Limit: 1, Offset: 1}})
+	if err != nil {
+		t.Fatalf("SearchEvents (page2): %v", err)
+	}
+
+	if len(page2) != 1 || page2[0].ID != idB {
+		t.Fatalf("page2 = %+v, want [B] (не дубликат page1!)", page2)
 	}
 }

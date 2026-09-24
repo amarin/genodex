@@ -56,7 +56,7 @@ func handleParishSearch(parishes ParishService) http.HandlerFunc {
 // handleParishGet — GET /api/parishes/{id}.
 func handleParishGet(parishes ParishService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		p, err := parishes.GetParish(r.Context(), pathID(r))
+		p, err := parishes.GetParish(r.Context(), AccessFromContext(r.Context()), pathID(r))
 		if err != nil {
 			writeError(w, err)
 

@@ -8,19 +8,45 @@ import (
 	"github.com/amarin/genodex/internal/models"
 )
 
+// fakeRepo отдаёт окна списка как настоящий репозиторий.
 type fakeRepo struct {
-	page models.Page
-	out  []*models.Repository
+	list      []*models.Repository
+	err       error
+	calls     []models.Page
+	citations map[models.ID]*models.Citation
+}
+
+// window нарезает список по окну, как настоящий репозиторий.
+func window(list []*models.Repository, page models.Page) []*models.Repository {
+	page = page.Normalized()
+	if page.Offset >= len(list) {
+		return nil
+	}
+
+	return list[page.Offset:min(page.Offset+page.Limit, len(list))]
 }
 
 func (f *fakeRepo) ListRepositories(_ context.Context, _ models.Access, page models.Page) ([]*models.Repository, error) {
-	f.page = page
+	f.calls = append(f.calls, page)
 
-	return f.out, nil
+	if f.err != nil {
+		return nil, f.err
+	}
+
+	return window(f.list, page), nil
+}
+
+func (f *fakeRepo) GetCitation(_ context.Context, id models.ID) (*models.Citation, error) {
+	c, ok := f.citations[id]
+	if !ok {
+		return nil, models.ErrNotFound
+	}
+
+	return c, nil
 }
 
 func TestListRepositoriesReturnsRecords(t *testing.T) {
-	repo := &fakeRepo{out: []*models.Repository{{ID: "R-01ARZ3NDEKTSV4RRFFQ69G5FA1", Name: "ГАВО"}}}
+	repo := &fakeRepo{list: []*models.Repository{{ID: "R-01ARZ3NDEKTSV4RRFFQ69G5FA1", Name: "ГАВО"}}}
 
 	got, err := New(repo).ListRepositories(context.Background(), models.AccessFull, models.Page{Limit: 10})
 	if err != nil {
@@ -29,10 +55,6 @@ func TestListRepositoriesReturnsRecords(t *testing.T) {
 
 	if len(got) != 1 || got[0].Name != "ГАВО" {
 		t.Fatalf("got = %+v", got)
-	}
-
-	if repo.page.Limit != 10 {
-		t.Fatalf("page = %+v, лимит не дошёл до репозитория", repo.page)
 	}
 }
 
@@ -44,5 +66,119 @@ func TestListRepositoriesRejectsNegativeLimit(t *testing.T) {
 	var ve *models.ValidationError
 	if !errors.As(err, &ve) || ve.Field != "limit" {
 		t.Fatalf("err = %v, want ValidationError on limit", err)
+	}
+
+	if len(repo.calls) != 0 {
+		t.Fatalf("репозиторий вызван %d раз при некорректном page", len(repo.calls))
+	}
+}
+
+func TestListRepositoriesRejectsNegativeOffset(t *testing.T) {
+	repo := &fakeRepo{}
+
+	_, err := New(repo).ListRepositories(context.Background(), models.AccessFull, models.Page{Offset: -1})
+
+	var ve *models.ValidationError
+	if !errors.As(err, &ve) || ve.Field != "offset" {
+		t.Fatalf("err = %v, want ValidationError on offset", err)
+	}
+}
+
+func TestListRepositoriesEmptyRepoGivesEmptyNotNil(t *testing.T) {
+	got, err := New(&fakeRepo{}).ListRepositories(context.Background(), models.AccessFull, models.Page{})
+	if err != nil {
+		t.Fatalf("ListRepositories: %v", err)
+	}
+
+	if got == nil || len(got) != 0 {
+		t.Fatalf("got %#v, ожидался пустой не-nil срез", got)
+	}
+}
+
+func TestListRepositoriesPropagatesRepoError(t *testing.T) {
+	wantErr := errors.New("repo down")
+
+	if _, err := New(&fakeRepo{err: wantErr}).ListRepositories(context.Background(), models.AccessFull, models.Page{}); !errors.Is(err, wantErr) {
+		t.Errorf("err=%v, want %v", err, wantErr)
+	}
+}
+
+// TestListRepositoriesHidesRecordReferencingPrivateCitation: запись сама не
+// приватна, но ссылается (Sources[i].CitationID) на приватную цитату — для
+// вызывающего без полного доступа она исключается из списка.
+func TestListRepositoriesHidesRecordReferencingPrivateCitation(t *testing.T) {
+	visibleID := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	hiddenID := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+
+	repo := &fakeRepo{
+		list: []*models.Repository{
+			{ID: hiddenID, Name: "Скрытый", Sources: []models.SourceLink{{CitationID: citationID}}},
+			{ID: visibleID, Name: "Видимый"},
+		},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
+
+	got, err := New(repo).ListRepositories(context.Background(), models.AccessPublic, models.Page{})
+	if err != nil {
+		t.Fatalf("ListRepositories: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != visibleID {
+		t.Fatalf("got = %+v, want only visible record", got)
+	}
+}
+
+// TestListRepositoriesShowsRecordReferencingPrivateCitationWithFullAccess:
+// тот же случай, но для вызывающего с полным доступом запись видима.
+func TestListRepositoriesShowsRecordReferencingPrivateCitationWithFullAccess(t *testing.T) {
+	hiddenID := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+
+	repo := &fakeRepo{
+		list: []*models.Repository{
+			{ID: hiddenID, Name: "Скрытый", Sources: []models.SourceLink{{CitationID: citationID}}},
+		},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
+
+	got, err := New(repo).ListRepositories(context.Background(), models.AccessFull, models.Page{})
+	if err != nil {
+		t.Fatalf("ListRepositories: %v", err)
+	}
+
+	if len(got) != 1 || got[0].ID != hiddenID {
+		t.Fatalf("got = %+v, want record visible with full access", got)
+	}
+}
+
+// TestListRepositoriesPagesWithoutDuplicatesWhenHiddenBeforeOffset:
+// регрессия на баг, ранее исправленный в search_events — запись, скрытая по
+// приватной цитате и предшествующая offset, не должна «съедать»
+// offset-бюджет наравне с видимыми, иначе соседние страницы начинают
+// дублировать/терять записи.
+func TestListRepositoriesPagesWithoutDuplicatesWhenHiddenBeforeOffset(t *testing.T) {
+	hiddenID := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+	idA := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA2")
+	idB := models.ID("R-01ARZ3NDEKTSV4RRFFQ69G5FA3")
+	citationID := models.ID("C-01ARZ3NDEKTSV4RRFFQ69G5FA1")
+
+	repo := &fakeRepo{
+		list: []*models.Repository{
+			{ID: hiddenID, Name: "Скрытый", Sources: []models.SourceLink{{CitationID: citationID}}},
+			{ID: idA, Name: "A"},
+			{ID: idB, Name: "B"},
+		},
+		citations: map[models.ID]*models.Citation{citationID: {ID: citationID, Private: true}},
+	}
+
+	page1, err := New(repo).ListRepositories(context.Background(), models.AccessPublic, models.Page{Limit: 1, Offset: 0})
+	if err != nil || len(page1) != 1 || page1[0].ID != idA {
+		t.Fatalf("page1 = %+v, %v; want [A]", page1, err)
+	}
+
+	page2, err := New(repo).ListRepositories(context.Background(), models.AccessPublic, models.Page{Limit: 1, Offset: 1})
+	if err != nil || len(page2) != 1 || page2[0].ID != idB {
+		t.Fatalf("page2 = %+v, %v; want [B]", page2, err)
 	}
 }

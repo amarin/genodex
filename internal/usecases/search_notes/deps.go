@@ -12,4 +12,5 @@ import (
 type NoteRepo interface {
 	Search(ctx context.Context, query string, access models.Access, page models.Page) ([]models.Hit, error)
 	GetNote(ctx context.Context, id models.ID) (*models.Note, error)
+	GetCitation(ctx context.Context, id models.ID) (*models.Citation, error)
 }
