@@ -5,9 +5,11 @@ import "github.com/amarin/genodex/internal/models"
 // EventParticipant — контракт одного участника события (models.
 // EventParticipant): флат-объект {person_id, role, note} — в отличие от
 // PersonName (подпроект 8), собственных вложенных объектов не несёт.
-// PersonID — первая СТРОГАЯ (проверяемая на существование) ссылка внутри
-// массива-объектов MCP-аргумента в программе (docs/data-model/entity-write.md
-// §3.8): PersonName/SourceLink несли только мягкие/уже-установленные ссылки.
+// PersonID — СТРОГАЯ (проверяемая на существование) ссылка внутри
+// массива-объектов MCP-аргумента — не первая такая ссылка в программе
+// (sources[i].citation_id, подпроект 5, тоже строгая), но первый случай,
+// когда строгая ссылка — сам главный субъект элемента массива, а не одно
+// из полей evidence-ссылки сбоку (docs/data-model/entity-write.md §3.8).
 type EventParticipant struct {
 	PersonID string `json:"person_id"`
 	Role     string `json:"role"`

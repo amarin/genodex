@@ -219,7 +219,7 @@
   каталоге сущностей (`web/src/api.ts`, `web/src/App.tsx`,
   `web/src/pages/EntityCatalog.tsx`).
 - Граф вокруг Person (`Relation`, `Residence`, `Event`+`EventParticipant`) —
-  подпроект 9, backend: usecase-сценарии, HTTP (`/api/relations*`,
+  подпроект 9: usecase-сценарии, HTTP (`/api/relations*`,
   `/api/residences*`, `/api/events*`) и MCP (`relation_*`/`residence_*`
   — по 5 тулов, `event_*` — 6 тулов, включая `event_search`). Три новых
   паттерна программы:
@@ -236,10 +236,12 @@
   по образцу `list_archive_nodes`, без новых методов `store.Store`);
   `Event` search остался (индексируется по началу текста `Place`, ТОЛЬКО
   это поле — не `type`/`date`);
-  (3) `EventParticipant.PersonID` — первая СТРОГАЯ (проверяемая на
-  существование, индексированная ошибка `participants[i].person_id`)
-  ссылка внутри array-of-objects MCP/HTTP-аргумента в программе (в отличие
-  от мягких/уже-установленных ссылок `PersonName`/`SourceLink`);
+  (3) `EventParticipant.PersonID` — СТРОГАЯ (проверяемая на существование,
+  индексированная ошибка `participants[i].person_id`) ссылка внутри
+  array-of-objects MCP/HTTP-аргумента — не первая такая ссылка в программе
+  (`sources[i].citation_id`, подпроект 5, тоже строгая), но первый случай,
+  когда строгая ссылка — сам главный субъект элемента массива (участник
+  события И ЕСТЬ персона), а не одно из полей evidence-ссылки сбоку;
   `Event.Place` (`*models.PlaceRef`) — НИКОГДА не проверяется на
   существование (мягкая ссылка, тот же принцип, что и любой `TextRef`) и
   получил presence-ONLY update-guard (не `raw != nil`) как единственный

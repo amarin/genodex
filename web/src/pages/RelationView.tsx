@@ -171,8 +171,12 @@ export default function RelationView() {
     if (relation == null) {
       return;
     }
-    setSaving(true);
     setSaveError(null);
+    if (personA !== "" && personA === personB) {
+      setSaveError("Связь не может быть с самим собой: персона A и персона Б должны отличаться");
+      return;
+    }
+    setSaving(true);
     try {
       const updated = await updateRelation(relation.id, {
         kind: values.kind,

@@ -74,8 +74,12 @@ export function CreateRelationModal({
   };
 
   const onFinish = async (values: RelationFormValues) => {
-    setSubmitting(true);
     setError(null);
+    if (personA !== "" && personA === personB) {
+      setError("Связь не может быть с самим собой: персона A и персона Б должны отличаться");
+      return;
+    }
+    setSubmitting(true);
     try {
       const created = await createRelation({
         kind: values.kind,

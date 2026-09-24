@@ -1924,9 +1924,12 @@ export interface PlaceRef {
 }
 
 // EventParticipant — контракт одного участника события
-// (transport.EventParticipant): флат-объект {person_id, role, note}. Первая
-// строгая (проверяемая на существование) ссылка внутри массива-объектов
-// HTTP/MCP-аргумента в программе (docs/data-model/entity-write.md §3.8).
+// (transport.EventParticipant): флат-объект {person_id, role, note}.
+// person_id — строгая (проверяемая на существование) ссылка внутри
+// массива-объектов HTTP/MCP-аргумента — не первая такая ссылка в программе
+// (sources[i].citation_id, подпроект 5), но первый случай, когда строгая
+// ссылка — сам главный субъект элемента массива, а не одно из полей
+// evidence-ссылки сбоку (docs/data-model/entity-write.md §3.8).
 export interface EventParticipant {
   person_id: string;
   role: string;

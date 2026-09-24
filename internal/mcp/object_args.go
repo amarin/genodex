@@ -195,7 +195,7 @@ func placeRefObjectProperties() map[string]any {
 	return map[string]any{
 		"text": map[string]any{"type": "string", "description": "Текст (обязателен, если нет ссылки)"},
 		"ref":  map[string]any{"type": "string", "description": "id сущности-места (административное деление, церковь или приход); сохраняется, если передать его обратно неизменным (например, из предыдущего *_get); НЕ проверяется на существование — мягкая ссылка"},
-		"type": map[string]any{"type": "string", "description": "тип сущности-ссылки (admin_division/church/parish); сохраняется вместе с ref при неизменной передаче"},
+		"type": map[string]any{"type": "string", "enum": []string{"administrative_division", "church", "parish"}, "description": "тип сущности-ссылки (administrative_division/church/parish); сохраняется вместе с ref при неизменной передаче"},
 	}
 }
 
@@ -224,9 +224,11 @@ func optionalPlaceRef(args map[string]any, name string) (*models.PlaceRef, error
 // eventParticipantObjectProperties — JSON-schema свойств одного элемента
 // массива participants (участник события, см. transport.EventParticipant).
 // Флат-объект без вложенных объектов (проще sourceLinkObjectProperties/
-// personNameObjectProperties — здесь всего три скаляра); person_id — первая
+// personNameObjectProperties — здесь всего три скаляра); person_id —
 // СТРОГАЯ (проверяемая на существование) ссылка внутри массива-объектов
-// MCP-аргумента в программе (docs/data-model/entity-write.md §3.8).
+// MCP-аргумента — не первая такая ссылка в программе (это sources[i].
+// citation_id, подпроект 5), но первый случай, когда строгая ссылка — сам
+// главный субъект элемента массива (docs/data-model/entity-write.md §3.8).
 func eventParticipantObjectProperties() map[string]any {
 	return map[string]any{
 		"person_id": map[string]any{"type": "string", "description": "id персоны-участника (обязателен, проверяется на существование)"},

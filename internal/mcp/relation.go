@@ -18,7 +18,7 @@ import (
 // более полезная замена (ребро проходит, если совпадает с person_a ИЛИ
 // person_b). person_a/person_b/kind — REQUIRED и в relation_update
 // (безусловная полная замена, как citation_update's source_id) — это ядро
-// того, что представляет собой ребро, преserve-on-omit тут неуместен.
+// того, что представляет собой ребро, preserve-on-omit тут неуместен.
 // rel_type — необязателен (его условная обязательность при kind=associate
 // проверяется моделью, не MCP-схемой), обычный preserve-on-omit.
 // since/until — одиночные объектные поля (*FactDate): presence-ONLY guard
@@ -62,7 +62,7 @@ func registerRelationTools(s *server.MCPServer, relations RelationService) {
 
 	tool = mcp.NewTool(
 		"relation_update",
-		mcp.WithDescription("Изменить ребро графа родства: kind/person_a/person_b заменяются безусловно при каждом вызове (ядро того, что представляет собой ребро); rel_type/sources/notes/private — при отсутствии аргумента сохраняют текущее значение, явное пустое значение/пустой список — очищает; since/until — одиночные объектные поля: отсутствие ключа сохраняет текущее значение, явный null — очищает (пустой объект {} для очистки не подходит — не проходит валидацию); результат — JSON обновлённой записи"),
+		mcp.WithDescription("Изменить ребро графа родства: kind/person_a/person_b заменяются безусловно при каждом вызове (ядро того, что представляет собой ребро); rel_type/sources/notes/private — при отсутствии аргумента сохраняют текущее значение, явное пустое значение/пустой список — очищает; since/until — одиночные объектные поля: отсутствие ключа сохраняет текущее значение, явный null — очищает (пустой объект {} для очистки не подходит — не проходит валидацию); результат — JSON обновлённой записи. Внимание: при смене kind на значение, отличное от associate, без явной передачи rel_type: \"\" в этом же вызове — обновление упадёт на валидации (rel_type сохраняет прежнее непустое значение по preserve-on-omit, а модель отвергает непустой rel_type при kind != associate); клиент, меняющий kind с associate на другой вид, должен явно очистить rel_type тем же вызовом"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id записи")),
 		mcp.WithString("kind", mcp.Required(), mcp.Enum("blood", "marriage", "adoption", "associate"), mcp.Description("Вид связи")),
 		mcp.WithString("rel_type", mcp.Description("Вид связи для kind=associate")),
