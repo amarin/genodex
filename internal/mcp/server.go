@@ -25,6 +25,7 @@ type Deps struct {
 	Sources      SourceService
 	Citations    CitationService
 	Families     FamilyService
+	People       PersonService
 }
 
 // NewServer создаёт MCP-сервер и регистрирует доступные тулы.
@@ -98,6 +99,10 @@ func NewServer(deps Deps) *server.MCPServer {
 
 	if deps.Families != nil {
 		registerFamilyTools(s, deps.Families)
+	}
+
+	if deps.People != nil {
+		registerPersonTools(s, deps.People)
 	}
 
 	return s

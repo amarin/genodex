@@ -46,7 +46,7 @@
 | `internal/storage/` | Долговременное хранилище: SQLite (колоночная схема, `schema_version` 0, таблица `search_index`) + `backup`/`restore`/`verify`. |
 | `internal/definitions/` | Встроенные доменные определения. `russia/` — системы административного деления (Российская империя 19 в., СССР). |
 | `internal/mcp/` | Слой MCP на `github.com/mark3labs/mcp-go`. `NewServer` создаёт `server.MCPServer`, регистрирует тулы. Транспорт — Streamable HTTP. |
-| `internal/httpapi/` | Слой HTTP API: JSON-роуты `/api/*` (health, admin-divisions, surnames, patronymics, estates, titles, given-names, repositories, churches, parishes, archives, archive-nodes, archive-documents, notes, attachments, sources, citations, families, auth, docs). Использует те же сценарии, что и MCP. |
+| `internal/httpapi/` | Слой HTTP API: JSON-роуты `/api/*` (health, admin-divisions, surnames, patronymics, estates, titles, given-names, repositories, churches, parishes, archives, archive-nodes, archive-documents, notes, attachments, sources, citations, families, people, auth, docs). Использует те же сценарии, что и MCP. |
 | `web/` | Фронтенд: Vite + React 18 + antd. `src/` — исходники, `dist/` — результат сборки, `embed.go` — `//go:embed` и раздача. |
 | `docs/` | Документация проекта. |
 

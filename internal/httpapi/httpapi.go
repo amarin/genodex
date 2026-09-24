@@ -84,6 +84,10 @@ func NewHandler(deps Deps) http.Handler {
 		registerFamilyRoutes(mux, deps.Families)
 	}
 
+	if deps.People != nil {
+		registerPersonRoutes(mux, deps.People)
+	}
+
 	return mux
 }
 
@@ -262,6 +266,16 @@ func registerFamilyRoutes(mux *http.ServeMux, families FamilyService) {
 	mux.HandleFunc("POST /api/families", handleFamilyCreate(families))
 	mux.HandleFunc("PUT /api/families/{id}", handleFamilyUpdate(families))
 	mux.HandleFunc("DELETE /api/families/{id}", handleFamilyDelete(families))
+}
+
+// registerPersonRoutes регистрирует маршруты /api/people на переданном mux.
+func registerPersonRoutes(mux *http.ServeMux, people PersonService) {
+	mux.HandleFunc("GET /api/people", handlePersonList(people))
+	mux.HandleFunc("GET /api/people/search", handlePersonSearch(people))
+	mux.HandleFunc("GET /api/people/{id}", handlePersonGet(people))
+	mux.HandleFunc("POST /api/people", handlePersonCreate(people))
+	mux.HandleFunc("PUT /api/people/{id}", handlePersonUpdate(people))
+	mux.HandleFunc("DELETE /api/people/{id}", handlePersonDelete(people))
 }
 
 func handleHealth(w http.ResponseWriter, r *http.Request) {

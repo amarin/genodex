@@ -29,6 +29,7 @@ import (
 	create_note "github.com/amarin/genodex/internal/usecases/create_note"
 	create_parish "github.com/amarin/genodex/internal/usecases/create_parish"
 	create_patronymic "github.com/amarin/genodex/internal/usecases/create_patronymic"
+	create_person "github.com/amarin/genodex/internal/usecases/create_person"
 	create_repository "github.com/amarin/genodex/internal/usecases/create_repository"
 	create_source "github.com/amarin/genodex/internal/usecases/create_source"
 	create_surname "github.com/amarin/genodex/internal/usecases/create_surname"
@@ -46,6 +47,7 @@ import (
 	delete_note "github.com/amarin/genodex/internal/usecases/delete_note"
 	delete_parish "github.com/amarin/genodex/internal/usecases/delete_parish"
 	delete_patronymic "github.com/amarin/genodex/internal/usecases/delete_patronymic"
+	delete_person "github.com/amarin/genodex/internal/usecases/delete_person"
 	delete_repository "github.com/amarin/genodex/internal/usecases/delete_repository"
 	delete_source "github.com/amarin/genodex/internal/usecases/delete_source"
 	delete_surname "github.com/amarin/genodex/internal/usecases/delete_surname"
@@ -63,6 +65,7 @@ import (
 	get_note "github.com/amarin/genodex/internal/usecases/get_note"
 	get_parish "github.com/amarin/genodex/internal/usecases/get_parish"
 	get_patronymic "github.com/amarin/genodex/internal/usecases/get_patronymic"
+	get_person "github.com/amarin/genodex/internal/usecases/get_person"
 	get_repository "github.com/amarin/genodex/internal/usecases/get_repository"
 	get_source "github.com/amarin/genodex/internal/usecases/get_source"
 	get_surname "github.com/amarin/genodex/internal/usecases/get_surname"
@@ -80,6 +83,7 @@ import (
 	list_notes "github.com/amarin/genodex/internal/usecases/list_notes"
 	list_parishes "github.com/amarin/genodex/internal/usecases/list_parishes"
 	list_patronymics "github.com/amarin/genodex/internal/usecases/list_patronymics"
+	list_people "github.com/amarin/genodex/internal/usecases/list_people"
 	list_repositories "github.com/amarin/genodex/internal/usecases/list_repositories"
 	list_sources "github.com/amarin/genodex/internal/usecases/list_sources"
 	list_surnames "github.com/amarin/genodex/internal/usecases/list_surnames"
@@ -97,6 +101,7 @@ import (
 	search_notes "github.com/amarin/genodex/internal/usecases/search_notes"
 	search_parishes "github.com/amarin/genodex/internal/usecases/search_parishes"
 	search_patronymics "github.com/amarin/genodex/internal/usecases/search_patronymics"
+	search_people "github.com/amarin/genodex/internal/usecases/search_people"
 	search_repositories "github.com/amarin/genodex/internal/usecases/search_repositories"
 	search_sources "github.com/amarin/genodex/internal/usecases/search_sources"
 	search_surnames "github.com/amarin/genodex/internal/usecases/search_surnames"
@@ -114,6 +119,7 @@ import (
 	update_note "github.com/amarin/genodex/internal/usecases/update_note"
 	update_parish "github.com/amarin/genodex/internal/usecases/update_parish"
 	update_patronymic "github.com/amarin/genodex/internal/usecases/update_patronymic"
+	update_person "github.com/amarin/genodex/internal/usecases/update_person"
 	update_repository "github.com/amarin/genodex/internal/usecases/update_repository"
 	update_source "github.com/amarin/genodex/internal/usecases/update_source"
 	update_surname "github.com/amarin/genodex/internal/usecases/update_surname"
@@ -730,6 +736,43 @@ func (s *familyService) DeleteFamily(ctx context.Context, id models.ID) error {
 	return s.del.DeleteFamily(ctx, id)
 }
 
+// personService — фасад всех сценариев персон, отдаваемых HTTP и MCP.
+// list/search используют имена ListPeople/SearchPeople (неправильное
+// множественное число, зеркалирует store.Store.ListPeople) — см.
+// httpapi.PersonService/mcp.PersonService.
+type personService struct {
+	list   *list_people.Scenario
+	search *search_people.Scenario
+	get    *get_person.Scenario
+	create *create_person.Scenario
+	update *update_person.Scenario
+	del    *delete_person.Scenario
+}
+
+func (s *personService) ListPeople(ctx context.Context, access models.Access, page models.Page) ([]models.Person, error) {
+	return s.list.ListPeople(ctx, access, page)
+}
+
+func (s *personService) SearchPeople(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Person, error) {
+	return s.search.SearchPeople(ctx, access, q)
+}
+
+func (s *personService) GetPerson(ctx context.Context, access models.Access, id models.ID) (models.Person, error) {
+	return s.get.GetPerson(ctx, access, id)
+}
+
+func (s *personService) CreatePerson(ctx context.Context, p models.Person) (models.Person, error) {
+	return s.create.CreatePerson(ctx, p)
+}
+
+func (s *personService) UpdatePerson(ctx context.Context, p models.Person) error {
+	return s.update.UpdatePerson(ctx, p)
+}
+
+func (s *personService) DeletePerson(ctx context.Context, id models.ID) error {
+	return s.del.DeletePerson(ctx, id)
+}
+
 var (
 	_ httpapi.DivisionService        = (*divisionService)(nil)
 	_ mcp.DivisionService            = (*divisionService)(nil)
@@ -765,6 +808,8 @@ var (
 	_ mcp.CitationService            = (*citationService)(nil)
 	_ httpapi.FamilyService          = (*familyService)(nil)
 	_ mcp.FamilyService              = (*familyService)(nil)
+	_ httpapi.PersonService          = (*personService)(nil)
+	_ mcp.PersonService              = (*personService)(nil)
 	_ httpapi.AuthService            = (*auth.Service)(nil)
 	_ mcp.TokenResolver              = (*auth.Service)(nil)
 )
@@ -929,6 +974,15 @@ func New(cfg Config) (*App, error) {
 		del:    delete_family.New(st),
 	}
 
+	people := &personService{
+		list:   list_people.New(st),
+		search: search_people.New(st),
+		get:    get_person.New(st),
+		create: create_person.New(st, idgen.New()),
+		update: update_person.New(st),
+		del:    delete_person.New(st),
+	}
+
 	// auth-хранилище — на том же соединении, что и общий store (см.
 	// sqlstore.Store.DB), файл БД один и тот же (internal/storage/schema_auth.go).
 	authService := auth.New(auth.NewSQLStore(st.DB()))
@@ -946,6 +1000,7 @@ func New(cfg Config) (*App, error) {
 			Sources:      sources,
 			Citations:    citations,
 			Families:     families,
+			People:       people,
 		}),
 	)))
 	mux.Handle("/api/", httpapi.NewAPIHandler(httpapi.Deps{
@@ -966,6 +1021,7 @@ func New(cfg Config) (*App, error) {
 		Sources:      sources,
 		Citations:    citations,
 		Families:     families,
+		People:       people,
 		Auth:         authService,
 		DocsFS:       genodex.DocsFS(cfg.WebMode),
 		TrustProxy:   cfg.TrustProxy,

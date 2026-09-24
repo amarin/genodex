@@ -176,6 +176,37 @@
   `update_family`/`delete_family`), `internal/httpapi/family{,_write}.go`,
   `internal/mcp/family.go`, `web/src/pages/{FamiliesList,FamilyForm,
   FamilyView}.tsx`, `web/src/App.tsx`, `web/src/pages/EntityCatalog.tsx`).
+- Персоны (`Person`) — подпроект 8, backend (веб — отдельная работа): ядро
+  графа генеалогии, usecase-сценарии, HTTP (`/api/people*`) и MCP
+  (`person_list/search/get/create/update/delete`). Единственная строго
+  проверяемая ссылка — `Sources[i].CitationID`, как и везде; все прочие
+  ссылки (`Names[i].Surname/.Given/.Patronymic` — на `Surname`/`GivenName`/
+  `Patronymic`, `Estates`/`Titles` — на словари, `Nicknames`) — мягкие
+  `TextRef`, существование не проверяется, несмотря на то что у первых трёх
+  словарей есть собственный CRUD с подпроектов 1-2. `PersonName` — первая
+  вложенная подформа-«массив объектов» в программе: `transport.PersonName`
+  (новый файл, по образцу `transport.Anchor`) переиспользует существующие
+  `TextRef`/`FactDate` без нового кода value-уровня; MCP-аргумент `names`
+  — второй массив объектов в программе (после `sources`, подпроект 5) и
+  первый, чьи элементы сами несут вложенные объекты (`personNameObjectProperties`
+  ссылается на `textRefObjectProperties`/`factDateObjectProperties`).
+  `person_update` расширяет presence-check «отсутствие аргумента сохраняет
+  текущее значение» (прежде — только у `sources`) также на `names`.
+  Наименование зеркалирует иррегулярное множественное число хранилища
+  (`store.Store.ListPeople`): usecase-пакеты `list_people`/`search_people`
+  (иррегулярное множественное), `get_person`/`create_person`/
+  `update_person`/`delete_person` (единственное число) — но MCP-тулы и
+  HTTP-путь `/api/people` следуют общему для программы правилу (единое
+  число сущности как префикс тула, независимо от иррегулярности
+  хранилища). Поиск (`person_search`, `GET /api/people/search`) ищет по
+  началу фамилии/имени/отчества из ЛЮБОГО элемента `Names`, не только
+  основного (`personTerms`, уже существовавший generic-код), что
+  доказывается автоматически (`TestSearchPeopleFindsByMarriedNameOnly`,
+  `TestPersonWriteContractWithRealStore`)
+  (`internal/transport/{person,person_name,person_write}.go`,
+  `internal/usecases/{list,search}_people/`, `internal/usecases/
+  {get,create,update,delete}_person/`, `internal/httpapi/person{,_write}.go`,
+  `internal/mcp/person.go`).
 - Веб: единая точка входа `/` — каталог подключённых сущностей по
   алфавиту (Административное деление, Документация, Фамилии), вместо
   прежних вкладок; хлебные крошки от корня на каждой странице

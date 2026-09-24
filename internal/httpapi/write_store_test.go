@@ -2443,3 +2443,206 @@ func putFamilyReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, bo
 
 	return rec
 }
+
+// TestPersonWriteContractWithRealStore: сквозной путь «хранилище → сценарии
+// → HTTP» (по образцу TestFamilyWriteContractWithRealStore) для персон —
+// ядра графа генеалогии (подпроект 8): bootstrap-регистрация → создание с
+// двумя записями Names (main и married), каждая — с мягкой ссылкой на
+// заведомо несуществующие Surname/GivenName/Patronymic (доказывает 201, без
+// проверки существования) → чтение → изменение → удаление → повторное
+// чтение — 404. Дополнительно закрывает: приватность через ОБА пути (create
+// И update, PUBLIC → PRIVATE, не private → private — тот же урок финального
+// ревью подпроекта 7); строгий FK sources[i].citation_id; и то, что поиск
+// находит персону по части фамилии/имени/отчества из ВТОРОЙ записи Names
+// (married), а не только из первой (main) — доказывает, что personTerms
+// индексирует все имена, не только основное.
+func TestPersonWriteContractWithRealStore(t *testing.T) {
+	st, err := sqlstore.Open(t.TempDir())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	authSvc := auth.New(auth.NewSQLStore(st.DB()))
+	h := httpapi.NewAPIHandler(httpapi.Deps{
+		Divisions:  newDivisionService(t, st),
+		People:     newPersonService(t, st),
+		Sources:    newSourceService(t, st),
+		Citations:  newCitationService(t, st),
+		Auth:       authSvc,
+		DocsFS:     fstest.MapFS{},
+		TrustProxy: false,
+	})
+
+	regRec := postAuthReq(t, h, "/api/auth/register", `{"login":"owner","password":"password123"}`, nil)
+	requireStatusS(t, regRec, http.StatusCreated)
+	accessCookie, _ := sessionCookies(t, regRec)
+	owner := []*http.Cookie{accessCookie}
+
+	// Создание: два имени (main + married), каждое — с мягкой ссылкой на
+	// несуществующие словарные записи. 201, без проверки существования.
+	createBody := `{
+		"gender": "female",
+		"names": [
+			{"type":"main","surname":{"text":"Дорожкина","ref":"SN-01ARZ3NDEKTSV4RRFFQ69G5FA1","type":"surname"},"given":{"text":"Акилина","ref":"GN-01ARZ3NDEKTSV4RRFFQ69G5FA1","type":"given_name"}},
+			{"type":"married","surname":{"text":"Петрова","ref":"SN-01ARZ3NDEKTSV4RRFFQ69G5FA2","type":"surname"},"patronymic":{"text":"Ивановна","ref":"PN-01ARZ3NDEKTSV4RRFFQ69G5FA1","type":"patronymic"}}
+		],
+		"estates": [{"text":"крестьяне"}],
+		"titles": [],
+		"nicknames": [],
+		"notes": [],
+		"private": false
+	}`
+	created := createPerson(t, h, owner, createBody, http.StatusCreated)
+	if len(created.Names) != 2 || created.Names[0].Surname.Text != "Дорожкина" || created.Names[1].Surname.Text != "Петрова" {
+		t.Fatalf("created.Names = %+v", created.Names)
+	}
+	if created.Names[0].Surname.Ref != "SN-01ARZ3NDEKTSV4RRFFQ69G5FA1" || created.Names[1].Patronymic.Ref != "PN-01ARZ3NDEKTSV4RRFFQ69G5FA1" {
+		t.Fatalf("мягкие ссылки не сохранены как есть: %+v", created.Names)
+	}
+	if !strings.HasPrefix(string(created.ID), "I-") {
+		t.Fatalf("id = %q", created.ID)
+	}
+
+	// Чтение по id — открыто анонимному посетителю; ссылки пережили запись и
+	// чтение из SQLite (а не только эхо сценария в памяти).
+	rec := getReq(t, h, "/api/people/"+string(created.ID))
+	requireStatusS(t, rec, http.StatusOK)
+	reread := decodePersonS(t, rec)
+	if len(reread.Names) != 2 || reread.Names[1].Surname.Ref != "SN-01ARZ3NDEKTSV4RRFFQ69G5FA2" {
+		t.Fatalf("reread.Names (после чтения из SQLite) = %+v", reread.Names)
+	}
+
+	// Поиск: часть фамилии, которая встречается ТОЛЬКО во второй (married)
+	// записи Names, должна находить персону — доказывает, что personTerms
+	// индексирует все имена, а не только первое/основное.
+	searchRec := getReq(t, h, "/api/people/search?q=Петр")
+	requireStatusS(t, searchRec, http.StatusOK)
+	if !strings.Contains(searchRec.Body.String(), string(created.ID)) {
+		t.Fatalf("поиск по началу фамилии из married-имени не нашёл запись: %s", searchRec.Body)
+	}
+
+	// Изменение: полная замена; gender меняется, private остаётся false.
+	updateBody := `{
+		"gender": "female",
+		"names": [
+			{"type":"main","surname":{"text":"Дорожкина"},"given":{"text":"Акилина"}}
+		],
+		"estates": [],
+		"titles": [],
+		"nicknames": [],
+		"notes": [],
+		"private": false
+	}`
+	rec = putPersonReq(t, h, owner, "/api/people/"+string(created.ID), updateBody)
+	requireStatusS(t, rec, http.StatusOK)
+	updated := decodePersonS(t, rec)
+	if len(updated.Names) != 1 || updated.ID != created.ID {
+		t.Fatalf("after update = %+v", updated)
+	}
+
+	// Удаление.
+	requireStatusS(t, delReq(t, h, owner, "/api/people/"+string(created.ID)), http.StatusNoContent)
+
+	// Несуществующая — 404.
+	requireStatusS(t, getReq(t, h, "/api/people/"+string(created.ID)), http.StatusNotFound)
+
+	// Fix 1 (CRITICAL, повторялась в программе несколько раз): private
+	// должен пережить и create, и update, а не только прямое сохранение.
+	// Сначала create с private:true.
+	private := createPerson(t, h, owner, `{"names":[],"estates":[],"titles":[],"nicknames":[],"notes":[],"private":true}`, http.StatusCreated)
+	if !private.Private {
+		t.Fatalf("private (после create) = %+v, want Private=true", private)
+	}
+	requireStatusS(t, getReq(t, h, "/api/people/"+string(private.ID)), http.StatusNotFound)
+
+	// Теперь update, переключающий PUBLIC → PRIVATE (не private → private —
+	// та проверка ловит только "update сбрасывает private в false", а не
+	// "update не выставляет private в true у публичной записи"; тот же
+	// урок, что и финальное ревью подпроекта 7).
+	public := createPerson(t, h, owner, `{"names":[],"estates":[],"titles":[],"nicknames":[],"notes":[],"private":false}`, http.StatusCreated)
+	requireStatusS(t, getReq(t, h, "/api/people/"+string(public.ID)), http.StatusOK)
+
+	rec = putPersonReq(t, h, owner, "/api/people/"+string(public.ID),
+		`{"names":[],"estates":[],"titles":[],"nicknames":[],"notes":[],"private":true}`)
+	requireStatusS(t, rec, http.StatusOK)
+	afterUpdate := decodePersonS(t, rec)
+	if !afterUpdate.Private {
+		t.Fatalf("private (после update) = %+v, want Private=true", afterUpdate)
+	}
+	requireStatusS(t, getReq(t, h, "/api/people/"+string(public.ID)), http.StatusNotFound)
+
+	// Строгий FK: существующая цитата — сохраняется.
+	src := createSource(t, h, owner,
+		`{"kind":"document","title":"Ревизская сказка","reliability":"primary","notes":[],"private":false}`,
+		http.StatusCreated)
+	cit := createCitation(t, h, owner,
+		fmt.Sprintf(`{"source_id":%q,"private":false}`, src.ID), http.StatusCreated)
+
+	withCitation := createPerson(t, h, owner,
+		fmt.Sprintf(`{"names":[],"estates":[],"titles":[],"nicknames":[],"notes":[],"sources":[{"citation_id":%q}],"private":false}`, cit.ID),
+		http.StatusCreated)
+	if len(withCitation.Sources) != 1 || withCitation.Sources[0].CitationID != string(cit.ID) {
+		t.Fatalf("withCitation.Sources = %+v, want [{citation_id: %q}]", withCitation.Sources, cit.ID)
+	}
+
+	// Строгий FK: корректный по формату, но несуществующий citation_id — 422 на sources[0].citation_id.
+	rec = postPersonReq(t, h, owner,
+		`{"names":[],"estates":[],"titles":[],"nicknames":[],"notes":[],"sources":[{"citation_id":"C-01ARZ3NDEKTSV4RRFFQ69G5FA9"}],"private":false}`)
+	requireStatusS(t, rec, http.StatusUnprocessableEntity)
+	if !strings.Contains(rec.Body.String(), `"field":"sources[0].citation_id"`) {
+		t.Fatalf("body = %s, want field=sources[0].citation_id", rec.Body)
+	}
+}
+
+func createPerson(t *testing.T, h http.Handler, cookies []*http.Cookie, body string, want int) transport.Person {
+	t.Helper()
+
+	rec := postPersonReq(t, h, cookies, body)
+	if rec.Code != want {
+		t.Fatalf("status = %d, want %d; body = %s", rec.Code, want, rec.Body)
+	}
+
+	return decodePersonS(t, rec)
+}
+
+func decodePersonS(t *testing.T, rec *httptest.ResponseRecorder) transport.Person {
+	t.Helper()
+
+	var p transport.Person
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+		t.Fatalf("decode: %v; body = %s", err, rec.Body)
+	}
+
+	return p
+}
+
+func postPersonReq(t *testing.T, h http.Handler, cookies []*http.Cookie, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPost, "/api/people", strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func putPersonReq(t *testing.T, h http.Handler, cookies []*http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
+	req.Header.Set("X-Requested-With", "genodex")
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	return rec
+}

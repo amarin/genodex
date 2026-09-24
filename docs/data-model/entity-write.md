@@ -346,9 +346,10 @@ Person и др.).
   своего FK (только `Sources[i].CitationID`, проверяемый в транзакции по
   образцу `create_repository`/`update_repository`), нет self-ref, нет
   полиморфного типа.
-- **`Members` — мягкая ссылка на `Person`, `TypePerson`.** `Person` не
-  получит CRUD до подпроекта 8 — как и `ArchiveNode`/`ArchiveDocument` до
-  подпроекта 6 (§3.2), это не мешает `Family` ссылаться на него: `TextRef`
+- **`Members` — мягкая ссылка на `Person`, `TypePerson`.** На момент этого
+  подпроекта `Person` ещё не имел CRUD (получил его в подпроекте 8, §3.7) —
+  как и `ArchiveNode`/`ArchiveDocument` до подпроекта 6 (§3.2), это не
+  мешает `Family` ссылаться на него: `TextRef`
   для мягких ссылок никогда не проверяется на существование при
   сохранении, независимо от того, есть ли у цели свой CRUD-слой — этот
   принцип действует с самого первого появления `TextRef` в программе, не
@@ -367,6 +368,100 @@ Person и др.).
   («поиск по началу названия») сверены с этим списком буквально — тот же
   урок, что и в §3.2 (найдено финальным ревью подпроекта 4, с тех пор
   проверяется явно при каждом новом подпроекте).
+
+### 3.7. Подпроект 8 (`Person`) — вложенная подформа `PersonName`, backend
+
+- **Ядро графа генеалогии, но без нового FK-паттерна.** `Person` —
+  `{ID, Gender, Names []PersonName, Estates []TextRef, Titles []TextRef,
+  Nicknames []TextRef, Notes []TextRef, Sources []SourceLink, Private bool}`
+  — все поля, кроме `ID`, опциональны, включая `Gender` (пустая строка —
+  «не указан»). Единственная строго проверяемая ссылка — по-прежнему
+  `Sources[i].CitationID` (`InTx`+`tx.GetCitation`, образец —
+  `create_family`/`update_family`); `Person` доступен и access-aware (образец
+  — `get_family`). Новый содержательный элемент этого подпроекта —
+  вложенная подформа `[]PersonName`, а не новый вид FK.
+- **`PersonName` — первая вложенная подформа-«массив объектов» в
+  программе**, а не просто список `TextRef`. Каждый элемент —
+  `{Type, Surname TextRef, Given TextRef, Patronymic TextRef, Prefix, Suffix,
+  Since *FactDate, Until *FactDate}`: вид имени (`main`/`birth`/`married`/
+  `changed`/`pseudonym`, пусто — не указан), три МЯГКИЕ ссылки на словари
+  (`Surname`/`GivenName`/`Patronymic` — `TextRef.Ref`, если задан,
+  проверяется только по формату, СУЩЕСТВОВАНИЕ НЕ ПРОВЕРЯЕТСЯ, тот же
+  принцип, что и у любого другого `TextRef` в программе, несмотря на то что
+  все три словаря имеют собственный CRUD с подпроектов 1-2), служебные
+  части имени (`Prefix`/`Suffix`) и период действия (`FactDate`). Модельная
+  валидация (`person_name_validate.go`) требует хотя бы одну из трёх частей
+  непустой — иначе `""`-путь ошибки (пустое поле `Field`, тест на уровне
+  `PersonName` отдельно от `Person`, `TestPersonNameValidateStandalone`).
+- **Транспорт: `transport.PersonName`, новый файл, по образцу `transport.Anchor`
+  (первый прецедент «собственный файл под вложенный не-полиморфный DTO»,
+  подпроект 5).** `{type, surname, given, patronymic, prefix, suffix, since,
+  until}`, все поля JSON-тегами snake_case; `surname`/`given`/`patronymic` —
+  обычный `transport.TextRef` (те же `TextRefFromModel`/`(*TextRef).Model()`,
+  без нового кода), `since`/`until` — обычный `transport.FactDate` (те же
+  `FactDateFromModel`/`(*FactDate).Model()`). Ничего нового в самих
+  value-DTO не понадобилось — только оболочка `PersonNameFromModel`/
+  `(PersonName).Model()` + `PersonNamesFromModel`/`PersonNamesToModel` для
+  среза, зеркалирующая `TextRefsFromModel`/`TextRefsToModel`.
+- **MCP: `names` — второй массив объектов в программе, первый с вложенными
+  объектами внутри своих же элементов.** Тот же технический приём, что и
+  `sources` (подпроект 5, `mcp.WithArray("names", mcp.Items(map[string]any{
+  "type": "object", "properties": personNameObjectProperties()}), ...)`,
+  чтение — marshal/unmarshal сырого `[]any` в `[]transport.PersonName` через
+  `optionalPersonNames`, `internal/mcp/object_args.go`) — но
+  `personNameObjectProperties()` сама ссылается на `textRefObjectProperties()`
+  и `factDateObjectProperties()` для полей `surname`/`given`/`patronymic`/
+  `since`/`until`: первый случай в программе, когда элемент MCP-массива сам
+  несёт вложенные MCP-объекты, а не только плоские скаляры (как у
+  `sourceLinkObjectProperties`).
+- **`person_update`: presence-check «отсутствие аргумента сохраняет текущее
+  значение» расширен с `sources` (единственного прежде исключения,
+  подпроект 5) на `names`.** `if raw, ok := args["names"]; ok && raw != nil
+  { ... }` — тот же паттерн, что и у `sources` в `familyUpdateHandler`
+  (§3.3): отсутствие ключа `names` в вызове `person_update` сохраняет
+  текущие имена персоны как есть, пустой массив `[]` — явно очищает список.
+  `estates`/`titles`/`nicknames`/`notes` остаются на общем для всей
+  программы v1-ограничении (§5) — заменяются целиком текстом при каждом
+  `person_update`, без presence-check.
+- **Наименование зеркалирует иррегулярное множественное число хранилища.**
+  `internal/store/deps.go` называет метод списка `ListPeople` (не
+  `ListPersons`) — единственная иррегулярная пара в generic-хранилище.
+  Usecase-пакеты названы в её честь: `list_people`/`search_people`
+  (иррегулярное множественное, зеркалирует `ListPeople`), `get_person`/
+  `create_person`/`update_person`/`delete_person` (единственное число,
+  зеркалирует одноимённые методы хранилища). Экспортируемые методы
+  сценариев следуют той же логике: `Scenario.ListPeople`/`Scenario.
+  SearchPeople`, но `Scenario.GetPerson`/`CreatePerson`/`UpdatePerson`/
+  `DeletePerson`. `httpapi.PersonService`/`mcp.PersonService` — те же имена
+  методов. МАРШРУТЫ и ИМЕНА MCP-ТУЛОВ, тем не менее, следуют ЕДИНОМУ для
+  всей программы правилу — единственное число сущности как префикс,
+  независимо от иррегулярности хранилища: `/api/people` (путь во
+  множественном числе, как и `/api/families`, но `person_list`/
+  `person_search`/`person_get`/`person_create`/`person_update`/
+  `person_delete` — единым префиксом `person_`, точно как `family_*`
+  использует `family_`, а не `families_`.
+- **Поиск — особый случай, не «одно поле `name`» как у большинства
+  сущностей.** `personTerms(p *models.Person) []string`
+  (`internal/store/sqlstore/person.go`, уже существовал до этого
+  подпроекта как часть generic-слоя) собирает `Surname.Text`/`Given.Text`/
+  `Patronymic.Text` из КАЖДОГО элемента `p.Names`, не только из
+  «основного» (`main`), и индексирует всё под одним полем `"name"`.
+  Формулировки MCP-описаний/doc-комментариев/веб-плейсхолдеров должны
+  отражать это буквально («ищет по началу фамилии/имени/отчества из ЛЮБОГО
+  из имён персоны, не только основного») — тот же урок §3.2/§3.6, но
+  здесь качественно иной (не «одно поле вместо всех текстовых», а «поле
+  агрегирует несколько повторяющихся дочерних записей»); `Estates`/
+  `Titles`/`Nicknames`/`Notes` поиском не охвачены, как и `Members`/`Notes`
+  у `Family`. Автоматическое доказательство — `TestSearchPeopleFindsByMarriedNameOnly`
+  (`internal/usecases/search_people/scenario_test.go`) на уровне сценария и
+  `TestPersonWriteContractWithRealStore` (`internal/httpapi/write_store_test.go`)
+  на реальном SQLite: обе ищут по части фамилии, которая встречается ТОЛЬКО
+  во второй (не основной) записи `Names`.
+- **Backend-only подпроект.** Веб-страницы (`PersonForm`/`PersonView`/
+  `PeopleList`, редактор подформы `PersonName`) — отдельная работа,
+  выполняется отдельно от этого прохода; конвенции §3-4 (в т.ч. `TextRef`-
+  списки только текстом в v1, без пикера) применяются к ним без изменений,
+  когда до них дойдёт очередь.
 
 ## 4. Веб-UI конвенции
 
@@ -430,10 +525,12 @@ Person и др.).
 
 - Picker для `TextRef.Ref` (выбор ссылки на произвольную сущность) —
   отложен до реальной необходимости (подпроект 9 и позже).
-- Вложенные подформы Person (`[]PersonName`) и участники Event
-  (`[]EventParticipant`) — детальный дизайн откладывается до
-  подпроектов 8-9, когда до них дойдёт очередь; общие конвенции §3-4
-  всё равно применяются как основа.
+- Вложенная подформа Person (`[]PersonName`) backend — реализована в
+  подпроекте 8 (§3.7); её веб-форма (`PersonForm`/`PersonView`, редактор
+  `[]PersonName`) — отдельная работа, вне объёма этого прохода. Участники
+  Event (`[]EventParticipant`) — детальный дизайн по-прежнему откладывается
+  до подпроекта 9, когда до него дойдёт очередь; общие конвенции §3-4 всё
+  равно применяются как основа.
 - **Известное ограничение v1 MCP-тулов записи** (обнаружено финальным ревью
   подпроекта 1): `<entity>_update` заменяет СПИСКИ `TextRef` (например,
   `Surname.Variants`, `Church.Settlements`/`Notes`) целиком текстом — эти

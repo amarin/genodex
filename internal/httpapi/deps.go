@@ -196,6 +196,20 @@ type FamilyService interface {
 	DeleteFamily(ctx context.Context, id models.ID) error
 }
 
+// PersonService — контракт сценариев персон, отдаваемых в HTTP: список,
+// поиск, чтение, создание, изменение, удаление. Список/поиск используют
+// имена ListPeople/SearchPeople (неправильное множественное число,
+// зеркалирует store.Store.ListPeople) — единственное исключение из общего
+// правила «<Глагол><ИмяСущностиВоМножественномЧисле>» в этой программе.
+type PersonService interface {
+	ListPeople(ctx context.Context, access models.Access, page models.Page) ([]models.Person, error)
+	SearchPeople(ctx context.Context, access models.Access, q models.SearchQuery) ([]models.Person, error)
+	GetPerson(ctx context.Context, access models.Access, id models.ID) (models.Person, error)
+	CreatePerson(ctx context.Context, p models.Person) (models.Person, error)
+	UpdatePerson(ctx context.Context, p models.Person) error
+	DeletePerson(ctx context.Context, id models.ID) error
+}
+
 // AuthService — контракт auth.Service, отдаваемый в HTTP-обработчики.
 type AuthService interface {
 	Bootstrap(ctx context.Context) (bool, error)

@@ -118,6 +118,49 @@ func optionalSourceLinks(args map[string]any, name string) ([]models.SourceLink,
 	return transport.SourceLinksToModel(links), nil
 }
 
+// personNameObjectProperties — JSON-schema свойств одного элемента массива
+// names (одно имя персоны, см. transport.PersonName). Первый массив объектов
+// в программе, чьи собственные свойства тоже вложенные объекты
+// (surname/given/patronymic — TextRef, см. textRefObjectProperties; since/
+// until — FactDate, см. factDateObjectProperties) — то же техническое
+// решение (mcp.Items с произвольной JSON-schema), что и sourceLinkObjectProperties
+// (подпроект 5), только с более сложным элементом.
+func personNameObjectProperties() map[string]any {
+	return map[string]any{
+		"type":       map[string]any{"type": "string", "enum": []string{"", "main", "birth", "married", "changed", "pseudonym"}, "description": "Вид имени; пусто — не указан"},
+		"surname":    map[string]any{"type": "object", "properties": textRefObjectProperties(), "description": "Фамилия (текст или мягкая ссылка на словарь фамилий; существование ссылки не проверяется)"},
+		"given":      map[string]any{"type": "object", "properties": textRefObjectProperties(), "description": "Имя (текст или мягкая ссылка на словарь личных имён; существование ссылки не проверяется)"},
+		"patronymic": map[string]any{"type": "object", "properties": textRefObjectProperties(), "description": "Отчество (текст или мягкая ссылка на словарь отчеств; существование ссылки не проверяется)"},
+		"prefix":     map[string]any{"type": "string", "description": "Служебная приставка (фон, де, ван…)"},
+		"suffix":     map[string]any{"type": "string", "description": "Служебное окончание (ст., мл.…)"},
+		"since":      map[string]any{"type": "object", "properties": factDateObjectProperties(), "description": "Начало периода действия этого имени"},
+		"until":      map[string]any{"type": "object", "properties": factDateObjectProperties(), "description": "Конец периода действия этого имени"},
+	}
+}
+
+// optionalPersonNames читает массив объектов вида PersonName (см.
+// personNameObjectProperties) из сырых аргументов тула и конвертирует его в
+// модели; отсутствующий или null аргумент — nil, без ошибки (та же
+// механика, что и optionalSourceLinks).
+func optionalPersonNames(args map[string]any, name string) ([]models.PersonName, error) {
+	raw, ok := args[name]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+
+	b, err := json.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	var names []transport.PersonName
+	if err := json.Unmarshal(b, &names); err != nil {
+		return nil, fmt.Errorf("%s: %w", name, err)
+	}
+
+	return transport.PersonNamesToModel(names), nil
+}
+
 // optionalTextRef читает необязательный объектный аргумент {text, ref?, type?}
 // (см. transport.TextRef) из сырых аргументов тула и конвертирует его в
 // модель; отсутствующий или null аргумент — nil, без ошибки.
