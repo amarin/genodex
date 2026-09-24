@@ -79,7 +79,7 @@ entity     — упразднён
 | `AttachmentKind` | scan, document, audio, photo | `Attachment.kind` |
 | `NoteKind` | note, article, book, chapter (+ открытый) | `Note.kind` |
 | `RepositoryType` | archive, library, museum, private, other (+ открытый) | `Repository.type` |
-| `AdminDivisionType` (переименование `AdministrativeDivisionType`) | governorate, district, volost, other + виды нас. пунктов: gorod, selo, derevnya, hutor, pogost, stanitsa, mestechko | `AdministrativeDivision.type` |
+| `AdminDivisionType` (переименование `AdministrativeDivisionType`) | однозначные термины транслитом (guberniya, uezd, volost, oblast, rayon, …) + виды нас. пунктов (gorod, selo, derevnya, …); полный список — `docs/models/places.md` | `AdministrativeDivision.type` |
 | `Reliability` | primary, contemporary, memory, indirect, unknown | `Source.reliability`, `SourceLink.reliability` |
 | `FactPrecision`, `FactModifier`, `FactCalendar` | (`FactDate`): precision/modifier как сейчас; `FactCalendar` = gregorian, julian, unknown | даты |
 | `AnchorKind` | archive, file, url | сериализация `Anchor` |

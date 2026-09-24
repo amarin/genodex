@@ -1177,7 +1177,7 @@ func TestAdminDivisionsWithRealStore(t *testing.T) {
 	missingParent := "AD-01ARZ3NDEKTSV4RRFFQ69G5FA9" // валидный формат, не сохранён
 
 	for _, d := range []models.AdministrativeDivision{
-		{ID: root, Name: "Московская", Type: models.AdminDivisionGovernorate},
+		{ID: root, Name: "Московская", Type: models.AdminDivisionGuberniya},
 		{ID: ad1, Name: "Давыдово", Type: models.AdminDivisionSelo, ParentID: &root},
 		{ID: ad2, Name: "Никифоровская", Type: models.AdminDivisionVolost, ParentID: &root,
 			Variants: []string{"Никольское"}},
@@ -1200,8 +1200,8 @@ func TestAdminDivisionsWithRealStore(t *testing.T) {
 				`{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q,"sources":[]}]`, ad1, root, ad3, root)},
 		{"/api/admin-divisions?kind=settlement&limit=1&offset=1", http.StatusOK,
 			fmt.Sprintf(`[{"id":%q,"name":"Никифорово","type":"derevnya","parent_id":%q,"sources":[]}]`, ad3, root)},
-		{"/api/admin-divisions?type=governorate", http.StatusOK,
-			fmt.Sprintf(`[{"id":%q,"name":"Московская","type":"governorate","parent_id":null,"sources":[]}]`, root)},
+		{"/api/admin-divisions?type=guberniya", http.StatusOK,
+			fmt.Sprintf(`[{"id":%q,"name":"Московская","type":"guberniya","parent_id":null,"sources":[]}]`, root)},
 		{"/api/admin-divisions?type=castle", http.StatusUnprocessableEntity,
 			`{"error":"type: неизвестный тип единицы деления \"castle\"","field":"type"}`},
 		{"/api/admin-divisions?limit=x", http.StatusBadRequest,

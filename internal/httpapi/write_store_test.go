@@ -45,8 +45,8 @@ func TestDivisionWriteContractWithRealStore(t *testing.T) {
 	owner := []*http.Cookie{accessCookie}
 
 	// Создание корня.
-	root := createDivision(t, h, owner, `{"name":"Московская","type":"governorate"}`, http.StatusCreated)
-	if root.Name != "Московская" || root.Type != models.AdminDivisionGovernorate || root.ParentID != nil {
+	root := createDivision(t, h, owner, `{"name":"Московская","type":"guberniya"}`, http.StatusCreated)
+	if root.Name != "Московская" || root.Type != models.AdminDivisionGuberniya || root.ParentID != nil {
 		t.Fatalf("root = %+v", root)
 	}
 	if !strings.HasPrefix(string(root.ID), "AD-") {

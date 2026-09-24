@@ -29,12 +29,12 @@ func callDivisionWrite(t *testing.T, handler server.ToolHandlerFunc, svc *fakeDi
 // TestDivisionGetToolContract: чтение по id возвращает JSON контракта.
 func TestDivisionGetToolContract(t *testing.T) {
 	svc := &fakeDivisions{getDiv: models.AdministrativeDivision{
-		ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGovernorate,
+		ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGuberniya,
 	}}
 
 	res := callDivisionWrite(t, divisionGetHandler(svc), svc, map[string]any{"id": "ad-root"})
 
-	want := `{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null,"sources":[]}`
+	want := `{"id":"ad-root","name":"Московская","type":"guberniya","parent_id":null,"sources":[]}`
 	if res.IsError || resultText(t, res) != want {
 		t.Fatalf("isError=%v text=%s, want %s", res.IsError, resultText(t, res), want)
 	}
@@ -87,7 +87,7 @@ func TestDivisionCreateToolPassesModel(t *testing.T) {
 func TestDivisionCreateToolEmptyParentMeansRoot(t *testing.T) {
 	svc := &fakeDivisions{created: models.AdministrativeDivision{}}
 
-	callDivisionWrite(t, divisionCreateHandler(svc), svc, map[string]any{"name": "Московская", "type": "governorate", "parent_id": ""})
+	callDivisionWrite(t, divisionCreateHandler(svc), svc, map[string]any{"name": "Московская", "type": "guberniya", "parent_id": ""})
 
 	if svc.gotCreate.ParentID != nil {
 		t.Fatalf("gotCreate.ParentID = %v, ожидался корень", svc.gotCreate.ParentID)

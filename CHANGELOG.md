@@ -325,6 +325,20 @@
 
 ### Changed
 
+- Типы единиц административного деления однозначны: каждый код называет ровно
+  один термин и записан транслитом. `governorate` → `guberniya`, `district` →
+  `uezd`; добавлены `namestnichestvo`, `provintsiya`, `stan`, `oblast`, `okrug`,
+  `respublika`, `krai`, `rayon`, `selsovet` и виды нас. пунктов `poselok`,
+  `sloboda`, `seltso`. Система деления СССР в `internal/definitions/russia`
+  теперь `respublika → oblast → rayon`. Перечни в описаниях MCP-тулов `division_*`
+  строятся из `models.AdminDivisionTypes`. Контракт MCP и `/api/admin-divisions`
+  изменён несовместимо: старые коды отклоняются. Существующие записи
+  переводятся разовым запросом (после бэкапа):
+  `UPDATE administrative_divisions SET type = CASE type WHEN 'governorate'
+  THEN 'guberniya' WHEN 'district' THEN 'uezd' ELSE type END;` —
+  записи, где `governorate`/`district` означали область/край/район, надо
+  переразметить вручную.
+
 - **Меняет поведение MCP `<entity>_update` тулов (все сущности, ~18 тулов):**
   необязательный аргумент, отсутствующий в вызове, теперь сохраняет текущее
   значение соответствующего поля записи, вместо того чтобы сбрасывать его в

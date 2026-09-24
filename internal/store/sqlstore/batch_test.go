@@ -135,7 +135,7 @@ func seedBatch(t *testing.T, s *Store, n int, full bool) {
 	mustDo(t, "seed", s.InTx(ctx, func(tx store.Store) error {
 		root := models.ID("ad-root")
 		if err := tx.SaveAdministrativeDivision(ctx, &models.AdministrativeDivision{
-			ID: root, Name: "Московская", Type: models.AdminDivisionGovernorate,
+			ID: root, Name: "Московская", Type: models.AdminDivisionGuberniya,
 		}); err != nil {
 			return err
 		}

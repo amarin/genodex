@@ -33,7 +33,7 @@ func TestAdminDivisionCreateJSONAndModel(t *testing.T) {
 }
 
 func TestAdminDivisionCreateRoot(t *testing.T) {
-	src := []byte(`{"name":"Московская","type":"governorate"}`)
+	src := []byte(`{"name":"Московская","type":"guberniya"}`)
 	var got AdminDivisionCreate
 	if err := json.Unmarshal(src, &got); err != nil {
 		t.Fatalf("unmarshal: %v", err)

@@ -10,25 +10,50 @@ export interface AdminDivision {
 
 // AdminDivisionType — models.AdminDivisionType (internal/models/administrative_division_type.go).
 export type AdminDivisionType =
-  | "governorate"
-  | "district"
+  | "namestnichestvo"
+  | "provintsiya"
+  | "guberniya"
+  | "uezd"
+  | "stan"
   | "volost"
+  | "oblast"
+  | "okrug"
+  | "respublika"
+  | "krai"
+  | "rayon"
+  | "selsovet"
   | "other"
   | "gorod"
+  | "poselok"
+  | "sloboda"
   | "selo"
+  | "seltso"
   | "derevnya"
   | "hutor"
   | "pogost"
   | "stanitsa"
   | "mestechko";
 
+// Порядок ключей совпадает с models.AdminDivisionTypes и задаёт порядок в выпадающих списках.
 export const ADMIN_DIVISION_TYPE_LABELS: Record<AdminDivisionType, string> = {
-  governorate: "Губерния",
-  district: "Уезд",
+  namestnichestvo: "Наместничество",
+  provintsiya: "Провинция",
+  guberniya: "Губерния",
+  uezd: "Уезд",
+  stan: "Стан",
   volost: "Волость",
+  oblast: "Область",
+  okrug: "Округ",
+  respublika: "Республика",
+  krai: "Край",
+  rayon: "Район",
+  selsovet: "Сельсовет",
   other: "Иное",
   gorod: "Город",
+  poselok: "Посёлок",
+  sloboda: "Слобода",
   selo: "Село",
+  seltso: "Сельцо",
   derevnya: "Деревня",
   hutor: "Хутор",
   pogost: "Погост",

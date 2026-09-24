@@ -98,7 +98,7 @@ func sample() *fakeRepo {
 		division("ad-2", models.AdminDivisionVolost),
 		division("ad-3", models.AdminDivisionDerevnya),
 		division("ad-4", models.AdminDivisionSelo),
-		division("ad-5", models.AdminDivisionGovernorate),
+		division("ad-5", models.AdminDivisionGuberniya),
 	}}
 }
 
@@ -280,7 +280,7 @@ func TestListDivisionsPassesContextToRepo(t *testing.T) {
 // корневой список не читается (ChildrenOfDivision не трогает f.list).
 func TestListDivisionsFromParentReturnsChildren(t *testing.T) {
 	repo := &fakeRepo{
-		list: []*models.AdministrativeDivision{division("ad-root", models.AdminDivisionGovernorate)},
+		list: []*models.AdministrativeDivision{division("ad-root", models.AdminDivisionGuberniya)},
 		children: []*models.AdministrativeDivision{
 			division("ad-1", models.AdminDivisionSelo),
 			division("ad-2", models.AdminDivisionVolost),

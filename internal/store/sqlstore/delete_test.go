@@ -179,7 +179,7 @@ func fullChain() []chainStep {
 		}},
 		{"AdministrativeDivision", "ad-root", func(ctx context.Context, s *Store) error {
 			return s.SaveAdministrativeDivision(ctx, &models.AdministrativeDivision{
-				ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGovernorate,
+				ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGuberniya,
 			})
 		}},
 		{"AdministrativeDivision", "ad-1", func(ctx context.Context, s *Store) error {

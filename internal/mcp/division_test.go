@@ -109,13 +109,13 @@ func resultText(t *testing.T, res *mcp.CallToolResult) string {
 func TestDivisionListToolContract(t *testing.T) {
 	root := models.ID("ad-root")
 	svc := &fakeDivisions{list: []models.AdministrativeDivision{
-		{ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGovernorate},
+		{ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGuberniya},
 		{ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo, ParentID: &root},
 	}}
 
 	res := callDivisionList(t, svc, nil)
 
-	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null,"sources":[]},` +
+	want := `[{"id":"ad-root","name":"Московская","type":"guberniya","parent_id":null,"sources":[]},` +
 		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root","sources":[]}]`
 	if res.IsError || resultText(t, res) != want {
 		t.Fatalf("isError=%v text=%s, want %s", res.IsError, resultText(t, res), want)

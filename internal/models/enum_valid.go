@@ -1,5 +1,7 @@
 package models
 
+import "slices"
+
 // Valid сообщает, что тип сущности известен (есть префикс идентификатора).
 func (t Type) Valid() bool { return t.IDPrefix() != "" }
 
@@ -118,10 +120,5 @@ func (c FactCalendar) Valid() bool {
 // Valid сообщает, что значение — одна из констант (единицы деления и виды
 // населённых пунктов).
 func (t AdminDivisionType) Valid() bool {
-	switch t {
-	case AdminDivisionGovernorate, AdminDivisionDistrict, AdminDivisionVolost, AdminDivisionOther:
-		return true
-	}
-
-	return t.IsSettlement()
+	return slices.Contains(AdminDivisionTypes, t)
 }

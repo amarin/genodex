@@ -25,7 +25,7 @@ func seedTree(t *testing.T, s *Store) {
 	ad1 := models.ID("ad-0001")
 
 	mustDo(t, "root", s.SaveAdministrativeDivision(t.Context(), &models.AdministrativeDivision{
-		ID: root, Name: "Московская", Type: models.AdminDivisionGovernorate,
+		ID: root, Name: "Московская", Type: models.AdminDivisionGuberniya,
 	}))
 
 	for _, i := range []int{3, 1, 2} {
@@ -128,7 +128,7 @@ func TestChildrenOfDivisionInTxAndCanceled(t *testing.T) {
 	ctx := withTimeout(t)
 
 	mustDo(t, "root", s.SaveAdministrativeDivision(ctx, &models.AdministrativeDivision{
-		ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGovernorate}))
+		ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGuberniya}))
 
 	mustDo(t, "in tx", s.InTx(ctx, func(tx store.Store) error {
 		root := models.ID("ad-root")

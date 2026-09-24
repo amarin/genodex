@@ -41,14 +41,14 @@ func TestAdminDivisionsJSONContract(t *testing.T) {
 	root := models.ID("ad-root")
 
 	list, err := json.Marshal(AdminDivisionsFromModels([]models.AdministrativeDivision{
-		{ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGovernorate},
+		{ID: "ad-root", Name: "Московская", Type: models.AdminDivisionGuberniya},
 		{ID: "ad-1", Name: "Давыдово", Type: models.AdminDivisionSelo, ParentID: &root},
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	want := `[{"id":"ad-root","name":"Московская","type":"governorate","parent_id":null,"sources":[]},` +
+	want := `[{"id":"ad-root","name":"Московская","type":"guberniya","parent_id":null,"sources":[]},` +
 		`{"id":"ad-1","name":"Давыдово","type":"selo","parent_id":"ad-root","sources":[]}]`
 	if string(list) != want {
 		t.Fatalf("list = %s, want %s", list, want)

@@ -112,7 +112,7 @@ func TestStoreRoundTripDivision(t *testing.T) {
 	citID := seedCitation(t, s)
 
 	parent := &models.AdministrativeDivision{
-		ID: "ad-parent", Name: "Московская", Type: models.AdminDivisionGovernorate,
+		ID: "ad-parent", Name: "Московская", Type: models.AdminDivisionGuberniya,
 	}
 	if err := s.SaveAdministrativeDivision(t.Context(), parent); err != nil {
 		t.Fatalf("save parent: %v", err)

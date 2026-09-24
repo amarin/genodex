@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -13,6 +14,16 @@ import (
 	"github.com/amarin/genodex/internal/transport"
 )
 
+// divisionTypeList — перечень допустимых типов единицы для описаний тулов.
+func divisionTypeList() string {
+	names := make([]string, len(models.AdminDivisionTypes))
+	for i, t := range models.AdminDivisionTypes {
+		names[i] = string(t)
+	}
+
+	return strings.Join(names, ", ")
+}
+
 // registerDivisionTools регистрирует тулы для работы с единицами административного деления.
 func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 	tool := mcp.NewTool(
@@ -20,8 +31,7 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 		mcp.WithDescription("Список единиц административного деления (губернии, уезды, волости, населённые "+
 			"пункты) в порядке сохранения; результат короче размера окна — конец списка"),
 		mcp.WithString("kind", mcp.Description("Вид: settlement — только населённые пункты; пусто — без фильтра")),
-		mcp.WithString("type", mcp.Description("Точный тип единицы: governorate, district, volost, gorod, selo, "+
-			"derevnya, hutor, pogost, stanitsa, mestechko, other; пусто — без фильтра")),
+		mcp.WithString("type", mcp.Description("Точный тип единицы: "+divisionTypeList()+"; пусто — без фильтра")),
 		mcp.WithNumber("limit", mcp.Description("Размер окна (по умолчанию 50, не больше 500)")),
 		mcp.WithNumber("offset", mcp.Description("Сдвиг окна (по умолчанию 0)")),
 		mcp.WithString("parent_id", mcp.Description("id родительской единицы; пусто — корень (весь список)")),
@@ -50,7 +60,7 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 		"division_create",
 		mcp.WithDescription("Создать единицу административного деления; id генерируется сервером; результат — JSON созданной единицы. Неверные name/type или несуществующий parent_id — ошибка тула"),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Название единицы")),
-		mcp.WithString("type", mcp.Required(), mcp.Description("governorate, district, volost, gorod, selo, derevnya, hutor, pogost, stanitsa, mestechko, other")),
+		mcp.WithString("type", mcp.Required(), mcp.Description(divisionTypeList())),
 		mcp.WithString("parent_id", mcp.Description("id родительской единицы; пусто — корень")),
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",
@@ -65,7 +75,7 @@ func registerDivisionTools(s *server.MCPServer, divisions DivisionService) {
 		mcp.WithDescription("Изменить единицу административного деления: результат — JSON обновлённой единицы. name/type — обязательны, заменяются всегда; parent_id — при отсутствии в вызове сохраняет текущего родителя, явная пустая строка делает единицу корнем; sources — при отсутствии в вызове текущие источники сохраняются, пустой массив — очищает их"),
 		mcp.WithString("id", mcp.Required(), mcp.Description("id единицы")),
 		mcp.WithString("name", mcp.Required(), mcp.Description("Новое название")),
-		mcp.WithString("type", mcp.Required(), mcp.Description("governorate, district, volost, gorod, selo, derevnya, hutor, pogost, stanitsa, mestechko, other")),
+		mcp.WithString("type", mcp.Required(), mcp.Description(divisionTypeList())),
 		mcp.WithString("parent_id", mcp.Description("id нового родителя; пусто — корень")),
 		mcp.WithArray("sources", mcp.Items(map[string]any{
 			"type":       "object",

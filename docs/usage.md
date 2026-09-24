@@ -266,7 +266,7 @@ curl -s 'http://localhost:9000/api/admin-divisions?kind=settlement&limit=20'
 | Параметр | Значение |
 |----------|----------|
 | `kind` | пусто — без фильтра; `settlement` — только населённые пункты (город, село, деревня, хутор, погост, станица, местечко) |
-| `type` | пусто — без фильтра; иначе точный тип: `governorate`, `district`, `volost`, `gorod`, `selo`, `derevnya`, `hutor`, `pogost`, `stanitsa`, `mestechko`, `other` |
+| `type` | пусто — без фильтра; иначе точный тип: `namestnichestvo`, `provintsiya`, `guberniya`, `uezd`, `stan`, `volost`, `oblast`, `okrug`, `respublika`, `krai`, `rayon`, `selsovet`, `other`, `gorod`, `poselok`, `sloboda`, `selo`, `seltso`, `derevnya`, `hutor`, `pogost`, `stanitsa`, `mestechko` (см. `docs/models/places.md`) |
 | `parent_id` | пусто — корень (весь список); иначе — только прямые дети указанной единицы (несуществующий родитель — `404`, неверный формат — `422`) |
 | `limit` | размер окна: по умолчанию 50, не больше 500 (больше — сужается до 500) |
 | `offset` | сдвиг окна, по умолчанию 0 |
@@ -313,8 +313,8 @@ curl -s 'http://localhost:9000/api/admin-divisions?parent_id=AD-…'
 # Создать губернию
 curl -s -X POST http://localhost:9000/api/admin-divisions \
   -H 'Content-Type: application/json' \
-  -d '{"name":"Московская","type":"governorate"}'
-# → 201 {"id":"AD-…","name":"Московская","type":"governorate","parent_id":null}
+  -d '{"name":"Московская","type":"guberniya"}'
+# → 201 {"id":"AD-…","name":"Московская","type":"guberniya","parent_id":null}
 
 # Создать село в губернии (возвращённый id — в кавычках JSON)
 curl -s -X POST http://localhost:9000/api/admin-divisions \

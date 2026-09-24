@@ -97,7 +97,7 @@ func TestClosedEnumsValid(t *testing.T) {
 		{"FactPrecision", []string{"unknown", "year", "month", "day"}, func(s string) bool { return FactPrecision(s).Valid() }},
 		{"FactModifier", []string{"exact", "approx", "before", "after", "between"}, func(s string) bool { return FactModifier(s).Valid() }},
 		{"FactCalendar", []string{"gregorian", "julian", "unknown"}, func(s string) bool { return FactCalendar(s).Valid() }},
-		{"AdminDivisionType", []string{"governorate", "district", "volost", "other", "gorod", "selo", "derevnya", "hutor", "pogost", "stanitsa", "mestechko"}, func(s string) bool { return AdminDivisionType(s).Valid() }},
+		{"AdminDivisionType", []string{"namestnichestvo", "provintsiya", "guberniya", "uezd", "stan", "volost", "oblast", "okrug", "respublika", "krai", "rayon", "selsovet", "other", "gorod", "poselok", "sloboda", "selo", "seltso", "derevnya", "hutor", "pogost", "stanitsa", "mestechko"}, func(s string) bool { return AdminDivisionType(s).Valid() }},
 	}
 	for _, e := range enums {
 		for _, v := range e.valid {
